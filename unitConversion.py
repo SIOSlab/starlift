@@ -1,6 +1,7 @@
 import astropy.units as u
 import astropy.coordinates as coord
 from astropy.coordinates import GCRS, ICRS
+import numpy as np
 
 # From JPL Horizons
 # TU = 27.321582 d
@@ -14,7 +15,7 @@ from astropy.coordinates import GCRS, ICRS
 # =============================================================================
 
 # converting times
-def convertTime_to_canonical(self,dimTime):
+def convertTime_to_canonical(dimTime):
     """Convert array of times from dimensional units to canonical units
     
     Method converts the times inside the array from the given dimensional
@@ -35,7 +36,7 @@ def convertTime_to_canonical(self,dimTime):
     
     return canonicalTime
 
-def convertTime_to_dim(self,canonicalTime):
+def convertTime_to_dim(canonicalTime):
     """Convert array of times from canonical units to unit of years
     
     Method converts the times inside the array from canonical units of the
@@ -57,7 +58,7 @@ def convertTime_to_dim(self,canonicalTime):
     return dimTime
 
 # converting distances
-def convertPos_to_canonical(self,dimPos):
+def convertPos_to_canonical(dimPos):
     """Convert array of positions from dimensional units to canonical units
     
     Method converts the positions inside the array from the given dimensional
@@ -80,7 +81,7 @@ def convertPos_to_canonical(self,dimPos):
     
     return canonicalPos
 
-def convertPos_to_dim(self,canonicalPos):
+def convertPos_to_dim(canonicalPos):
     """Convert array of positions from canonical units to dimensional units
     
     Method converts the positions inside the array from canonical units of
@@ -100,7 +101,7 @@ def convertPos_to_dim(self,canonicalPos):
     return dimPos
 
 # converting velocity
-def convertVel_to_canonical(self,dimVel):
+def convertVel_to_canonical(dimVel):
     """Convert array of velocities from dimensional units to canonical units
     
     Method converts the velocities inside the array from the given dimensional
@@ -123,7 +124,7 @@ def convertVel_to_canonical(self,dimVel):
     
     return canonicalVel
 
-def convertVel_to_dim(self,canonicalVel):
+def convertVel_to_dim(canonicalVel):
     """Convert array of velocities from canonical units to dimensional units
     
     Method converts the velocities inside the array from canonical units of
