@@ -6,13 +6,13 @@ from mpl_toolkits import mplot3d
 import math
 from scipy import integrate as int
 
-path_str ="DRO_11.241_days.p"   # change this
+path_str ="orbitFiles/DRO_11.241_days.p"   # change this
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
 f1 = open(path_f1, "rb")
 retrograde = pickle.load(f1)
 f1.close()
 
-path_str ="L2_S_6.0066_days.p"   # change this
+path_str ="orbitFiles/L2_S_6.0066_days.p"   # change this
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
 f1 = open(path_f1, "rb")
 halo = pickle.load(f1)
