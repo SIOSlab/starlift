@@ -7,7 +7,7 @@ class Solution:
     """This class is meant to provide functionality to manipulate a KNOWN and provided state solution for an orbit. """
     def __init__(self, path_str):
         """Initialize a solution class instance by loading a pickle file of the orbit's timeseries of the state vector."""
-        ## select if you want to do transforms and nondim here. dont want to create more than needed
+        
         # Read the pickle file and assign contents to variable 'data'
         path_f1 = os.path.normpath(os.path.expandvars(path_str))
         with open(path_f1, 'rb') as file:

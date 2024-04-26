@@ -1,6 +1,7 @@
 import astropy.units as u
 import astropy.coordinates as coord
 from astropy.coordinates import GCRS, ICRS
+import numpy as np
 import jplephem
 
 # From JPL Horizons
