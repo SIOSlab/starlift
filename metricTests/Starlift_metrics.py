@@ -6,17 +6,44 @@ from mpl_toolkits import mplot3d
 import math
 from scipy import integrate as int
 
-path_str ="DRO_11.241_days.p"   # change this
+
+# create orbit variables
+path_str ="orbitFiles/DRO_11.241_days.p"   
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
 f1 = open(path_f1, "rb")
-retrograde = pickle.load(f1)
+DRO_11 = pickle.load(f1)
 f1.close()
 
-path_str ="L2_S_6.0066_days.p"   # change this
+path_str ="orbitFiles/DRO_13.0486_days.p"   
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
 f1 = open(path_f1, "rb")
-halo = pickle.load(f1)
+DRO_13 = pickle.load(f1)
 f1.close()
+
+path_str ="orbitFiles/L1_S_10.003_days.p"  
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+L1_10 = pickle.load(f1)
+f1.close()
+
+path_str ="orbitFiles/L1_S_13.0094_days.p"  
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+L1_13 = pickle.load(f1)
+f1.close()
+
+path_str ="orbitFiles/L2_S_6.0066_days.p"   
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+L2_6 = pickle.load(f1)
+f1.close()
+
+path_str ="orbitFiles/L2_S_12.05_days.p"  
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+L2_12 = pickle.load(f1)
+f1.close()
+
 
 # establish constants
 M_m = 7.349*(10)**22 # mass of moon
@@ -33,9 +60,9 @@ class orbit_eval:
   def __init__(self,orbit):
     self.orbit = orbit # orbit is a pickle file
 
-  def view_eval(self,angle,A):
+  def orbit_volume(self,angle,A):
     # evaluates how well the spacecraft views volume of moon below certain orbit
-    # angle is the scope of the telescope in degrees (ex: 2 deg by 2 deg)
+    # angle is the scope of the telescope in degrees (ex: 2 deg by 2 deg means angle)
     # A is the altitude of orbits you are considering in meters
 
     state = self.orbit['state'] # gather position and velocity data
@@ -306,10 +333,8 @@ class orbit_eval:
 
       V.append(volume_viewed)
     
-
     Volume = ((4/3)*pi)*((R_m+A)**3 - (R_m)**3)
     V_percent_viewed = []
-
 
     for i in range(rows):
       V_percent_viewed.append(V[i] / Volume)
@@ -317,16 +342,114 @@ class orbit_eval:
         #print('Fraction of Volume: ' + str(V[i] / Volume))
 
     return time,V_percent_viewed,r_mag_vec
+  
+  def angular_diameter(self,angle,A):
+    # volume solution using steradians
+    # angle is the field of view
+    # A is the altitude of orbits
+    # ang_diam is a list containing the angular diameter of the moon + altitude at all points in time
+    # ang_diam_frac is a list containing the fraction of the angular diameter of the moon + altitude you can see at any point in time
 
-halo = orbit_eval(retrograde)
+    state = self.orbit['state'] # gather position and velocity data
+    dimensions = np.shape(state)
+    rows, columns = dimensions # obtain size of state
+    r_satellite = state[:,0:3]*1000
+    time = self.orbit['t'] # get time
+    phi = (angle) * math.pi / 180 / 2
+    d = 2*(R_m + A) # diameter of moon + altitude
+
+    fixed_diam = phi*2 # angular diameter of view phi*2
+    ang_diam = []
+    ang_diam_frac = []
+
+    r_moon = []
+    for i in range(rows):
+      r_moon.append([m_position,0,0]) # list describing moon position
+
+    r_moon = np.array(r_moon) # convert moon list to array
+    r = r_satellite - r_moon #  array describing satellite distance from moon
+
+    V = []
+    r_mag_vec = []
+
+    for i in range(0,rows):
+      r_mag = (r[i,0]**2 + r[i,1]**2 + r[i,2]**2)**(1/2)
+      a_diam = 2*math.asin(d/(2*r_mag))
+      # a_diam = 2*np.pi*(1-np.sqrt(r_mag**2-d**2/4)/r_mag)
+      a_diam_frac = fixed_diam / a_diam
+      r_mag_vec.append(r_mag)
+      ang_diam.append(a_diam)
+
+      if a_diam <= fixed_diam: # object + altitude is in full view
+        ang_diam_frac.append(1)
+      else:
+        ang_diam_frac.append(a_diam_frac)
+
+    return ang_diam,ang_diam_frac
+  
+  def orbit_ranker(self,orbit_files,orbit_names,angle,A,metric):
+    # orbit_files is a list of orbit pickle files
+    # orbit_names is the names of the orbits
+    # angle is the filed of view
+    # A is the altitude
+    # metric is the metric by which the orbits are evaluated, which should be a string that is the same as the name of the function
+
+    avg = []
+
+    if metric == "orbit_volume":
+
+      for i in range(0,len(orbit_files)):
+        orbit = orbit_files[i]
+        [time,V_percent_viewed,r_mag_vec] = orbit.orbit_volume(angle,A)
+        avg.append(sum(V_percent_viewed)/len(V_percent_viewed))
+
+    elif metric == "angular_diameter":
+      for i in range(0,len(orbit_files)):
+        orbit = orbit_files[i]
+        [ang_diam,ang_diam_frac] = orbit.angular_diameter(angle,A)
+        avg.append(sum(ang_diam_frac)/len(ang_diam_frac))
+
+    avg = np.array(avg)
+    indices = np.argsort(avg)
+    ranking = np.empty(len(indices), dtype=object)
+
+    for i in range(len(indices)):
+      index = indices[i]
+      ranking[i] = orbit_names[index]
+      
+    return avg,indices,ranking
+
+
+DRO_11 = orbit_eval(DRO_11)
+DRO_13 = orbit_eval(DRO_13)
+L1_10 = orbit_eval(L1_10)
+L1_13 = orbit_eval(L1_13)
+L2_6 = orbit_eval(L2_6)
+L2_12 = orbit_eval(L2_12)
+
+
+
 A = 300000 # lunar altitude
-angle = 2 # width of view in degrees
-[time,V_percent_viewed,r_mag_vec] = halo.view_eval(angle,A)
+angle = 3.5 # width of view in degrees
+[time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
+[ang_diam,ang_diam_frac] = DRO_11.angular_diameter(angle,A)
 
-plt.plot(time,V_percent_viewed)
+orbits_files = [DRO_11,DRO_13,L2_12]
+orbit_names = ["DRO_11","DRO_13","L2_12"]
+
+[avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"angular_diameter")
+print(avg)
+print(indices)
+print(ranking)
+
+
+plt. plot(time,V_percent_viewed,label = 'Fraction of Volume')
+plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
+
 plt.xlabel("Time (s)")
-plt.ylabel("Fraction of Volume Viewed")
-plt.title("Fraction of Available Volume Viewed by Spacecraft in Halo Orbit")
+plt.ylabel("Fraction")
+plt.title("Spacecraft in Orbit Evaluation")
+plt.legend() 
 
 plt.show()
 
