@@ -3,7 +3,7 @@ import sys
 sys.path.insert(1, sys.path[0][0:-10])
 print(sys.path)
 from metricTests import Starlift_metrics
-
+from tools.Solution import Solution
 import os.path
 import numpy as np
 import pickle
@@ -14,12 +14,12 @@ from scipy import integrate as int
 import unittest
 
 
-path_str ="orbitFiles/DRO_11.241_days.p"   
+path_str = "orbitFiles/DRO_11.241_days.p"   
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-DRO_11 = pickle.load(f1)
-f1.close()
-
+# f1 = open(path_f1, "rb")
+# DRO_11 = pickle.load(f1)
+# f1.close()
+DRO_11 = Solution(path_f1)
 DRO_11 = Starlift_metrics.orbit_eval(DRO_11)
 
 A = 20000000 # lunar altitude
@@ -50,30 +50,30 @@ def testVolume():
     A = 500000
     [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
     if V_percent_viewed[1] > 0.485 and V_percent_viewed[1] < 0.486:
-        print("back altitude scenario passed")
+        print("Back altitude scenario passed")
         passes = passes + 1
     else:
-        print("back altitude scenario failed")
+        print("Back altitude scenario failed")
 
     # front altitude scenario
     angle = 42
     A = 20000000
     [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
     if V_percent_viewed[1] > 0.974 and V_percent_viewed[1] < 0.976:
-        print("front altitude scenario passed")
+        print("Front altitude scenario passed")
         passes = passes + 1
     else:
-        print("front altitude scenario failed")
+        print("Front altitude scenario failed")
 
     # full view scenario
     angle = 6
     A = 500000
     [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
     if V_percent_viewed[1] > 0.721 and V_percent_viewed[1] < 0.723:
-        print("full view scenario passed")
+        print("Full view scenario passed")
         passes = passes + 1
     else:
-        print("full view scenario failed")
+        print("Full view scenario failed")
 
     if passes == 4:
         print("ALL SCENARIOS PASSED")
