@@ -1,57 +1,24 @@
-import os.path
+import sys
+# sys.path.insert(1, 'C:/Users/jackc/Desktop/SP2024/Starlift/starlift')
+sys.path.insert(1, sys.path[0][0:-11])
+
+from tools.Solution import Solution as Solution
 import numpy as np
-import pickle
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
-import math
+from astropy import constants
 from scipy import integrate as int
 
 
 # create orbit variables
-path_str ="orbitFiles/DRO_11.241_days.p"   
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-DRO_11 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/DRO_13.0486_days.p"   
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-DRO_13 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/L1_S_10.003_days.p"  
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-L1_10 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/L1_S_13.0094_days.p"  
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-L1_13 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/L2_S_6.0066_days.p"   
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-L2_6 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/L2_S_12.05_days.p"  
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-L2_12 = pickle.load(f1)
-f1.close()
-
+path_str ="orbitFiles/DRO_11.241_days.p"
+DRO_11 = Solution(path_str)
 
 # establish constants
 M_m = 7.349*(10)**22 # mass of moon
-M_e = 5.97219*(10)**24 # mass of earth
-d = (3.8444*10**5)*1000 # distance between earth and moon in m
 R_m = 1737400 # radius of moon
-G = 6.6743*10**(-11) # Gravitational constant
-pi = math.pi # pi
+M_e = constants.M_earth.value # 5.97219*(10)**24 # mass of earth
+d = (3.8444*10**5)*1000 # distance between earth and moon in m
+G = constants.G.value  # 6.6743*10**(-11) # Gravitational constant
 x_com = (M_m*d) / (M_m + M_e) # center of mass position
 m_position = d - x_com # moon distance from barycenter
 
@@ -65,19 +32,17 @@ class orbit_eval:
     # angle is the scope of the telescope in degrees (ex: 2 deg by 2 deg means angle)
     # A is the altitude of orbits you are considering in meters
 
-    state = self.orbit['state'] # gather position and velocity data
+    # state = self.orbit['state'] # gather position and velocity data
+    state = self.orbit.statevec
     dimensions = np.shape(state)
     rows, columns = dimensions # obtain size of state
     r_satellite = state[:,0:3]*1000
-    time = self.orbit['t'] # get time
-    phi = (angle) * math.pi / 180 / 2
-    Va = (4/3)*pi*(R_m+A)**3
+    time = self.orbit.tvec #self.orbit['t'] # get time
+    phi = (angle) * np.pi / 180 / 2
+    Va = (4/3)*np.pi*(R_m+A)**3
 
-    r_moon = []
-    for i in range(rows):
-      r_moon.append([m_position,0,0]) # list describing moon position
-
-    r_moon = np.array(r_moon) # convert moon list to array
+    # move positions relative to the moon
+    r_moon = np.column_stack((np.ones((rows,1))*m_position, np.zeros((rows,2))))
     r = r_satellite - r_moon #  array describing satellite distance from moon
 
     V = []
@@ -89,55 +54,53 @@ class orbit_eval:
 
       if r_mag < R_m + A:
         # Satellite is within max altitude
-        if r_mag*math.sin(phi) < R_m:
+        if r_mag*np.sin(phi) < R_m:
           
           # scenario 1 for within altitude
-          alpha_fake = math.asin(math.sin(phi)*r_mag/R_m)
-          alpha = pi - alpha_fake
-          theta = pi - alpha - phi
-          L = R_m*math.sin(theta)
-          h = r_mag - R_m*math.cos(theta)
-          V_cone = (pi/3)*(L**2)*h
-          V_cap = (pi/3)*(R_m**3)*(2+math.cos(theta))*(1-math.cos(theta))**2
+          alpha_fake = np.arcsin(np.sin(phi)*r_mag/R_m)
+          alpha = np.pi - alpha_fake
+          theta = np.pi - alpha - phi
+          L = R_m*np.sin(theta)
+          h = r_mag - R_m*np.cos(theta)
+          V_cone = (np.pi/3)*(L**2)*h
+          V_cap = (np.pi/3)*(R_m**3)*(2+np.cos(theta))*(1-np.cos(theta))**2
 
           scenario = '1within'
           volume_viewed = V_cone - V_cap
 
         else:
           # scenario 2 for within altitude
-          
-          alpha = math.asin((math.sin(phi)/(R_m+A))*r_mag)
-          theta = pi - alpha - phi
+          alpha = np.arcsin((np.sin(phi)/(R_m+A))*r_mag)
+          theta = np.pi - alpha - phi
 
-          if theta < (pi/2):
-            tau = math.acos(R_m / (R_m + A))
-            omega = math.acos(R_m/r_mag)
+          if theta < (np.pi/2):
+            tau = np.arccos(R_m / (R_m + A))
+            omega = np.arccos(R_m/r_mag)
             gamma = tau+omega
 
-            if gamma < (pi/2):
+            if gamma < (np.pi/2):
               # scenario 2a for within altitude
-
-              V_frontcapsmall = (pi/3)*(R_m+A)**3 * (2+math.cos(theta))*(1-math.cos(theta))**2
-              V_frontcapbig = (pi/3)*(R_m+A)**3 * (2+math.cos(gamma))*(1-math.cos(gamma))**2
-              b = (R_m+A)*math.sin(theta)
-              a = (R_m+A)*math.sin(theta)
-              h = (R_m+A)*(math.cos(theta) - math.cos(gamma))
-              V_conical = (pi/3)*h*(a**2 + a*b + b**2)
+              V_frontcapsmall = (np.pi/3)*(R_m+A)**3 * (2+np.cos(theta))*(1-np.cos(theta))**2
+              V_frontcapbig = (np.pi/3)*(R_m+A)**3 * (2+np.cos(gamma))*(1-np.cos(gamma))**2
+              b = (R_m+A)*np.sin(theta)
+              a = (R_m+A)*np.sin(theta)
+              h = (R_m+A)*(np.cos(theta) - np.cos(gamma))
+              V_conical = (np.pi/3)*h*(a**2 + a*b + b**2)
               V_s2 = V_frontcapbig - V_frontcapsmall - V_conical
 
-              L = R_m*math.sin(omega)
-              h = r - R_m*math.cos(omega)
-              V_cone = (pi/3)*(L**2)*h
-              V_cap = (pi/3)*(R_m)**3*(2+math.cos(omega))*(1-math.cos(omega))**2
+              L = R_m*np.sin(omega)
+              h = r - R_m*np.cos(omega)
+              V_cone = (np.pi/3)*(L**2)*h
+              V_cap = (np.pi/3)*(R_m)**3*(2+np.cos(omega))*(1-np.cos(omega))**2
               V_s1 = V_cone - V_cap
 
-              delta = (pi/2) - omega
-              S = math.sin(theta)*(R_m+A) / math.sin(phi)
-              L_big = S*math.sin(phi)
-              h_big = S*math.cos(phi)
-              V_bigcone = (pi/3)*(L_big**2)*h_big
-              L_small = h_big(math.tan(phi))
-              V_smallcone = (pi/3)*(L_small**2)*h_big
+              delta = (np.pi/2) - omega
+              S = np.sin(theta)*(R_m+A) / np.sin(phi)
+              L_big = S*np.sin(phi)
+              h_big = S*np.cos(phi)
+              V_bigcone = (np.pi/3)*(L_big**2)*h_big
+              L_small = h_big(np.tan(phi))
+              V_smallcone = (np.pi/3)*(L_small**2)*h_big
               V_s3 = V_bigcone - V_smallcone
 
               scenario = '2within'
@@ -145,34 +108,33 @@ class orbit_eval:
 
             else: 
               # scenario 2b for within altitude
-
-              alpha = math.asin(math.sin(phi)*r/(R_m+A))
-              omega = math.acos(R_m/r_mag)
-              delta = pi/2 - omega
+              alpha = np.arcsin(np.sin(phi)*r/(R_m+A))
+              omega = np.arccos(R_m/r_mag)
+              delta = np.pi/2 - omega
               tau = theta - omega
-              q = math.asin(R_m / (R_m+A))
-              f = pi/2 - q
-              u = pi - omega - f
-              a = (R_m+A)*math.sin(u)
-              h_small = (R_m+A)*math.sin(theta)
+              q = np.arcsin(R_m / (R_m+A))
+              f = np.pi/2 - q
+              u = np.pi - omega - f
+              a = (R_m+A)*np.sin(u)
+              h_small = (R_m+A)*np.sin(theta)
               h_big = r_mag - h_small
-              b = h_big*math.tan(delta)
+              b = h_big*np.tan(delta)
               
-              V_frontcap = (pi/3)*(R_m+A)**3 * (2+math.cos(theta))*(1-math.cos(theta))**2
-              V_backcap = (pi/3)*(R_m+A)**3 * (2+math.cos(u))*(1-math.cos(u))**2
+              V_frontcap = (np.pi/3)*(R_m+A)**3 * (2+np.cos(theta))*(1-np.cos(theta))**2
+              V_backcap = (np.pi/3)*(R_m+A)**3 * (2+np.cos(u))*(1-np.cos(u))**2
 
-              h = (R_m + A)*math.cos(theta) + (R_m+A)*math.cos(u)
-              V_conical = (pi/3)*h*(a**2 + a*b + b**2)
-              Vs3 = (4/3)*pi(R_m+A)**3 - V_frontcap - V_backcap - V_conical
+              h = (R_m + A)*np.cos(theta) + (R_m+A)*np.cos(u)
+              V_conical = (np.pi/3)*h*(a**2 + a*b + b**2)
+              Vs3 = (4/3)*np.pi(R_m+A)**3 - V_frontcap - V_backcap - V_conical
 
-              L = (R_m + A)*math.sin(theta)
-              Vs2 = (pi/3)*(L**2)*h_big - (pi/3)*(b**2)*h_big
+              L = (R_m + A)*np.sin(theta)
+              Vs2 = (np.pi/3)*(L**2)*h_big - (np.pi/3)*(b**2)*h_big
 
-              omega = math.acos(R_m/(R_m+A))
-              L = R_m*math.sin(omega)
-              h = r_mag - R_m*math.cos(omega)
-              V_cone = (pi/3)*L**2*h
-              V_cap = (pi/3)*(R_m)**3*(2+math.cos(omega))*(1-math.cos(omega))**2
+              omega = np.arccos(R_m/(R_m+A))
+              L = R_m*np.sin(omega)
+              h = r_mag - R_m*np.cos(omega)
+              V_cone = (np.pi/3)*L**2*h
+              V_cap = (np.pi/3)*(R_m)**3*(2+np.cos(omega))*(1-np.cos(omega))**2
               Vs1 = V_cone - V_cap
 
               scenario = '2within'
@@ -180,160 +142,146 @@ class orbit_eval:
           
           else:
             # SCENARIO 2C for within altitude
-            delta = math.atan(R_m/r_mag)
-            omega = (pi/2) - delta
-            tau = math.acos(R_m / (R_m+A))
-            gamma = pi - tau - omega
+            delta = np.arctan(R_m/r_mag)
+            omega = (np.pi/2) - delta
+            tau = np.arccos(R_m / (R_m+A))
+            gamma = np.pi - tau - omega
 
-            alpha = math.asin(math.sin(phi)*r_mag / (R_m + A))
-            theta = pi - alpha - phi
-            beta = pi - theta - gamma
+            alpha = np.arcsin(np.sin(phi)*r_mag / (R_m + A))
+            theta = np.pi - alpha - phi
+            beta = np.pi - theta - gamma
             
-            V_bigcap = (pi/3)*(R_m+A)**3 *(2+math.cos(beta+gamma))*(1-math.cos(beta+gamma))**2
-            V_smallcap = (pi/3)*(R_m+A)**3 * (2+math.cos(gamma))*(1-math.cos(gamma))**2
+            V_bigcap = (np.pi/3)*(R_m+A)**3 *(2+np.cos(beta+gamma))*(1-np.cos(beta+gamma))**2
+            V_smallcap = (np.pi/3)*(R_m+A)**3 * (2+np.cos(gamma))*(1-np.cos(gamma))**2
 
-            L1 = (R_m + A)*math.sin(beta + gamma)
-            d = (R_m + A)*math.cos(beta + gamma)
-            a = (R_m + A)*math.sin(gamma)
-            b = (r_mag + d)*math.tan(delta)
-            h1 = (R_m+A)*math.cos(gamma) - d
-            V_conical = (pi/3)*h1*(a**2 + a*b + b**2)
+            L1 = (R_m + A)*np.sin(beta + gamma)
+            d = (R_m + A)*np.cos(beta + gamma)
+            a = (R_m + A)*np.sin(gamma)
+            b = (r_mag + d)*np.tan(delta)
+            h1 = (R_m+A)*np.cos(gamma) - d
+            V_conical = (np.pi/3)*h1*(a**2 + a*b + b**2)
 
             Vs3 = V_bigcap - V_smallcap - V_conical
 
-            V_bigcone = (pi/3)*(L1**2)*(r_mag+d)
-            V_smallcone = (pi/3)*(b**2)*(r_mag+d)
+            V_bigcone = (np.pi/3)*(L1**2)*(r_mag+d)
+            V_smallcone = (np.pi/3)*(b**2)*(r_mag+d)
 
             Vs2 = V_bigcone - V_smallcone
 
-            L = R_m*math.sin(omega)
-            h = r_mag - R_m*math.cos(omega)
-            V_cone = (pi/3)*L**2*h
-            V_cap = (pi/3)*(R_m)**3*(2+math.cos(omega))*(1-math.cos(omega))**2
+            L = R_m*np.sin(omega)
+            h = r_mag - R_m*np.cos(omega)
+            V_cone = (np.pi/3)*L**2*h
+            V_cap = (np.pi/3)*(R_m)**3*(2+np.cos(omega))*(1-np.cos(omega))**2
 
             Vs1 = V_cone - V_cap
 
             scenario = '2within'
             volume_viewed = Vs1 + Vs2 + Vs3
-
       
       else:
         # OUTSIDE ALTITUDE
-        if r_mag*math.sin(phi) < R_m:
-
+        if r_mag*np.sin(phi) < R_m:
           # scenario 1
-          alpha_mfake = math.asin(math.sin(phi)*r_mag/R_m)
-          alpha_afake = math.asin(math.sin(phi)*r_mag/(R_m+A))
+          alpha_mfake = np.arcsin(np.sin(phi)*r_mag/R_m)
+          alpha_afake = np.arcsin(np.sin(phi)*r_mag/(R_m+A))
 
-          alpha_m = pi - alpha_mfake
-          alpha_a = pi - alpha_afake
+          alpha_m = np.pi - alpha_mfake
+          alpha_a = np.pi - alpha_afake
 
-          theta_m = pi - phi - alpha_m
-          theta_a = pi - phi - alpha_a
+          theta_m = np.pi - phi - alpha_m
+          theta_a = np.pi - phi - alpha_a
 
-          V_cap_m = (pi/3)*(R_m)**3 * (2+math.cos(theta_m))*(1-math.cos(theta_m))**2
-          V_cap_a = (pi/3)*(R_m+A)**3 * (2+math.cos(theta_a))*(1-math.cos(theta_a))**2
+          V_cap_m = (np.pi/3)*(R_m)**3 * (2+np.cos(theta_m))*(1-np.cos(theta_m))**2
+          V_cap_a = (np.pi/3)*(R_m+A)**3 * (2+np.cos(theta_a))*(1-np.cos(theta_a))**2
 
-          a = R_m*math.sin(theta_m)
-          b = (R_m + A)*math.sin(theta_a)
+          a = R_m*np.sin(theta_m)
+          b = (R_m + A)*np.sin(theta_a)
 
-          h = (R_m+A)*math.cos(theta_a) - R_m*math.cos(theta_m)
-          V_conical = (pi/3)*h*(a**2 + a*b + b**2)
+          h = (R_m+A)*np.cos(theta_a) - R_m*np.cos(theta_m)
+          V_conical = (np.pi/3)*h*(a**2 + a*b + b**2)
 
           scenario = '1Outside'
           volume_viewed = V_cap_a + V_conical - V_cap_m
 
-        
-
-        elif (r_mag*math.sin(phi) < R_m + A):
+        elif (r_mag*np.sin(phi) < R_m + A):
           
           # scenario 2, in between case where view spans moon but not R_m+A
           # find spherical cap volume in front
-          gamma = math.asin(R_m/r_mag)
-          delta = (pi/2) - gamma
-          V_front = (pi/3)*(R_m**3)*(2+math.cos(delta))*(1-math.cos(delta))**2
+          gamma = np.arcsin(R_m/r_mag)
+          delta = (np.pi/2) - gamma
+          V_front = (np.pi/3)*(R_m**3)*(2+np.cos(delta))*(1-np.cos(delta))**2
 
           # find cone section volume
-          b = R_m*math.sin(delta)
-          omega = math.acos(R_m/(R_m+A))
-          alpha = pi - delta - omega
-          a = (R_m+A)*math.sin(alpha)
-          h = R_m*math.cos(delta) + (R_m+A)*math.cos(alpha)
-          V_cone = (pi/3)*h*(a**2 + a*b + b**2)
+          b = R_m*np.sin(delta)
+          omega = np.arccos(R_m/(R_m+A))
+          alpha = np.pi - delta - omega
+          a = (R_m+A)*np.sin(alpha)
+          h = R_m*np.cos(delta) + (R_m+A)*np.cos(alpha)
+          V_cone = (np.pi/3)*h*(a**2 + a*b + b**2)
 
           # find back-spherical cap volume
-          V_back = (pi/3)*((R_m+A)**3)*(2+math.cos(alpha))*(1-math.cos(alpha))**2
+          V_back = (np.pi/3)*((R_m+A)**3)*(2+np.cos(alpha))*(1-np.cos(alpha))**2
 
-          sigma = math.asin((r_mag*math.sin(phi)) / (R_m + A))
-          sigma = pi - sigma # correction of alpha to account for arcsin
-          tao = pi - phi - sigma
-          epsilon = 2*sigma - pi
+          sigma = np.arcsin((r_mag*np.sin(phi)) / (R_m + A))
+          sigma = np.pi - sigma # correction of alpha to account for arcsin
+          tao = np.pi - phi - sigma
+          epsilon = 2*sigma - np.pi
 
-          if (tao + epsilon) > (pi/2):
+          if (tao + epsilon) > (np.pi/2):
 
             # find spherical cap information
-            zeta = pi - tao - epsilon
-            V_spherical = ((pi/3)*(R_m+A)**3)*(4-(2+math.cos(tao))*(1-math.cos(tao))**2 - (2+math.cos(zeta))*(1-math.cos(zeta))**2)
+            zeta = np.pi - tao - epsilon
+            V_spherical = ((np.pi/3)*(R_m+A)**3)*(4-(2+np.cos(tao))*(1-np.cos(tao))**2 - (2+np.cos(zeta))*(1-np.cos(zeta))**2)
 
             # find partial cone information
-            b = (R_m+A)*math.sin(tao)
-            a = (R_m+A)*math.sin(zeta)
-            h = (R_m+A)*(math.cos(tao)+math.cos(zeta))
-            V_conical = (pi/3)*h*(a**2 + a*b + b**2)
+            b = (R_m+A)*np.sin(tao)
+            a = (R_m+A)*np.sin(zeta)
+            h = (R_m+A)*(np.cos(tao)+np.cos(zeta))
+            V_conical = (np.pi/3)*h*(a**2 + a*b + b**2)
 
             V_slit = V_spherical - V_conical # volume of space between cone section and sphere section
 
-      
             scenario = '2outside'
             volume_viewed = Va - V_slit - V_front - V_cone - V_back
-
-
 
           else:
             # find spherical cap information
-
-            V_spherical = ((pi/3)*(R_m+A)**3)*((2+math.cos(epsilon+tao))*(1-math.cos(epsilon+tao))**2 - (2+math.cos(tao))*(1-math.cos(tao))**2)
+            V_spherical = ((np.pi/3)*(R_m+A)**3)*((2+np.cos(epsilon+tao))*(1-np.cos(epsilon+tao))**2 - (2+np.cos(tao))*(1-np.cos(tao))**2)
 
             # find cone information
-            b = (R_m+A)*math.sin(tao)
-            a = (R_m+A)*math.sin(epsilon+tao)
-            h = (R_m+A)*(math.cos(tao) - math.cos(epsilon+tao))
-            V_conical = (pi/3)*h*(a**2 + a*b + b**2)
+            b = (R_m+A)*np.sin(tao)
+            a = (R_m+A)*np.sin(epsilon+tao)
+            h = (R_m+A)*(np.cos(tao) - np.cos(epsilon+tao))
+            V_conical = (np.pi/3)*h*(a**2 + a*b + b**2)
 
             V_slit = V_spherical - V_conical # volume of space between cone section and sphere section
 
             scenario = '2outside'
             volume_viewed = Va - V_slit - V_front - V_cone - V_back
 
-            
-
         else:
-          
           # scenario 3, view spans entire moon and altittude
-          gamma = math.asin(R_m/r_mag)
-          delta = (pi/2) - gamma
-          V_front = (pi/3)*(R_m**3)*(2+math.cos(delta))*(1-math.cos(delta))**2 # spherical cap volume in front
+          gamma = np.arcsin(R_m/r_mag)
+          delta = (np.pi/2) - gamma
+          V_front = (np.pi/3)*(R_m**3)*(2+np.cos(delta))*(1-np.cos(delta))**2 # spherical cap volume in front
 
           # find cone section volume
-          b = R_m*math.sin(delta)
-          omega = math.acos(R_m/(R_m+A))
-          alpha = pi - delta - omega
-          a = (R_m+A)*math.sin(alpha)
-          h = R_m*math.cos(delta) + (R_m+A)*math.cos(alpha)
-          V_cone = (pi/3)*h*(a**2 + a*b + b**2)
+          b = R_m*np.sin(delta)
+          omega = np.arccos(R_m/(R_m+A))
+          alpha = np.pi - delta - omega
+          a = (R_m+A)*np.sin(alpha)
+          h = R_m*np.cos(delta) + (R_m+A)*np.cos(alpha)
+          V_cone = (np.pi/3)*h*(a**2 + a*b + b**2)
 
           # find back-spherical cap volume
-          V_back = (pi/3)*((R_m+A)**3)*(2+math.cos(alpha))*(1-math.cos(alpha))**2
+          V_back = (np.pi/3)*((R_m+A)**3)*(2+np.cos(alpha))*(1-np.cos(alpha))**2
 
           volume_viewed = Va - V_front - V_cone - V_back
       
-      Volume = ((4/3)*pi)*((R_m+A)**3 - (R_m)**3)
-
-
-
+      Volume = ((4/3)*np.pi)*((R_m+A)**3 - (R_m)**3)
       V.append(volume_viewed)
     
-    Volume = ((4/3)*pi)*((R_m+A)**3 - (R_m)**3)
+    Volume = ((4/3)*np.pi)*((R_m+A)**3 - (R_m)**3)
     V_percent_viewed = []
 
     for i in range(rows):
@@ -341,8 +289,15 @@ class orbit_eval:
       #if i == 180:
         #print('Fraction of Volume: ' + str(V[i] / Volume))
 
+    plt.figure()
+    plt.plot(time,V_percent_viewed,label = 'Fraction of Volume')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Visible fraction of Orbit Volume")
+    plt.title("Spacecraft in Orbit Evaluation")
+    plt.legend()
+
     return time,V_percent_viewed,r_mag_vec
-  
+
   def angular_diameter(self,angle,A):
     # volume solution using steradians
     # angle is the field of view
@@ -350,32 +305,27 @@ class orbit_eval:
     # ang_diam is a list containing the angular diameter of the moon + altitude at all points in time
     # ang_diam_frac is a list containing the fraction of the angular diameter of the moon + altitude you can see at any point in time
 
-    state = self.orbit['state'] # gather position and velocity data
-    dimensions = np.shape(state)
-    rows, columns = dimensions # obtain size of state
+    # state = self.orbit['state'] # gather position and velocity data
+    state = self.orbit.statevec
+    rows, columns = np.shape(state) # obtain size of state
     r_satellite = state[:,0:3]*1000
-    time = self.orbit['t'] # get time
-    phi = (angle) * math.pi / 180 / 2
+    time = self.orbit.tvec #self.orbit['t'] # get time
+    phi = (angle) * np.pi / 180 / 2  # half-angle of aperture in radians
     d = 2*(R_m + A) # diameter of moon + altitude
 
     fixed_diam = phi*2 # angular diameter of view phi*2
     ang_diam = []
     ang_diam_frac = []
 
-    r_moon = []
-    for i in range(rows):
-      r_moon.append([m_position,0,0]) # list describing moon position
-
-    r_moon = np.array(r_moon) # convert moon list to array
+    r_moon = np.column_stack((np.ones((rows,1))*m_position, np.zeros((rows,2))))
     r = r_satellite - r_moon #  array describing satellite distance from moon
 
     V = []
     r_mag_vec = []
-
+    
     for i in range(0,rows):
       r_mag = (r[i,0]**2 + r[i,1]**2 + r[i,2]**2)**(1/2)
-      a_diam = 2*math.asin(d/(2*r_mag))
-      # a_diam = 2*np.pi*(1-np.sqrt(r_mag**2-d**2/4)/r_mag)
+      a_diam = 2*np.arcsin(d/(2*r_mag))
       a_diam_frac = fixed_diam / a_diam
       r_mag_vec.append(r_mag)
       ang_diam.append(a_diam)
@@ -384,8 +334,60 @@ class orbit_eval:
         ang_diam_frac.append(1)
       else:
         ang_diam_frac.append(a_diam_frac)
+    
+    plt.figure()
+    plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Visible fraction of Orbit Angular Diameter")
+    plt.title("Spacecraft in Orbit Evaluation")
+    plt.legend() 
 
     return ang_diam,ang_diam_frac
+  
+  def solid_angle(self,angle,A):
+    # volume solution using steradians
+    # angle is the field of view
+    # A is the altitude of orbits
+    # ster_vis is a list containing the visible solid angle of the moon + altitude at all points in time
+    # ster_frac is a list containing the fraction of the solid angle of the moon + altitude you can see at any point in time
+
+    # state = self.orbit['state'] # gather position and velocity data
+    state = self.orbit.statevec
+    rows, columns = np.shape(state) # obtain size of state
+    r_satellite = state[:,0:3]*1000
+    time = self.orbit.tvec # self.orbit['t'] # get time
+    phi = (angle) * np.pi / 180 / 2  # half-angle of aperture in radians
+    R = (R_m + A) # diameter of moon + altitude
+
+    ster_vis = []
+    ster_frac = []
+
+    r_moon = np.column_stack((np.ones((rows,1))*m_position, np.zeros((rows,2))))
+    r = r_satellite - r_moon #  array describing satellite distance from moon
+
+    r_mag_vec = np.linalg.norm(r, axis=1).reshape(rows,1)
+
+    for i in range(0,rows):
+      r_mag = r_mag_vec[i,0]
+      stermax = 2*np.pi*(1-np.sqrt(r_mag**2-R**2)/r_mag)
+      visrad = r_mag*np.tan(phi)
+      stervis = 2*np.pi*(1-np.sqrt(r_mag**2-visrad**2)/r_mag)
+      sterfraction = stervis / stermax 
+      ster_vis.append(stervis)
+
+      if stervis >= stermax: # object + altitude is in full view
+        ster_frac.append(1)
+      else:
+        ster_frac.append(sterfraction)
+
+    plt.figure()
+    plt.plot(time,ster_frac,label = 'Fraction of Visible Solig Angle')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Visible fraction of Orbit Volume")
+    plt.title("Spacecraft in Orbit Evaluation")
+    plt.legend() 
+
+    return ster_vis ,ster_frac
   
   def orbit_ranker(self,orbit_files,orbit_names,angle,A,metric):
     # orbit_files is a list of orbit pickle files
@@ -420,41 +422,34 @@ class orbit_eval:
     return avg,indices,ranking
 
 
-DRO_11 = orbit_eval(DRO_11)
-DRO_13 = orbit_eval(DRO_13)
-L1_10 = orbit_eval(L1_10)
-L1_13 = orbit_eval(L1_13)
-L2_6 = orbit_eval(L2_6)
-L2_12 = orbit_eval(L2_12)
+#### END OF CLASS DEFINITION ####
 
+
+DRO_11_metrics = orbit_eval(DRO_11)
+# DRO_13 = orbit_eval(DRO_13)
+# L1_10 = orbit_eval(L1_10)
+# L1_13 = orbit_eval(L1_13)
+# L2_6 = orbit_eval(L2_6)
+# L2_12 = orbit_eval(L2_12)
 
 
 A = 300000 # lunar altitude
 angle = 3.5 # width of view in degrees
-[time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
-[ang_diam,ang_diam_frac] = DRO_11.angular_diameter(angle,A)
+[time,V_percent_viewed,r_mag_vec] = DRO_11_metrics.orbit_volume(angle,A)
+[ang_diam,ang_diam_frac] = DRO_11_metrics.angular_diameter(angle,A)
+[ang_diam,ang_diam_frac] = DRO_11_metrics.solid_angle(angle,A)
 
-orbits_files = [DRO_11,DRO_13,L2_12]
-orbit_names = ["DRO_11","DRO_13","L2_12"]
+# orbits_files = [DRO_11,DRO_13,L2_12]
+# orbit_names = ["DRO_11","DRO_13","L2_12"]
 
-[avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"angular_diameter")
-print(avg)
-print(indices)
-print(ranking)
+# [avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"angular_diameter")
+# print(avg)
+# print(indices)
+# print(ranking)
 
-
-plt. plot(time,V_percent_viewed,label = 'Fraction of Volume')
-plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
-
-plt.xlabel("Time (s)")
-plt.ylabel("Fraction")
-plt.title("Spacecraft in Orbit Evaluation")
-plt.legend() 
-
-plt.show()
 
 # plotting distance from moon center over time
-
+plt.figure()
 plt.plot(time,r_mag_vec)
 plt.axhline(y=1737400, color='r', linestyle='-')
 plt.xlabel("Time (s)")
