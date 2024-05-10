@@ -387,7 +387,7 @@ class orbit_eval:
       else:
         ang_diam_frac.append(a_diam_frac)
 
-    return ang_diam,ang_diam_frac
+    return time,ang_diam_frac
   
   def orbit_ranker(self,orbit_files,orbit_names,angle,A,metric):
     # orbit_files is a list of orbit pickle files
@@ -398,20 +398,39 @@ class orbit_eval:
 
     avg = []
 
-    if metric == "orbit_volume":
+    for i in range(0,len(orbit_files)):
 
-      for i in range(0,len(orbit_files)):
+      if metric == "orbit_volume":
         orbit = orbit_files[i]
-        [time,V_percent_viewed,r_mag_vec] = orbit.orbit_volume(angle,A)
-        avg.append(sum(V_percent_viewed)/len(V_percent_viewed))
+        [time,values,r_mag_vec] = orbit.orbit_volume(angle,A) # obtain volumes for metric throughout orbit
 
-    elif metric == "angular_diameter":
-      for i in range(0,len(orbit_files)):
+      elif metric == "angular_diameter":
         orbit = orbit_files[i]
-        [ang_diam,ang_diam_frac] = orbit.angular_diameter(angle,A)
-        avg.append(sum(ang_diam_frac)/len(ang_diam_frac))
+        [time,values] = orbit.angular_diameter(angle,A) # obtain angular diameter for metric throughout orbit
 
-    avg = np.array(avg)
+      # convert time from pickle file to 1D array
+      timevec = []
+      for j in range(1,len(time)):
+        timevec.append(time[j][0]) 
+      time = timevec
+
+      # obtain time vector of equally-spaced points
+      total_points = math.ceil(time[len(time)-1] / (time[1] - time[0]))
+      end_time = time[len(time)-1]
+      time = np.array(time) 
+
+      # create corresponding values for metric for each time using interpolation
+      values = np.array(values[0:(len(values)-1)])
+      tvals = np.linspace(0,end_time,total_points+10)
+      yInt = np.interp(tvals,time,values)
+
+      # find average of metric
+      yInt = np.array(yInt)
+      avg.append(np.mean(yInt))
+
+    avg = np.array(avg) # convert list to numpy array
+
+    # establish ranking (updated)
     indices = np.argsort(avg)
     ranking = np.empty(len(indices), dtype=object)
 
@@ -420,6 +439,8 @@ class orbit_eval:
       ranking[i] = orbit_names[index]
       
     return avg,indices,ranking
+
+print(" ")
 
 
 DRO_11 = orbit_eval(DRO_11)
@@ -431,36 +452,37 @@ L2_12 = orbit_eval(L2_12)
 
 
 
-A = 300000 # lunar altitude
-angle = 3.5 # width of view in degrees
+A = 500000 # lunar altitude
+angle = 2 # width of view in degrees
 [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
-[ang_diam,ang_diam_frac] = DRO_11.angular_diameter(angle,A)
+[time,ang_diam_frac] = DRO_11.angular_diameter(angle,A)
+
+[time11,ang_diam_frac11] = DRO_11.angular_diameter(angle, A)
+[time13,ang_diam_frac13] = DRO_13.angular_diameter(angle, A)
+[time12,ang_diam_frac12] = L2_12.angular_diameter(angle, A)
+
 
 orbits_files = [DRO_11,DRO_13,L2_12]
 orbit_names = ["DRO_11","DRO_13","L2_12"]
 
-[avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"angular_diameter")
-print(avg)
-print(indices)
-print(ranking)
+# [avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"angular_diameter")
+# print(avg)
+# print(ranking)
 
+plt.plot(time11,ang_diam_frac11,label = 'DRO11')
+plt.plot(time13,ang_diam_frac13,label = 'DRO13')
+plt.plot(time12,ang_diam_frac12,label = 'L2 12')
+plt.xlabel("Time (s)")
+plt.ylabel("Fraction of Angular Diameter")
+plt.legend()
+plt.show()
 
-plt. plot(time,V_percent_viewed,label = 'Fraction of Volume')
+plt.plot(time,V_percent_viewed,label = 'Fraction of Volume')
 plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
 
 plt.xlabel("Time (s)")
 plt.ylabel("Fraction")
 plt.title("Spacecraft in Orbit Evaluation")
 plt.legend() 
-
-plt.show()
-
-# plotting distance from moon center over time
-
-plt.plot(time,r_mag_vec)
-plt.axhline(y=1737400, color='r', linestyle='-')
-plt.xlabel("Time (s)")
-plt.ylabel("Distance from Moon's Center (m)")
-plt.title("Spacecraft in Retrograde Orbit - Distance from Moon Center")
 
 plt.show()
