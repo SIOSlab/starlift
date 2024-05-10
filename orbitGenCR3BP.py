@@ -2,11 +2,12 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import sys
-import rebound
+#import rebound
 import matplotlib.pyplot as plt
 
-sys.path.insert(1, '/Users/gracegenszler/Documents/Research/STARLIFT')
-import tools
+sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/tools')
+import unitConversion
+import frameConversion
 
 import pdb
 
@@ -50,6 +51,19 @@ def CRTBP_EOM(t,w,mu_star):
     F_g1 = -m1/r1_mag**3*r_P1_H
     F_g2 = -m2/r2_mag**3*r_P2_H
     F_g = F_g1 + F_g2
+    
+    MU = 7.349*10**22+5.97219*10**24
+    DU = 384400
+    TU = 27.321582
+        
+    if t > 5/28:
+        MU = 7.349*10**22+5.97219*10**24
+        DU = 384400
+        TU = 27.321582
+        
+        FG = F_g*MU*DU/TU/TU
+        
+        breakpoint()
 
     e3_hat = np.array([0,0,1])
 

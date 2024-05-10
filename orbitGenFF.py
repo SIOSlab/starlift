@@ -5,7 +5,7 @@ import sys
 import rebound
 import matplotlib.pyplot as plt
 
-sys.path.insert(1, '/Users/gracegenszler/Documents/Research/STARLIFT')
+sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift')
 import tools
 
 import pdb
