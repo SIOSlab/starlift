@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 
 pi = math.pi
-mu = 3.98*10**14
+mu = 3.986*10**14
 
 class transfer_orbits:
     def __init__(self,orbit):
