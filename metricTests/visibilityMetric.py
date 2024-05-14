@@ -27,7 +27,7 @@ earth_radius = 6378  # [km]
 moon_radius = 1738  # [km]
 
 
-# ~~~~A METHOD THAT MAKE ALL AXES EQUAL IN  PLOT~~~~
+# ~~~~A METHOD THAT MAKES ALL AXES EQUAL IN THE PLOT~~~~
 def set_axes_equal(ax):
     # Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
     # Input ax: a matplotlib axis, e.g., as output from plt.gca().
