@@ -12,7 +12,7 @@ from matplotlib import cm
 
 # ~~~~RETRIEVE DATA FROM FILE~~~~
 
-path_str = "L2_S_6.0066_days.p"  # Change to whichever orbit you'd like
+path_str = "orbitFiles/L2_S_6.0066_days.p"  # Change to whichever orbit you'd like
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
 f1 = open(path_f1, "rb")  # "rb" means "read binary"
 orbit_data = pickle.load(f1)  # open the pickled file (and unpickle it)
