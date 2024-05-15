@@ -119,9 +119,9 @@ class VisibilityMetric:
         target_volume = []
         i = 0
         for x in sc_to_moon:
-            if sc_to_moon[i] < alt_radius:
+            if sc_to_moon[i] < alt_radius:  # If the spacecraft is within the target altitude
                 x1, x2 = 0, abs(sc_to_moon[i] - moon_radius)
-            else:
+            else:  # If the spacecraft is outside the target altitude
                 x1, x2 = abs(sc_to_moon[i] - alt_radius), abs(sc_to_moon[i] - moon_radius)
             y1, y2 = lambda x: -np.tan(math.radians(y_fov / 2)) * x, lambda x: np.tan(math.radians(y_fov / 2)) * x
             z1, z2 = lambda x, y: -np.tan(math.radians(z_fov / 2)) * x, lambda x, y: np.tan(math.radians(z_fov / 2)) * x
