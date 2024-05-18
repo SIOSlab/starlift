@@ -1,3 +1,9 @@
+# This file contains a class that will be used to develop transfer orbits.
+# As of 5/17/24 the class contains functions that can determine a transfer orbit using lambert's problem
+# and graph them. This function is only verified for 1 case, where r1 = [0,7500000], r2 = [9000000,0],
+# and the semi-major axis of the transfer is 10000000 meters
+
+
 import numpy as np
 import math
 import matplotlib.pyplot as plt
