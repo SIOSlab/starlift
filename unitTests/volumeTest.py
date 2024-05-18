@@ -1,4 +1,9 @@
-# tests volume case
+# The function in this file tests the orbit_volume method included in the Starlift_metrics class.
+# It accounts for each kind of scenario that can be encountered when performing volume calculations
+# in this context. The results of the function are checked against known values obtained by evaluating
+# the volume properties of different shapes in SolidWorks
+# All tests pass as of 5/17/24
+
 import sys
 sys.path.insert(1, sys.path[0][0:-10])
 print(sys.path)
@@ -13,25 +18,9 @@ import math
 from scipy import integrate as int
 import unittest
 
-
-# path_str = "orbitFiles/DRO_11.241_days.p"   
-# path_f1 = os.path.normpath(os.path.expandvars(path_str))
-# # f1 = open(path_f1, "rb")
-# # DRO_11 = pickle.load(f1)
-# # f1.close()
-# # DRO_11 = Solution(path_f1)
-# DRO_11 = Starlift_metrics.orbit_eval(DRO_11)
-
-path_str ="orbitFiles/DRO_11.241_days.p"
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-DRO_11 = pickle.load(f1)
-f1.close()
+# load pickle file
+DRO_11 = Starlift_metrics.load_pickle_file("orbitFiles/DRO_11.241_days.p")
 DRO_11 = Starlift_metrics.orbit_eval(DRO_11)
-
-A = 20000000 # lunar altitude
-angle = 42 # width of view in degrees
-[time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
 
 def testVolume():
     # tests that the volumes outputted from orbit_volume are correct 
@@ -83,7 +72,7 @@ def testVolume():
         print("Full view scenario failed")
 
     if passes == 4:
-        print("ALL SCENARIOS PASSED")
+        print("ALL VOLUME TEST SCENARIOS PASSED")
 
 testVolume()
 
