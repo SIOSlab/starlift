@@ -11,24 +11,6 @@ import pickle
 import os.path
 
 
-# create orbit variables
-path_str ="orbitFiles/DRO_11.241_days.p"
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-DRO_11 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/DRO_13.0486_days.p"
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-DRO_13 = pickle.load(f1)
-f1.close()
-
-path_str ="orbitFiles/L2_S_12.05_days.p"
-path_f1 = os.path.normpath(os.path.expandvars(path_str))
-f1 = open(path_f1, "rb")
-L2_12 = pickle.load(f1)
-f1.close()
 
 # establish constants
 M_m = 7.349*(10)**22 # mass of moon
@@ -40,6 +22,21 @@ d = (3.8444*10**5)*1000 # distance between earth and moon in m
 G = 6.6743*10**(-11) # Gravitational constant
 x_com = (M_m*d) / (M_m + M_e) # center of mass position
 m_position = d - x_com # moon distance from barycenter
+
+
+def load_pickle_file(path_str):
+  # this function takes a string specifying the path of a pickle file and loads it into an orbit variable
+  path_f1 = os.path.normpath(os.path.expandvars(path_str))
+  f1 = open(path_f1, "rb")
+  orbit = pickle.load(f1)
+  f1.close()
+
+  return(orbit)
+
+# load pickle files below
+DRO_11 = load_pickle_file("orbitFiles/DRO_11.241_days.p")
+DRO_13 = load_pickle_file("orbitFiles/DRO_13.0486_days.p")
+L2_12 = load_pickle_file("orbitFiles/L2_S_12.05_days.p")
 
 
 class orbit_eval:
