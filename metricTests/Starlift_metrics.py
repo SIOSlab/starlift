@@ -1,3 +1,13 @@
+
+# This file contains the class orbit_eval. Objects of the class are orbit_pickle_files that have been
+# loaded using the load_pickle_file function included below. 
+# orbit_eval contains methods that evaluate a spacecraft throughout its orbit from the standpoint
+# of different metrics. 
+# Its orbit_volume function passes all test cases as of 5/17/24. It was verified for cases in which
+# the spacecraft stayed above the specified altitude for the duration of its orbit. The method is 
+# rather lengthy because different scenarios require very different calculations of volume.
+# As of 5/17/24, the angular_diameter function also passes all test cases.
+
 import sys
 sys.path.insert(1, sys.path[0][0:-11])
 
@@ -41,13 +51,18 @@ L2_12 = load_pickle_file("orbitFiles/L2_S_12.05_days.p")
 
 class orbit_eval:
   def __init__(self,orbit):
-    self.orbit = orbit # orbit is a pickle file
+    self.orbit = orbit # orbit is a pickle file that has been loaded using the load_pickle_file function above
 
   def orbit_volume(self,angle,A,plots):
     # evaluates how well the spacecraft views volume of moon below certain orbit
     # angle is the scope of the telescope in degrees (ex: 2 deg by 2 deg means angle)
     # A is the altitude of orbits you are considering in meters
-    # for plots, type 'Y' if you want plots immediately and 'N' if you do not want plots
+    # plots: type 'Y' if you want plots immediately and 'N' if you do not want plots
+    # time is a time array
+    # V_percent_viewed is an array containing the volume seen by the spacecraft an any time in the orbit for
+    # each time in the time array
+    # r_mag_vec gives the distance of the spacecraft away from the moon at all times in the time array
+
 
     # state = self.orbit['state'] # gather position and velocity data
     state = self.orbit['state']
@@ -318,10 +333,11 @@ class orbit_eval:
     return time,V_percent_viewed,r_mag_vec
 
   def angular_diameter(self,angle,A,plots):
-    # volume solution using steradians
+    # simiilar analysis as volume, but with angular diameter
     # angle is the field of view
     # A is the altitude of orbits
-    # ang_diam is a list containing the angular diameter of the moon + altitude at all points in time
+    # plots: type 'Y' if you want plots immediately and 'N' if you do not want plots
+    # time is a time array
     # ang_diam_frac is a list containing the fraction of the angular diameter of the moon + altitude you can see at any point in time
 
     state = self.orbit['state'] # gather position and velocity data
@@ -420,6 +436,9 @@ class orbit_eval:
     # angle is the filed of view
     # A is the altitude
     # metric is the metric by which the orbits are evaluated, which should be a string that is the same as the name of the function
+    # avg is a numpy array containing the average value for each orbit in the order they were inputted
+    # indices is the indices of the ranking based on the order they were inputted
+    # ranking will output the names of the orbits, first name has the lowest avg and last name has the highest
 
     avg = []
 
@@ -471,8 +490,8 @@ L2_12 = orbit_eval(L2_12)
 
 
 
-angle = 2 # width of view in degrees
-A = 300000
+angle = 3 # width of view in degrees
+A = 100000
 [time11,V_percent_viewed11,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
 [time,ang_diam_frac11] = DRO_11.angular_diameter(angle,A,'N')
 [time,ang_diam_frac] = DRO_11.solid_angle(angle,A,'N')
@@ -483,16 +502,27 @@ A = 300000
 orbits_files = [DRO_11,DRO_13,L2_12]
 orbit_names = ["DRO_11","DRO_13","L2_12"]
 
+# plt.plot(time11,V_percent_viewed11,label = 'volume fraction')
+# plt.plot(time11,ang_diam_frac11,label = 'angular diameter fraction')
+# plt.xlabel("Time (s)")
+# plt.ylabel("Fraction")
+# plt.title("Spacecraft in Orbit Evaluation")
+# plt.legend()
+
+# plt.show()
+
+
 [avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"orbit_volume")
 print(ranking)
 print(avg)
+print(indices)
 
 plt.plot(time11,V_percent_viewed11,label = 'DRO 11')
 plt.plot(time13,V_percent_viewed13,label = 'DRO 13')
 plt.plot(time12,V_percent_viewed12,label = 'L2 12')
 
 plt.xlabel("Time (s)")
-plt.ylabel("Fraction")
+plt.ylabel("Fraction of Volume Viewed")
 plt.title("Spacecraft in Orbit Evaluation")
 plt.legend()
 
