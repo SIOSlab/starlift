@@ -1,26 +1,43 @@
-# hello
-
 import sys
-# sys.path.insert(1, 'C:/Users/jackc/Desktop/SP2024/Starlift/starlift')
 sys.path.insert(1, sys.path[0][0:-11])
 
-from tools.Solution import Solution as Solution
+# from tools.Solution import Solution as Solution
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy import constants
+# from astropy import constants
 from scipy import integrate as int
+import math
+import pickle
+import os.path
 
 
 # create orbit variables
 path_str ="orbitFiles/DRO_11.241_days.p"
-DRO_11 = Solution(path_str)
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+DRO_11 = pickle.load(f1)
+f1.close()
+
+path_str ="orbitFiles/DRO_13.0486_days.p"
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+DRO_13 = pickle.load(f1)
+f1.close()
+
+path_str ="orbitFiles/L2_S_12.05_days.p"
+path_f1 = os.path.normpath(os.path.expandvars(path_str))
+f1 = open(path_f1, "rb")
+L2_12 = pickle.load(f1)
+f1.close()
 
 # establish constants
 M_m = 7.349*(10)**22 # mass of moon
 R_m = 1737400 # radius of moon
-M_e = constants.M_earth.value # 5.97219*(10)**24 # mass of earth
+# M_e = constants.M_earth.value # 5.97219*(10)**24 # mass of earth
+M_e = 5.97219*(10)**24 # mass of earth
 d = (3.8444*10**5)*1000 # distance between earth and moon in m
-G = constants.G.value  # 6.6743*10**(-11) # Gravitational constant
+# G = constants.G.value  # 6.6743*10**(-11) # Gravitational constant
+G = 6.6743*10**(-11) # Gravitational constant
 x_com = (M_m*d) / (M_m + M_e) # center of mass position
 m_position = d - x_com # moon distance from barycenter
 
@@ -29,17 +46,18 @@ class orbit_eval:
   def __init__(self,orbit):
     self.orbit = orbit # orbit is a pickle file
 
-  def orbit_volume(self,angle,A):
+  def orbit_volume(self,angle,A,plots):
     # evaluates how well the spacecraft views volume of moon below certain orbit
     # angle is the scope of the telescope in degrees (ex: 2 deg by 2 deg means angle)
     # A is the altitude of orbits you are considering in meters
+    # for plots, type 'Y' if you want plots immediately and 'N' if you do not want plots
 
     # state = self.orbit['state'] # gather position and velocity data
-    state = self.orbit.statevec
+    state = self.orbit['state']
     dimensions = np.shape(state)
     rows, columns = dimensions # obtain size of state
     r_satellite = state[:,0:3]*1000
-    time = self.orbit.tvec #self.orbit['t'] # get time
+    time = self.orbit['t'] # get time
     phi = (angle) * np.pi / 180 / 2
     Va = (4/3)*np.pi*(R_m+A)**3
 
@@ -290,28 +308,31 @@ class orbit_eval:
       V_percent_viewed.append(V[i] / Volume)
       #if i == 180:
         #print('Fraction of Volume: ' + str(V[i] / Volume))
-
-    plt.figure()
-    plt.plot(time,V_percent_viewed,label = 'Fraction of Volume')
-    plt.xlabel("Time (s)")
-    plt.ylabel("Visible fraction of Orbit Volume")
-    plt.title("Spacecraft in Orbit Evaluation")
-    plt.legend()
+      
+    if plots == 'Y': # volume plot included if specified in function call
+      plt.figure()
+      plt.plot(time,V_percent_viewed,label = 'Fraction of Volume')
+      plt.xlabel("Time (s)")
+      plt.ylabel("Visible fraction of Orbit Volume")
+      plt.title("Spacecraft in Orbit Evaluation")
+      plt.legend()
+      plt.show()
 
     return time,V_percent_viewed,r_mag_vec
 
-  def angular_diameter(self,angle,A):
+  def angular_diameter(self,angle,A,plots):
     # volume solution using steradians
     # angle is the field of view
     # A is the altitude of orbits
     # ang_diam is a list containing the angular diameter of the moon + altitude at all points in time
     # ang_diam_frac is a list containing the fraction of the angular diameter of the moon + altitude you can see at any point in time
 
-    # state = self.orbit['state'] # gather position and velocity data
-    state = self.orbit.statevec
+    state = self.orbit['state'] # gather position and velocity data
+    #state = self.orbit.statevec
     rows, columns = np.shape(state) # obtain size of state
     r_satellite = state[:,0:3]*1000
-    time = self.orbit.tvec #self.orbit['t'] # get time
+    #time = self.orbit.tvec #
+    time = self.orbit['t'] # get time
     phi = (angle) * np.pi / 180 / 2  # half-angle of aperture in radians
     d = 2*(R_m + A) # diameter of moon + altitude
 
@@ -337,27 +358,30 @@ class orbit_eval:
       else:
         ang_diam_frac.append(a_diam_frac)
     
-    plt.figure()
-    plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
-    plt.xlabel("Time (s)")
-    plt.ylabel("Visible fraction of Orbit Angular Diameter")
-    plt.title("Spacecraft in Orbit Evaluation")
-    plt.legend() 
+    if plots == 'Y': # angular diameter plot included if specified in function call
+      plt.figure()
+      plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
+      plt.xlabel("Time (s)")
+      plt.ylabel("Visible fraction of Orbit Angular Diameter")
+      plt.title("Spacecraft in Orbit Evaluation")
+      plt.legend() 
+      plt.show()
 
     return time,ang_diam_frac
   
-  def solid_angle(self,angle,A):
+  def solid_angle(self,angle,A,plots):
     # volume solution using steradians
     # angle is the field of view
     # A is the altitude of orbits
     # ster_vis is a list containing the visible solid angle of the moon + altitude at all points in time
     # ster_frac is a list containing the fraction of the solid angle of the moon + altitude you can see at any point in time
 
-    # state = self.orbit['state'] # gather position and velocity data
-    state = self.orbit.statevec
+    state = self.orbit['state'] # gather position and velocity data
+    # state = self.orbit.statevec
     rows, columns = np.shape(state) # obtain size of state
     r_satellite = state[:,0:3]*1000
-    time = self.orbit.tvec # self.orbit['t'] # get time
+    # time = self.orbit.tvec # 
+    time = self.orbit['t'] # get time
     phi = (angle) * np.pi / 180 / 2  # half-angle of aperture in radians
     R = (R_m + A) # diameter of moon + altitude
 
@@ -382,12 +406,14 @@ class orbit_eval:
       else:
         ster_frac.append(sterfraction)
 
-    plt.figure()
-    plt.plot(time,ster_frac,label = 'Fraction of Visible Solig Angle')
-    plt.xlabel("Time (s)")
-    plt.ylabel("Visible fraction of Orbit Volume")
-    plt.title("Spacecraft in Orbit Evaluation")
-    plt.legend() 
+    if plots == 'Y': # solid angle plot included if specified in function call
+      plt.figure()
+      plt.plot(time,ster_frac,label = 'Fraction of Visible Solid Angle')
+      plt.xlabel("Time (s)")
+      plt.ylabel("Visible fraction of Orbit Volume")
+      plt.title("Spacecraft in Orbit Evaluation")
+      plt.legend() 
+      plt.show()
 
     return ster_vis ,ster_frac
   
@@ -404,11 +430,11 @@ class orbit_eval:
 
       if metric == "orbit_volume":
         orbit = orbit_files[i]
-        [time,values,r_mag_vec] = orbit.orbit_volume(angle,A) # obtain volumes for metric throughout orbit
+        [time,values,r_mag_vec] = orbit.orbit_volume(angle,A,'N') # obtain volumes for metric throughout orbit
 
       elif metric == "angular_diameter":
         orbit = orbit_files[i]
-        [time,values] = orbit.angular_diameter(angle,A) # obtain angular diameter for metric throughout orbit
+        [time,values] = orbit.angular_diameter(angle,A,'N') # obtain angular diameter for metric throughout orbit
 
       # convert time from pickle file to 1D array
       timevec = []
@@ -442,47 +468,35 @@ class orbit_eval:
       
     return avg,indices,ranking
 
-
 DRO_11 = orbit_eval(DRO_11)
 DRO_13 = orbit_eval(DRO_13)
-L1_10 = orbit_eval(L1_10)
-L1_13 = orbit_eval(L1_13)
-L2_6 = orbit_eval(L2_6)
 L2_12 = orbit_eval(L2_12)
 
 
 
-A = 300000 # lunar altitude
-angle = 3.5 # width of view in degrees
-[time,V_percent_viewed,r_mag_vec] = DRO_11_metrics.orbit_volume(angle,A)
-[ang_diam,ang_diam_frac] = DRO_11_metrics.angular_diameter(angle,A)
-[ang_diam,ang_diam_frac] = DRO_11_metrics.solid_angle(angle,A)
+angle = 2 # width of view in degrees
+A = 300000
+[time11,V_percent_viewed11,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
+[time,ang_diam_frac11] = DRO_11.angular_diameter(angle,A,'N')
+[time,ang_diam_frac] = DRO_11.solid_angle(angle,A,'N')
 
-# orbits_files = [DRO_11,DRO_13,L2_12]
-# orbit_names = ["DRO_11","DRO_13","L2_12"]
+[time13,V_percent_viewed13,r_mag_vec] = DRO_13.orbit_volume(angle,A,'N')
+[time12,V_percent_viewed12,r_mag_vec] = L2_12.orbit_volume(angle,A,'N')
 
-[avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"angular_diameter")
-print(avg)
-print(indices)
+orbits_files = [DRO_11,DRO_13,L2_12]
+orbit_names = ["DRO_11","DRO_13","L2_12"]
+
+[avg,indices,ranking] = DRO_11.orbit_ranker(orbits_files,orbit_names,angle,A,"orbit_volume")
 print(ranking)
+print(avg)
 
-
-plt. plot(time,V_percent_viewed,label = 'Fraction of Volume')
-plt.plot(time,ang_diam_frac,label = 'Fraction of Angular Diameter')
+plt.plot(time11,V_percent_viewed11,label = 'DRO 11')
+plt.plot(time13,V_percent_viewed13,label = 'DRO 13')
+plt.plot(time12,V_percent_viewed12,label = 'L2 12')
 
 plt.xlabel("Time (s)")
 plt.ylabel("Fraction")
 plt.title("Spacecraft in Orbit Evaluation")
-plt.legend() 
-
-plt.show()
-
-# plotting distance from moon center over time
-plt.figure()
-plt.plot(time,r_mag_vec)
-plt.axhline(y=1737400, color='r', linestyle='-')
-plt.xlabel("Time (s)")
-plt.ylabel("Distance from Moon's Center (m)")
-plt.title("Spacecraft in Retrograde Orbit - Distance from Moon Center")
+plt.legend()
 
 plt.show()
