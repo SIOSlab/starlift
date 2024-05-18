@@ -1,4 +1,8 @@
-# tests volume case
+# This function is used to test the angular_diameter method included in the orbit_eval class in
+# the starlift metrics class. A few calculations were performed on Desmos using different orbits
+# at different points in time to check that the method outputs the same values. 
+# All tests pass as of 5/17/24.
+
 import sys
 sys.path.insert(1, sys.path[0][0:-10])
 print(sys.path)
