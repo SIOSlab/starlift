@@ -6,7 +6,9 @@ import math
 from scipy.integrate import tplquad
 from numpy import *
 from matplotlib import pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib import cm
 
 # ~~~~RETRIEVE DATA FROM FILE~~~~
 
@@ -25,6 +27,30 @@ earth_radius = 6378  # [km]
 moon_radius = 1738  # [km]
 
 
+# ~~~~A METHOD THAT MAKES ALL AXES EQUAL IN THE PLOT~~~~
+def set_axes_equal(ax):
+    # Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
+    # Input ax: a matplotlib axis, e.g., as output from plt.gca().
+
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+
+    plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+
+# ~~~~A CLASS WITH METHODS THAT EVALUATE THE ORBIT~~~~
 class VisibilityMetric:
 
     def __init__(self, orbit):
@@ -88,14 +114,14 @@ class VisibilityMetric:
         volume_alt = (tplquad(diff_volume1, r1_alt, r2_alt, lambda r: theta1_alt, lambda r: theta2_alt,
                               lambda r, theta: phi1_alt, lambda r, theta: phi2_alt)[0]) - volume_moon
 
-        # ~~~~VOLUME OF DESIRED ALTITUDE~~~~
+        # ~~~~VOLUME OF THE WHAT IS VISIBLE FROM THE SPACECRAFT~~~~
 
         target_volume = []
         i = 0
         for x in sc_to_moon:
-            if sc_to_moon[i] < alt_radius:
+            if sc_to_moon[i] < alt_radius:  # If the spacecraft is within the target altitude
                 x1, x2 = 0, abs(sc_to_moon[i] - moon_radius)
-            else:
+            else:  # If the spacecraft is outside the target altitude
                 x1, x2 = abs(sc_to_moon[i] - alt_radius), abs(sc_to_moon[i] - moon_radius)
             y1, y2 = lambda x: -np.tan(math.radians(y_fov / 2)) * x, lambda x: np.tan(math.radians(y_fov / 2)) * x
             z1, z2 = lambda x, y: -np.tan(math.radians(z_fov / 2)) * x, lambda x, y: np.tan(math.radians(z_fov / 2)) * x
@@ -112,6 +138,7 @@ class VisibilityMetric:
         plt.ylabel('Percentage of the altitude that is visible from the spacecraft')
         plt.xlabel('Time [s]')
         plt.show()
+
 
     def plot_fov(self, y_fov, z_fov, altitude, i):
         # Plots the moon, the target altitude, the orbit, and the field of view that the orbit sees.
@@ -147,26 +174,14 @@ class VisibilityMetric:
         sc_to_moon = np.array(sc_to_moon)
 
         # Set up the figure
-        fig1 = plt.figure(1)
-        ax3D = plt.axes(projection='3d')  # Call a 3D plot
+        fig = plt.figure()
+        ax3D = fig.add_subplot(projection="3d")  # Call a 3D plot
         ax3D.set_xlabel('X Position [km]')  # Label axes
         ax3D.set_ylabel('Y Position [km]')
         ax3D.set_zlabel('Z Position [km]')
 
-        """
-        # Limits for DRO
-        ax3D.axes.set_xlim3d(left=300000, right=500000)
-        ax3D.axes.set_ylim3d(bottom=-100000, top=100000)
-        ax3D.axes.set_zlim3d(bottom=-100000, top=100000)
-        
-        # Limit for moon only
-        ax3D.axes.set_xlim3d(left=375000, right=385000)
-        ax3D.axes.set_ylim3d(bottom=-5000, top=5000)
-        ax3D.axes.set_zlim3d(bottom=-5000, top=5000)
-        """
-
         # Plot the orbit
-        ax3D.scatter3D(x_position, y_position, z_position, s=5)  # Plot the orbit
+        ax3D.scatter3D(x_position, y_position, z_position, s=1)  # Plot the orbit
 
         # Plot the surface of the moon
         phi = np.linspace(0, 2*np.pi, 500)  # Angle phi
@@ -186,29 +201,20 @@ class VisibilityMetric:
         ax3D.plot_surface(x_alt, y_alt, z_alt, alpha=0.1)
 
         # Plot the field of view from the spacecraft
-        # Currently for 1 orbital position at a time
-        # NOTE: This section doesn't work quite yet, and is still being debugged...a separate version that utilizes
-        # matrices is currently being iterated in Matlab.
+        # Currently for 1 orbital position at a time. Can be modified to plot the field of view for every
+        # orbital position, if necessary.
+        # NOTE: This section contains an issue with the rotation of the field of view. For any index except for the
+        # first and last orbital positions, the field of view does not hit the moon. I suspect that it's because
+        # the second rotation is around the body axes instead of the space axes, but I haven't been able to
+        # figure out why this is happening.
 
+        x_line = [x_position[i]-sc_to_moon[i], x_position[i]]  # "Horizontal" line from SC to moon
         y_line1 = []
         y_line2 = []
         z_line1 = []
         z_line2 = []
 
-        x_fov1 = []  # Final rotated vector
-        x_fov2 = []
-        x_fov12 = []
-        x_fov21 = []
-        y_fov1 = []
-        y_fov2 = []
-        z_fov1 = []
-        z_fov2 = []
-
-        # i = 50  # Position index (of the orbit)
-
-        x_line = np.linspace(x_from_moon[i], barycenter_to_moon, num=len(x_from_moon))  # Line from SC to moon
         j = 0  # Index of each point in the field of view vectors
-
         for x in x_line:  # For each element in the x position vector, calculate the y and z vectors
 
             # Non-rotated vectors, pointed towards the negative x direction
@@ -217,51 +223,47 @@ class VisibilityMetric:
             z_line1.append((np.tan(math.radians(z_fov / 2)) * (x_line[j]-x_position[i])) + z_position[i])
             z_line2.append((-np.tan(math.radians(z_fov / 2)) * (x_line[j]-x_position[i])) + z_position[i])
 
-            # Angles to rotate the vectors
-            theta_fov = np.arctan(z_from_moon[i]/x_from_moon[i])  # Rotation about the y-axis [rad]
-            phi_fov = np.arctan(y_from_moon[i]/x_from_moon[i])  # Rotation about the z-axis [rad]
-
-            # Rotate the x vectors
-            x_temp1 = (((x_line[j]-x_position[i]) * np.cos(theta_fov)) - ((z_line1[j]-z_position[i]) * np.sin(theta_fov))
-                       + x_position[i])  # First rotation, about the y-axis
-            x_fov1.append(((x_temp1-x_position[i]) * np.cos(phi_fov)) - ((y_line1[j]-y_position[i]) * np.sin(phi_fov))
-                          + x_position[i])  # Second rotation, about the z-axis
-
-            x_temp2 = (((x_line[j]-x_position[i]) * np.cos(theta_fov)) - ((z_line2[j]-z_position[i]) * np.sin(theta_fov))
-                       + x_position[i])
-            x_fov2.append(((x_temp2-x_position[i]) * np.cos(phi_fov)) - ((y_line2[j]-y_position[i]) * np.sin(phi_fov))
-                          + x_position[i])
-
-            x_temp12 = (((x_line[j]-x_position[i]) * np.cos(theta_fov)) - ((z_line2[j]-z_position[i]) * np.sin(theta_fov))
-                        + x_position[i])
-            x_fov12.append(((x_temp12-x_position[i]) * np.cos(phi_fov)) - ((y_line1[j]-y_position[i]) * np.sin(phi_fov))
-                           + x_position[i])
-
-            x_temp21 = (((x_line[j]-x_position[i]) * np.cos(theta_fov)) - ((z_line1[j]-z_position[i]) * np.sin(theta_fov))
-                        + x_position[i])
-            x_fov21.append(((x_temp21-x_position[i]) * np.cos(phi_fov)) - ((y_line2[j]-y_position[i]) * np.sin(phi_fov))
-                           + x_position[i])
-
-            # Rotate the z vectors (only rotation about y-axis)
-            z_fov1.append(((x_line[j]-x_position[i]) * np.sin(theta_fov)) + ((z_line1[j]-z_position[i]) * np.cos(theta_fov))
-                          + z_position[i])  # Rotate z vector 1 (positive)
-            z_fov2.append(((x_line[j]-x_position[i]) * np.sin(theta_fov)) + ((z_line2[j]-z_position[i]) * np.cos(theta_fov))
-                          + z_position[i])  # Rotate z vector 2 (negative)
-
-            # Rotate the y vectors (only rotation about z-axis)
-            y_fov1.append(((x_line[j] - x_position[i]) * np.sin(phi_fov)) + ((y_line1[j] - y_position[i]) * np.cos(phi_fov))
-                          + y_position[i])  # Rotate y vector 1
-            y_fov2.append(((x_line[j] - x_position[i]) * np.sin(phi_fov)) + ((y_line2[j] - y_position[i]) * np.cos(phi_fov))
-                          + y_position[i])  # Rotate y vector 2
-
             j = j+1
 
-        ax3D.plot(x_fov1, y_fov1, z_fov1, linewidth=2, color='blue')
-        ax3D.plot(x_fov2, y_fov2, z_fov2, linewidth=2, color='red')
-        ax3D.plot(x_fov21, y_fov2, z_fov1, linewidth=2, color='green')
-        ax3D.plot(x_fov12, y_fov1, z_fov2, linewidth=2, color='purple')
+        # Angles to rotate the vectors
+        theta_fov = np.arctan(z_from_moon[i]/x_from_moon[i])  # Rotation about the y-axis [rad]
+        phi_fov = np.arctan(y_from_moon[i]/x_from_moon[i])  # Rotation about the z-axis [rad]
+
+        # Create the DCM
+        DCM_y = np.array([[np.cos(theta_fov), 0, -np.sin(theta_fov)], [0, 1, 0], [np.sin(theta_fov), 0, np.cos(theta_fov)]])
+        DCM_z = np.array([[np.cos(phi_fov), -np.sin(phi_fov), 0], [np.sin(phi_fov), np.cos(phi_fov), 0], [0, 0, 1]])
+        DCM = np.dot(DCM_y, DCM_z)
+
+        # Apply the rotation
+        fov11 = []
+        fov12 = []
+        fov22 = []
+        fov21 = []
+
+        j = 0
+        fov11 = (np.dot(DCM, np.array([[x_line[j]-x_position[i]], [y_line1[j]-y_position[i]], [z_line1[j]-z_position[i]]])) +
+                 np.array([[x_position[i]], [y_position[i]], [z_position[i]]]))
+        fov12 = (np.dot(DCM, np.array([[x_line[j]-x_position[i]], [y_line1[j]-y_position[i]], [z_line2[j]-z_position[i]]])) +
+                 np.array([[x_position[i]], [y_position[i]], [z_position[i]]]))
+        fov22 = (np.dot(DCM, np.array([[x_line[j]-x_position[i]], [y_line2[j]-y_position[i]], [z_line2[j]-z_position[i]]])) +
+                 np.array([[x_position[i]], [y_position[i]], [z_position[i]]]))
+        fov21 = (np.dot(DCM, np.array([[x_line[j]-x_position[i]], [y_line2[j]-y_position[i]], [z_line1[j]-z_position[i]]])) +
+                 np.array([[x_position[i]], [y_position[i]], [z_position[i]]]))
+
+        # Plot
+        verts1 = [list(zip([x_position[i], fov11[0, 0], fov12[0, 0]], [y_position[i], fov11[1, 0], fov12[1, 0]], [z_position[i], fov11[2, 0], fov12[2, 0]]))]
+        verts2 = [list(zip([x_position[i], fov21[0, 0], fov11[0, 0]], [y_position[i], fov21[1, 0], fov11[1, 0]], [z_position[i], fov21[2, 0], fov11[2, 0]]))]
+        verts3 = [list(zip([x_position[i], fov22[0, 0], fov21[0, 0]], [y_position[i], fov22[1, 0], fov21[1, 0]], [z_position[i], fov22[2, 0], fov21[2, 0]]))]
+        verts4 = [list(zip([x_position[i], fov12[0, 0], fov22[0, 0]], [y_position[i], fov12[1, 0], fov22[1, 0]], [z_position[i], fov12[2, 0], fov22[2, 0]]))]
+
+        ax3D.add_collection3d(Poly3DCollection(verts1, linewidth=0.2, edgecolors='black', facecolors='purple', alpha=0.5))
+        ax3D.add_collection3d(Poly3DCollection(verts2, linewidth=0.2, edgecolors='black', facecolors='purple', alpha=0.5))
+        ax3D.add_collection3d(Poly3DCollection(verts3, linewidth=0.2, edgecolors='black', facecolors='purple', alpha=0.5))
+        ax3D.add_collection3d(Poly3DCollection(verts4, linewidth=0.2, edgecolors='black', facecolors='purple', alpha=0.5))
 
         # Show the plot
+        ax3D.set_box_aspect([1.0, 1.0, 1.0])
+        set_axes_equal(ax3D)
         plt.show()
 
 
@@ -271,7 +273,7 @@ y_fov = 1
 z_fov = 1
 altitude = 560
 
-orbit.visible_altitude(y_fov, z_fov, altitude)
+# orbit.visible_altitude(y_fov, z_fov, altitude)
 
-orbital_position_index = 1
+orbital_position_index = 50
 orbit.plot_fov(y_fov, z_fov, altitude, orbital_position_index)
