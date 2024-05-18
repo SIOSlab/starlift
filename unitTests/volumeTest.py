@@ -3,7 +3,7 @@ import sys
 sys.path.insert(1, sys.path[0][0:-10])
 print(sys.path)
 from metricTests import Starlift_metrics
-from tools.Solution import Solution
+# from tools.Solution import Solution
 import os.path
 import numpy as np
 import pickle
@@ -14,17 +14,24 @@ from scipy import integrate as int
 import unittest
 
 
-path_str = "orbitFiles/DRO_11.241_days.p"   
+# path_str = "orbitFiles/DRO_11.241_days.p"   
+# path_f1 = os.path.normpath(os.path.expandvars(path_str))
+# # f1 = open(path_f1, "rb")
+# # DRO_11 = pickle.load(f1)
+# # f1.close()
+# # DRO_11 = Solution(path_f1)
+# DRO_11 = Starlift_metrics.orbit_eval(DRO_11)
+
+path_str ="orbitFiles/DRO_11.241_days.p"
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
-# f1 = open(path_f1, "rb")
-# DRO_11 = pickle.load(f1)
-# f1.close()
-DRO_11 = Solution(path_f1)
+f1 = open(path_f1, "rb")
+DRO_11 = pickle.load(f1)
+f1.close()
 DRO_11 = Starlift_metrics.orbit_eval(DRO_11)
 
 A = 20000000 # lunar altitude
 angle = 42 # width of view in degrees
-[time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
+[time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
 
 def testVolume():
     # tests that the volumes outputted from orbit_volume are correct 
@@ -38,7 +45,7 @@ def testVolume():
     passes = 0
     angle = 2
     A = 500000
-    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
+    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
     if V_percent_viewed[1] > 0.066 and V_percent_viewed[1] < 0.0665:
         print("Collides scenario passed")
         passes = passes + 1
@@ -48,7 +55,7 @@ def testVolume():
     # back altitude scenario
     angle = 3.8
     A = 500000
-    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
+    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
     if V_percent_viewed[1] > 0.485 and V_percent_viewed[1] < 0.486:
         print("Back altitude scenario passed")
         passes = passes + 1
@@ -58,7 +65,7 @@ def testVolume():
     # front altitude scenario
     angle = 42
     A = 20000000
-    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
+    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
     if V_percent_viewed[1] > 0.974 and V_percent_viewed[1] < 0.976:
         print("Front altitude scenario passed")
         passes = passes + 1
@@ -68,7 +75,7 @@ def testVolume():
     # full view scenario
     angle = 6
     A = 500000
-    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A)
+    [time,V_percent_viewed,r_mag_vec] = DRO_11.orbit_volume(angle,A,'N')
     if V_percent_viewed[1] > 0.721 and V_percent_viewed[1] < 0.723:
         print("Full view scenario passed")
         passes = passes + 1
