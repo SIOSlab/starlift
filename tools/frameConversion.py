@@ -76,9 +76,6 @@ def body2geo(currentTime,equinox,mu_star):
             3x3 Array for the directional cosine matrix
     """
     
-#    if currentTime.value == equinox.value:
-#        C_B2G = np.eye(3)
-#        return C_B2G
         
     # define vector in G
     tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter',currentTime)[0].get_xyz()
@@ -176,11 +173,12 @@ def icrs2gcrs(pos,currentTime):
             Position vector in GCRS (geocentric) frame in km
     """
     pos = pos.to('km')
-    r_icrs = coord.SkyCoord(x = pos[0].value, y = pos[1].value, z = pos[2].value, unit='km', representation_type='cartesian', frame='icrs', obstime=currentTime)
+    r_icrs = coord.SkyCoord(x = pos[0].value, y = pos[1].value, z = pos[2].value, unit='km', representation_type='cartesian', frame='icrs')
     r_gcrs = r_icrs.transform_to(GCRS(obstime=currentTime))    # this throws an EFRA warning re: leap seconds, but it's fine
     r_gcrs = r_gcrs.cartesian.get_xyz()
     
     return r_gcrs
+
     
 def gcrs2icrs(pos,currentTime):
     """Convert position vector in GCRS coordinate frame to ICRS coordinate frame
@@ -198,7 +196,7 @@ def gcrs2icrs(pos,currentTime):
     """
     pos = pos.to('km')
     r_gcrs = coord.SkyCoord(x = pos[0].value, y = pos[1].value, z = pos[2].value, unit='km', representation_type='cartesian', frame='gcrs', obstime=currentTime)
-    r_icrs = r_gcrs.transform_to(ICRS(obstime=currentTime))    # this throws an EFRA warning re: leap seconds, but it's fine
+    r_icrs = r_gcrs.transform_to(ICRS())    # this throws an EFRA warning re: leap seconds, but it's fine
     r_icrs = r_icrs.cartesian.get_xyz()
     
     return r_icrs

@@ -103,32 +103,19 @@ def FF_EOM(tt,w,t_mjd,mu_star,C_G2B):
     gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
     gmEarth = const.GM_earth.to('AU3/d2').value
     gmMoon = 0.109318945437743700E-10              # from de432s header
-    
+
     r_PEM = np.array([x,y,z])
     v_PEM = np.array([vx,vy,vz])
 
     time = tt + t_mjd
 
-    r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU').value
-    r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU').value
-    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',time)
-    r_EMO = EMO[0].get_xyz().to('AU').value
-    
-    r_SunG = frameConversion.icrs2gcrs(r_SunO*u.AU,time)
-    r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU,time)
-    r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU,time)
-    
-    r_SunEM = r_SunG - r_EMG
-    r_EarthEM = -r_EMG
-    r_MoonEM = r_MoonG - r_EMG
-    
-    r_SunEM_r = C_G2B@r_SunEM.to('AU')
-    r_EarthEM_r = C_G2B@r_EarthEM.to('AU')
-    r_MoonEM_r = C_G2B@r_MoonEM.to('AU')
+    r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth',time)[0].get_xyz().to('AU')
 
-    r_PSun = r_PEM - r_SunEM_r.value
-    r_PEarth = r_PEM - r_EarthEM_r.value
-    r_PMoon = r_PEM - r_MoonEM_r.value
+    r_PSun = r_PEM - r_SunO.value
+    r_PEarth = r_PEM - r_EarthO.value
+    r_PMoon = r_PEM - r_MoonO.value
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
@@ -136,10 +123,10 @@ def FF_EOM(tt,w,t_mjd,mu_star,C_G2B):
     F_gSun = -gmSun/rSun_mag**3*r_PSun
     F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
     F_gMoon = -gmMoon/rMoon_mag**3*r_PMoon
-    F_g = F_gEarth + F_gMoon
-#    F_g = F_gSun + F_gEarth + F_gMoon
+    F_g = F_gSun + F_gEarth + F_gMoon
     
     a_PO_H = F_g
+    
     ax = a_PO_H[0]
     ay = a_PO_H[1]
     az = a_PO_H[2]
@@ -172,7 +159,7 @@ def statePropCRTBP(freeVar,mu_star):
     
     return states
     
-def statePropFF(freeVar,t_mjd,mu_star):
+def statePropFF(freeVar,t_mjd,mu_star,C_G2B):
     """Propagates the dynamics using the free variables
 
     Args:
@@ -190,7 +177,7 @@ def statePropFF(freeVar,t_mjd,mu_star):
 #    x0 = [freeVar[0].value, 0, freeVar[1].value, 0, freeVar[2].value, 0]
     T = freeVar[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star,C_G2B), method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -312,10 +299,13 @@ def fsolve_L2(w,r1,r2):
     return w_eq
 
 #Barycentric (ICRS)
-t_mjd = Time(60380+180,format='mjd',scale='utc')
+t_mjd = Time(60380,format='mjd',scale='utc')
+
 coord.solar_system.solar_system_ephemeris.set('de432s')
 
-#breakpoint()
+r_earthO = get_body_barycentric_posvel('Earth',t_mjd)[0].get_xyz()
+r_baryO = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_mjd)[0].get_xyz()
+
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -352,46 +342,79 @@ z = np.array([0, 0, 0, 1])
 step = 1E-2
 
 error = 10
-ctr = 0
-while error > eps:
-    Fx = calcFx(X)
+#ctr = 0
+#while error > eps:
+#    Fx = calcFx(X)
+#
+#    error_new = np.linalg.norm(Fx)
+#
+#    if error_new > error:
+#        print('Solution Did Not Converge')
+#        print(error_new)
+#        break
+#    else:
+#        error = error_new
+#        ctr = ctr + 1
+#
+#    dFx = calcdFx(X,mu_star,m1,m2)
+#
+#    X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
+#
+#IV = np.array([X[0], X[1], X[2], 2*X[3]])
+##solutions[ii] = IV
+#statesCRTBP = statePropCRTBP(IV,mu_star)
 
-    error_new = np.linalg.norm(Fx)
-
-    if error_new > error:
-        print('Solution Did Not Converge')
-        print(error_new)
-        break
-    else:
-        error = error_new
-        ctr = ctr + 1
-
-    dFx = calcdFx(X,mu_star,m1,m2)
-
-    X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
-
-IV = np.array([X[0], X[1], X[2], 2*X[3]])
-#solutions[ii] = IV
-statesCRTBP = statePropCRTBP(IV,mu_star)
-
-posCRTBP = unitConversion.convertPos_to_dim(statesCRTBP[:,0:3]).to('AU').value
+#posCRTBP = unitConversion.convertPos_to_dim(statesCRTBP[:,0:3]).to('AU').value
 
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
-
-get_body_barycentric_posvel('Earth-Moon-Barycenter',t_mjd)
+v_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_mjd)[1].get_xyz().to('AU/day')
+    
 x_dim = unitConversion.convertPos_to_dim(X[0]).to('AU').value
 z_dim = unitConversion.convertPos_to_dim(X[1]).to('AU').value
-v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day').value
-Tp_dim = unitConversion.convertTime_to_dim(2*X[3]).to('day').value
-state0 = [x_dim, 0, z_dim, v_dim[0], v_dim[1], v_dim[2], 6*Tp_dim]
-#breakpoint()
+v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
+Tp_dim = unitConversion.convertTime_to_dim(X[3]).to('day').value
 
-statesFF, timesFF = statePropFF(state0,t_mjd,mu_star)
+pos_dim = np.array([x_dim, 0, z_dim])*u.AU
+
+C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
+
+pos_GCRS = C_B2G@pos_dim
+pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS,t_mjd)).to('AU').value
+
+vel_ICRS = (v_EMO + v_dim).value
+
+state0 = np.array([pos_ICRS[0], pos_ICRS[1], pos_ICRS[2], vel_ICRS[0], vel_ICRS[1], vel_ICRS[2], 6])#124*Tp_dim
+
+statesFF, timesFF = statePropFF(state0,t_mjd,mu_star,C_G2B)
 posFF = statesFF[:,0:3]
 
-times = np.linspace(0,36,36*11)+t_mjd
+times = np.linspace(0,366,366*2)+t_mjd
 #times = np.linspace(0,6,66)+t_mjd
 
+r_orbit1 = np.zeros([len(timesFF),3])
+r_orbit2 = np.zeros([len(timesFF),3])
+r_orbit3 = np.zeros([len(timesFF),3])
+
+C_G2B = C_B2G.T
+for ii in np.arange(len(timesFF)):
+    time = timesFF[ii] + t_mjd
+#    breakpoint()
+    pos_GCRS = (frameConversion.icrs2gcrs(posFF[ii]*u.AU,time)).to('AU')
+        
+    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',time)
+    r_EMO = EMO[0].get_xyz().to('AU')
+
+    r_PG = pos_GCRS - r_EMO
+    
+    C_I2R = frameConversion.body2rot(time,t_mjd)
+
+    r_orbit1[ii,:] = r_PG.to('AU')
+    r_orbit2[ii,:] = C_G2B@r_PG.to('AU')
+    r_orbit3[ii,:] = C_G2B@C_I2R@r_PG.to('AU')
+#
+
+
+r_SunEM_r2 = np.zeros([len(times),3])
 r_SunEM_r = np.zeros([len(times),3])
 r_EarthEM_r = np.zeros([len(times),3])
 r_MoonEM_r = np.zeros([len(times),3])
@@ -417,23 +440,25 @@ for ii in np.arange(len(times)):
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
-
-    C_B2G = frameConversion.body2geo(time,t_mjd,mu_star)
-    C_G2B = C_B2G.T
+    C_B2G2 = frameConversion.body2geo(time,t_mjd,mu_star)
+    C_G2B2 = C_B2G2.T
+    
     C_I2R = frameConversion.body2rot(time,t_mjd)
 #    
 ##    print(C_I2R)
 ##    breakpoint()
 #    
-    r_SunEM_r[ii,:] = C_G2B@r_SunEM.to('AU')
-    r_EarthEM_r[ii,:] = C_G2B@r_EarthEM.to('AU')
-    r_MoonEM_r[ii,:] = C_G2B@r_MoonEM.to('AU')
+#    r_SunEM_r[ii,:] = C_G2B@r_SunEM.to('AU')
+#    r_SunEM_r2[ii,:] = C_G2B2@r_SunEM.to('AU')
+#    r_EarthEM_r[ii,:] = C_G2B@r_EarthEM.to('AU')
+#    r_MoonEM_r[ii,:] = C_G2B@r_MoonEM.to('AU')
 #    
 ##    breakpoint()
 #
-#    r_SunEM_r[ii,:] = C_G2B@C_I2R@r_SunEM.to('AU')
-#    r_EarthEM_r[ii,:] = C_G2B@C_I2R@r_EarthEM.to('AU')
-#    r_MoonEM_r[ii,:] = C_G2B@C_I2R@r_MoonEM.to('AU')
+    r_SunEM_r[ii,:] = C_G2B@C_I2R@r_SunEM.to('AU')
+    r_SunEM_r2[ii,:] = C_G2B2@C_I2R@r_SunEM.to('AU')
+    r_EarthEM_r[ii,:] = C_G2B@C_I2R@r_EarthEM.to('AU')
+    r_MoonEM_r[ii,:] = C_G2B@C_I2R@r_MoonEM.to('AU')
 #    
 #
 ##    breakpoint()
@@ -480,25 +505,53 @@ for ii in np.arange(len(times)):
 
 
 ax = plt.figure().add_subplot(projection='3d')
-ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r')
-ax.plot(posFF[:,0],posFF[:,1],posFF[:,2],'b')
-ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2],'y')
-ax.scatter(r_SunEM_r[0,0],r_SunEM_r[0,1],r_SunEM_r[0,2])
-ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'m')
-ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'g')
+ax.plot(r_orbit1[:,0],r_orbit1[:,1],r_orbit1[:,2],'b')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
 
 ax = plt.figure().add_subplot(projection='3d')
-ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r')
-ax.plot(posFF[:,0],posFF[:,1],posFF[:,2],'b')
-#ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2])
-ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'m')
-ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'g')
+ax.plot(r_orbit2[:,0],r_orbit2[:,1],r_orbit2[:,2],'b')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
+
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_orbit3[:,0],r_orbit3[:,1],r_orbit3[:,2],'b')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+
+ax = plt.figure().add_subplot(projection='3d')
+ax.scatter(r_SunEM_r[0,0],r_SunEM_r[0,1],r_SunEM_r[0,2])
+ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2],'y')
+ax.plot(r_SunEM_r2[:,0],r_SunEM_r2[:,1],r_SunEM_r2[:,2],'b')
+#ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'m')
+#ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'g')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+
+#ax = plt.figure().add_subplot(projection='3d')
+##ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r')
+#ax.plot(posFF[:,0],posFF[:,1],posFF[:,2],'b')
+##ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2],'y')
+##ax.scatter(r_SunEM_r[0,0],r_SunEM_r[0,1],r_SunEM_r[0,2])
+##ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'m')
+##ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'g')
+#ax.set_xlabel('X [AU]')
+#ax.set_ylabel('Y [AU]')
+#ax.set_zlabel('Z [AU]')
+
+#ax = plt.figure().add_subplot(projection='3d')
+#ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r')
+#ax.plot(posFF[:,0],posFF[:,1],posFF[:,2],'b')
+##ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2])
+#ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'m')
+#ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'g')
+#ax.set_xlabel('X [AU]')
+#ax.set_ylabel('Y [AU]')
+#ax.set_zlabel('Z [AU]')
 
 
 #ax = plt.figure().add_subplot(projection='3d')
