@@ -12,7 +12,7 @@ from astropy.time import Time
 import astropy.units as u
 import astropy.constants as const
 #import orbitGenCR3BP as orgen
-sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/tools')
+sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/orbits/tools')
 import unitConversion
 import frameConversion
 
@@ -76,8 +76,130 @@ def CRTBP_EOM(t,w,mu_star):
 
     dw = [vx,vy,vz,ax,ay,az]
     return dw
-    
+
 def FF_EOM(tt,w,t_mjd,mu_star):
+    """Equations of motion for the full force model in the inertial frame
+
+    Args:
+        w (float):
+            State in non dimensional units [position, velocity]
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity, acceleration]
+
+    """
+    
+    [x,y,z,vx,vy,vz] = w
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    
+    r_PO = np.array([x,y,z])
+    v_PO = np.array([vx,vy,vz])
+
+    time = tt + t_mjd
+    print(tt)
+
+    r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth',time)[0].get_xyz().to('AU')
+
+    r_PSun = r_PO - r_SunO.value
+    r_PEarth = r_PO - r_EarthO.value
+    r_PMoon = r_PO - r_MoonO.value
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+    
+    
+    r_SunEarth = (r_SunO - r_EarthO).value
+    r_MoonEarth = (r_MoonO - r_EarthO).value
+    rSE_mag = np.linalg.norm(r_SunEarth)
+    rME_mag = np.linalg.norm(r_MoonEarth)
+        
+#    breakpoint()
+    F_gSun_p = -gmSun*(r_SunEarth/rSE_mag**3 + r_PSun/rSun_mag**3)
+    F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
+    F_gMoon_p = -gmMoon*(r_MoonEarth/rME_mag**3 + r_PMoon/rMoon_mag**3)
+
+    F_g = F_gSun_p + F_gEarth + F_gMoon_p
+    
+    a_PO_H = F_g
+    
+    ax = a_PO_H[0]
+    ay = a_PO_H[1]
+    az = a_PO_H[2]
+
+    dw = [vx,vy,vz,ax,ay,az]
+    
+    return dw
+    
+def FF_EOM3(tt,w,t_mjd,mu_star):
+    """Equations of motion for the full force model in the inertial frame
+
+    Args:
+        w (float):
+            State in non dimensional units [position, velocity]
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity, acceleration]
+
+    """
+    
+    [x,y,z,vx,vy,vz] = w
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    
+    r_PO = np.array([x,y,z])
+    v_PO = np.array([vx,vy,vz])
+
+    time = tt + t_mjd
+    print(tt)
+
+    r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth',time)[0].get_xyz().to('AU')
+
+    r_PSun = r_PO - r_SunO.value
+    r_PEarth = r_PO - r_EarthO.value
+    r_PMoon = r_PO - r_MoonO.value
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+    
+    
+    r_EarthSun = (r_EarthO - r_SunO).value
+    r_MoonSun = (r_MoonO - r_SunO).value
+    rES_mag = np.linalg.norm(r_EarthSun)
+    rMS_mag = np.linalg.norm(r_MoonSun)
+        
+#    breakpoint()
+    F_gSun = -gmSun/rSun_mag**3*r_PSun
+    F_gEarth_p = -gmEarth*(r_EarthSun/rES_mag**3 + r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_MoonSun/rMS_mag**3 + r_PMoon/rMoon_mag**3)
+
+    F_g = F_gSun + F_gEarth_p + F_gMoon_p
+    
+    a_PO_H = F_g
+    
+    ax = a_PO_H[0]
+    ay = a_PO_H[1]
+    az = a_PO_H[2]
+
+    dw = [vx,vy,vz,ax,ay,az]
+    
+    return dw
+    
+def FF_EOM2(tt,w,t_mjd,mu_star):
     """Equations of motion for the full force model in the inertial frame
 
     Args:
@@ -102,25 +224,26 @@ def FF_EOM(tt,w,t_mjd,mu_star):
     v_PEM = np.array([vx,vy,vz])
 
     time = tt + t_mjd
-#    print(tt)
+    print(tt)
 
     r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU')
-    r_EarthO = get_body_barycentric_posvel('Earth',time)[0].get_xyz().to('AU')
+#    r_EarthO = get_body_barycentric_posvel('Earth',time)[0].get_xyz().to('AU')
 
     r_PSun = r_PEM - r_SunO.value
-    r_PEarth = r_PEM - r_EarthO.value
+#    r_PEarth = r_PEM - r_EarthO.value
     r_PMoon = r_PEM - r_MoonO.value
     rSun_mag = np.linalg.norm(r_PSun)
-    rEarth_mag = np.linalg.norm(r_PEarth)
+#    rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
-
+        
     F_gSun = -gmSun/rSun_mag**3*r_PSun
-    F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
+#    F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
     F_gMoon = -gmMoon/rMoon_mag**3*r_PMoon
 
-    F_g = F_gSun + F_gEarth + F_gMoon
-    F_g2 = F_gEarth + F_gMoon
+    F_g = F_gMoon + F_gSun
+#    F_g = F_gSun + F_gEarth + F_gMoon
+#    F_g2 = F_gEarth + F_gMoon
     
     a_PO_H = F_g
     
@@ -130,31 +253,31 @@ def FF_EOM(tt,w,t_mjd,mu_star):
 
     dw = [vx,vy,vz,ax,ay,az]
     
-    if tt < .01:
-#        tmp1 = dw[3:6]*u.AU/u.day
-#        tmp1 = tmp1.to('km/s')
-#        tmp2 = np.linalg.norm(tmp1)
-#        
-#        print(np.linalg.norm(F_gSun))
-#        print(np.linalg.norm(F_gEarth))
-#        print(np.linalg.norm(F_gMoon))
-        print(F_g)
-        print(F_g2)
-        breakpoint()
-    elif tt > 75 and tt < 80:
-#        tmp1 = dw[3:6]*u.AU/u.day
-#        tmp1 = tmp1.to('km/s')
-#        tmp2 = np.linalg.norm(tmp1)
-#        print(np.linalg.norm(F_gSun))
-#        print(np.linalg.norm(F_gEarth))
-#        print(np.linalg.norm(F_gMoon))
-        print(F_g)
-        print(F_g2)
-        breakpoint()
-    elif tt > 230:
-        print(F_g)
-        print(F_g2)
-        breakpoint()
+#    if tt < .01:
+##        tmp1 = dw[3:6]*u.AU/u.day
+##        tmp1 = tmp1.to('km/s')
+##        tmp2 = np.linalg.norm(tmp1)
+##        
+##        print(np.linalg.norm(F_gSun))
+##        print(np.linalg.norm(F_gEarth))
+##        print(np.linalg.norm(F_gMoon))
+#        print(F_g)
+#        print(F_g2)
+#        breakpoint()
+#    elif tt > 75 and tt < 80:
+##        tmp1 = dw[3:6]*u.AU/u.day
+##        tmp1 = tmp1.to('km/s')
+##        tmp2 = np.linalg.norm(tmp1)
+##        print(np.linalg.norm(F_gSun))
+##        print(np.linalg.norm(F_gEarth))
+##        print(np.linalg.norm(F_gMoon))
+#        print(F_g)
+#        print(F_g2)
+#        breakpoint()
+#    elif tt > 230:
+#        print(F_g)
+#        print(F_g2)
+#        breakpoint()
     return dw
 
 
@@ -199,7 +322,7 @@ def statePropFF(freeVar,t_mjd,mu_star):
     """
     T = freeVar[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star), method='LSODA',t_eval=np.arange(0,T,.1))
+    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star), method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -208,10 +331,10 @@ def statePropFF(freeVar,t_mjd,mu_star):
     
 
 #Barycentric (ICRS)
-t_mjd = Time(60380+0,format='mjd',scale='utc')
+t_mjd = Time(60380+270,format='mjd',scale='utc')
 coord.solar_system.solar_system_ephemeris.set('de432s')
 
-days = 232
+days = 365
 # 0         232
 # 90        any
 # 180       224
@@ -250,6 +373,12 @@ vel_ICRS = (v_EMO + v_dim).value
 
 state0 = np.array([pos_ICRS[0], pos_ICRS[1], pos_ICRS[2], vel_ICRS[0], vel_ICRS[1], vel_ICRS[2], days])   # Tp_dim
 
+#state = get_body_barycentric_posvel('Earth',t_mjd)
+#p_Earth = state[0].get_xyz().to('AU')
+#v_Earth = state[1].get_xyz().to('AU/day')
+#
+#state0 = np.append(np.append(p_Earth.value, v_Earth.value), days)
+
 statesFF, timesFF = statePropFF(state0,t_mjd,mu_star)
 posFF = statesFF[:,0:3]
 velFF = statesFF[:,3:6]
@@ -282,24 +411,24 @@ for ii in np.arange(len(timesFF)):
     r_EarthEM_r[ii,:] = C_G2B@r_EarthEM.to('AU')
     r_MoonEM_r[ii,:] = C_G2B@r_MoonEM.to('AU')
 
-tmp1 = r_PEM_r - r_EarthEM_r
-norms = np.linalg.norm(tmp1,axis=1)*u.AU
-minNorm = min(norms).to('km')
-if minNorm.value < 6378:
-    print(minNorm)
+#tmp1 = r_PEM_r - r_EarthEM_r
+#norms = np.linalg.norm(tmp1,axis=1)*u.AU
+#minNorm = min(norms).to('km')
+#if minNorm.value < 6378:
+#    print(minNorm)
 
-velFF = velFF*u.AU/u.day
-velFF = velFF.to('km/s')
-velNorm = np.linalg.norm(velFF,axis=1)
-velMax = max(velNorm)
+#velFF = velFF*u.AU/u.day
+#velFF = velFF.to('km/s')
+#velNorm = np.linalg.norm(velFF,axis=1)
+#velMax = max(velNorm)
+#
+#indMax = np.argwhere(velNorm == velMax)[0][0]
 
-indMax = np.argwhere(velNorm == velMax)[0][0]
 
-
-plt.figure()
-plt.plot(timesFF,velNorm)
-plt.xlabel('Time [days]')
-plt.ylabel('Velocity Magnitude [km/s]')
+#plt.figure()
+#plt.plot(timesFF,velNorm)
+#plt.xlabel('Time [days]')
+#plt.ylabel('Velocity Magnitude [km/s]')
 
 ax = plt.figure().add_subplot(projection='3d')
 #ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r',label='CRTBP')
@@ -308,11 +437,12 @@ ax = plt.figure().add_subplot(projection='3d')
 #ax.scatter(r_PEM_r[-1,0],r_PEM_r[-1,1],r_PEM_r[-1,2],label='FF End')
 #ax.scatter(r_PEM_r[-10:,0],r_PEM_r[-10:,1],r_PEM_r[-10:,2],marker='*',label='FF last 10')
 #ax.scatter(r_PEM_r[0:10,0],r_PEM_r[0:10,1],r_PEM_r[0:10,2],label='FF first 10')
-ax.scatter(r_PEM_r[indMax,0],r_PEM_r[indMax,1],r_PEM_r[indMax,2],label='max Velocity')
-ax.plot(r_PEM_r[:,0],r_PEM_r[:,1],r_PEM_r[:,2],'b',label='Full Force')
+#ax.scatter(r_PEM_r[indMax,0],r_PEM_r[indMax,1],r_PEM_r[indMax,2],label='max Velocity')
+
 ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'g',label='Earth')
 ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'r',label='Moon')
-#ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2])
+#ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2],'y',label='Sun')
+ax.plot(r_PEM_r[:,0],r_PEM_r[:,1],r_PEM_r[:,2],'b',label='Full Force')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
