@@ -37,7 +37,7 @@ vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
 
 # propagate the dynamics in the CRTBP model
-statesCRTBP, timesCRTBP = statePropCRTBP(freeVar_CRTBP,mu_star)
+statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP,mu_star)
 posCRTBP = statesCRTBP[:,0:3]
 velCRTBP = statesCRTBP[:,3:6]
 
@@ -54,22 +54,15 @@ pos_GCRS = C_B2G@pos_dim
 
 pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS,t_mjd)).to('AU').value
 
-<<<<<<< HEAD
 # convert velocity from I frame to H frame
-=======
->>>>>>> d9a7e39f8fa0e88625bfe6f8f4f610384ffc6dd2
 v_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_mjd)[1].get_xyz().to('AU/day')
 vel_ICRS = (v_EMO + v_dim).value
 
 # Define the initial state array
 state0 = np.append(np.append(pos_ICRS, vel_ICRS), days)   # Tp_dim
 
-<<<<<<< HEAD
 # propagate the dynamics
-statesFF, timesFF = statePropFF(state0,t_mjd)
-=======
-statesFF, timesFF = orbitEOMProp.statePropFF(state0,t_mjd,mu_star)
->>>>>>> d9a7e39f8fa0e88625bfe6f8f4f610384ffc6dd2
+statesFF, timesFF = orbitEOMProp.statePropFF(state0,t_mjd)
 posFF = statesFF[:,0:3]
 velFF = statesFF[:,3:6]
 
