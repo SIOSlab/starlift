@@ -5,9 +5,11 @@ import astropy.constants as const
 import frameConversion
 
 def CRTBP_EOM(t, w, mu_star):
-    """Equations of motion for the CRTBP in the rotating frame
+    """Equations of motion for the CRTBP in the inertial frame
 
     Args:
+        t (float):
+            Rotation angle between the inertial and rotating frames in radians
         w (float):
             State in non-dimensional units [position, velocity]
         mu_star (float):
@@ -49,11 +51,11 @@ def CRTBP_EOM(t, w, mu_star):
 
     e3_hat = np.array([0, 0, 1])
 
-    a_PO_H = F_g
+    a_PO_I = F_g
 
-    ax = a_PO_H[0]
-    ay = a_PO_H[1]
-    az = a_PO_H[2]
+    ax = a_PO_I[0]
+    ay = a_PO_I[1]
+    az = a_PO_I[2]
 
     dw = [vx, vy, vz, ax, ay, az]
     return dw
@@ -63,8 +65,12 @@ def FF_EOM(tt, w, t_mjd, mu_star):
     """Equations of motion for the full force model in the inertial frame
 
     Args:
+        tt (float):
+            Time vector for the mission beginning at 0 days
         w (float):
-            State in non dimensional units [position, velocity]
+            State in non-dimensional units [position, velocity]
+        t_mjd (float):
+            Mission start time in Modified Julian dates
         mu_star (float):
             Non-dimensional mass parameter
 
@@ -119,18 +125,17 @@ def FF_EOM(tt, w, t_mjd, mu_star):
 
 
 def statePropCRTBP(freeVar, mu_star):
-    """Propagates the dynamics using the free variables
+    """Propagates the dynamics of the CRTBP in the rotating frame using the free variables
 
     Args:
-        state (float):
-            Position in non dimensional units
-        eom (float):
+        freeVar (float):
+            Free variables [x z vy T]
+        mu_star (float):
             Non-dimensional mass parameter
-
 
     Returns:
         ~numpy.ndarray(float):
-            jacobian of the free variables wrt the constraints
+            Jacobian of the free variables wrt the constraints
 
     """
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
@@ -143,18 +148,19 @@ def statePropCRTBP(freeVar, mu_star):
 
 
 def statePropFF(freeVar, t_mjd, mu_star):
-    """Propagates the dynamics using the free variables
+    """Propagates the dynamics of the full-force model in the rotating frame using the free variables
 
     Args:
-        state (float):
-            Position in non dimensional units
-        eom (float):
+        freeVar (float):
+            Free variables [x z vy T]
+        t_mjd (float):
+            Mission start time in Modified Julian dates
+        mu_star (float):
             Non-dimensional mass parameter
-
 
     Returns:
         ~numpy.ndarray(float):
-            jacobian of the free variables wrt the constraints
+            Jacobian of the free variables wrt the constraints
 
     """
     T = freeVar[-1]
