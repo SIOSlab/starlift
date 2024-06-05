@@ -4,30 +4,23 @@ import pickle
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import sys
-#import rebound
 import matplotlib.pyplot as plt
 import astropy.coordinates as coord
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 from astropy.time import Time
 import astropy.units as u
 import astropy.constants as const
-#import orbitGenCR3BP as orgen
-sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/orbits/tools')
+sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
 
-
 import pdb
 
-# TU = 27.321582 d
-# DU = 384400 km
-# m_moon = 7.349x10**22 kg
-
 def CRTBP_EOM(t,w,mu_star):
-    """Equations of motion for the CRTBP in the rotating frame
+    """Equations of motion for the CRTBP in the inertial frame
 
     Args:
-        w (float):
+        w (~numpy.ndarray(float)):
             State in non dimensional units [position, velocity]
         mu_star (float):
             Non-dimensional mass parameter
@@ -44,14 +37,14 @@ def CRTBP_EOM(t,w,mu_star):
 
     r1 = mu_star
     r2 = 1 - mu_star
-    r_1O_H = r1*np.array([-1,0,0])
-    r_2O_H = r2*np.array([1,0,0])
+    r_1O_R = r1*np.array([-1,0,0])
+    r_2O_R = r2*np.array([1,0,0])
     
     C_I2R = frameConversion.rot(t,3)
     C_R2I = C_I2R.T
     
-    r_1O_I = C_R2I@r_1O_H
-    r_2O_I = C_R2I@r_2O_H
+    r_1O_I = C_R2I@r_1O_R
+    r_2O_I = C_R2I@r_2O_R
 
     r_PO_I = np.array([x,y,z])
     v_PO_I = np.array([vx,vy,vz])
@@ -66,25 +59,23 @@ def CRTBP_EOM(t,w,mu_star):
     F_g2 = -m2/r2_mag**3*r_P2_I
     F_g = F_g1 + F_g2
 
-    e3_hat = np.array([0,0,1])
-
-    a_PO_H = F_g
+    a_PO_I = F_g
     
-    ax = a_PO_H[0]
-    ay = a_PO_H[1]
-    az = a_PO_H[2]
+    ax = a_PO_I[0]
+    ay = a_PO_I[1]
+    az = a_PO_I[2]
 
     dw = [vx,vy,vz,ax,ay,az]
     return dw
 
-def FF_EOM(tt,w,t_mjd,mu_star):
-    """Equations of motion for the full force model in the inertial frame
+def FF_EOM(tt,w,t_mjd):
+    """Equations of motion for the full force model in the ICRS frame
 
     Args:
-        w (float):
+        w (~numpy.ndarray(float)):
             State in non dimensional units [position, velocity]
-        mu_star (float):
-            Non-dimensional mass parameter
+        t_mjd (astropy Time array):
+            Mission start time in MJD
 
     Returns:
         ~numpy.ndarray(float):
@@ -140,15 +131,19 @@ def statePropCRTBP(freeVar,mu_star):
     """Propagates the dynamics using the free variables
 
     Args:
-        state (float):
-            Position in non dimensional units
-        eom (float):
+        freeVar (~numpy.ndarray(float)):
+            x and z positions (AU), y velocity (AU/d), and orbit period (d)
+        mu_star (float):
             Non-dimensional mass parameter
 
 
     Returns:
-        ~numpy.ndarray(float):
-            jacobian of the free variables wrt the constraints
+        Returns:
+            tuple:
+            states ~numpy.ndarray(float):
+                Positions and velocities in non dimensional units
+            times ~numpy.ndarray(float):
+                Times in non dimensional units
 
     """
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
@@ -156,27 +151,32 @@ def statePropCRTBP(freeVar,mu_star):
 
     sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,),rtol=1E-12,atol=1E-12,)
     states = sol_int.y.T
+    times = sol_int.t
     
-    return states
+    return states, times
     
-def statePropFF(freeVar,t_mjd,mu_star):
+def statePropFF(state0,t_mjd):
     """Propagates the dynamics using the free variables
 
     Args:
-        state (float):
+        state(~numpy.ndarray(float)):
             Position in non dimensional units
-        eom (float):
-            Non-dimensional mass parameter
+        t_mjd (astropy Time array):
+            Mission start time in MJD
 
 
     Returns:
-        ~numpy.ndarray(float):
-            jacobian of the free variables wrt the constraints
+        Returns:
+            tuple:
+            states ~numpy.ndarray(float):
+                Positions and velocities in non dimensional units
+            times ~numpy.ndarray(float):
+                Times in non dimensional units
 
     """
-    T = freeVar[-1]
+    T = state0[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd), method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -184,105 +184,105 @@ def statePropFF(freeVar,t_mjd,mu_star):
     return states, times
     
 
-#Barycentric (ICRS)
-t_mjd = Time(60380,format='mjd',scale='utc')
+# Initialize the kernel
 coord.solar_system.solar_system_ephemeris.set('de432s')
 
-days = 365
+# Parameters
+t_mjd = Time(60380,format='mjd',scale='utc')
+days = 10
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
-C_G2B = C_B2G.T
-
+# Initial condition in non dimensional units in rotating frame R [pos, vel]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.681604840704215]
+
+# Convert the velocity to inertial from I
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
-IV_CRTBP = np.array([IC[0], IC[2], vI[1], days])     #2*IC[6]
+# Define the free variable array
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
 
-#statesCRTBP = statePropCRTBP(IV_CRTBP,mu_star)
-#posCRTBP = unitConversion.convertPos_to_dim(statesCRTBP[:,0:3]).to('AU').value
-#print('CRTBP done')
+# propagate the dynamics in the CRTBP model
+statesCRTBP, timesCRTBP = statePropCRTBP(freeVar_CRTBP,mu_star)
+posCRTBP = statesCRTBP[:,0:3]
+velCRTBP = statesCRTBP[:,3:6]
 
-x_dim = unitConversion.convertPos_to_dim(IC[0]).to('AU').value
-z_dim = unitConversion.convertPos_to_dim(IC[2]).to('AU').value
+# convert the states to dimensional units AU/d/kg
+posCRTBP = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
+pos_dim = posCRTBP[0]
 v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
 Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
 
-pos_dim = np.array([x_dim, 0, z_dim])*u.AU
-
+# convert position from I frame to H frame
 C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
-
 pos_GCRS = C_B2G@pos_dim
+
 pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS,t_mjd)).to('AU').value
 
-vel_ICRS = (v_EMO + v_dim).value
+# convert velocity from I frame to H frame
 v_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_mjd)[1].get_xyz().to('AU/day')
+vel_ICRS = (v_EMO + v_dim).value
 
-state0 = np.array([pos_ICRS[0], pos_ICRS[1], pos_ICRS[2], vel_ICRS[0], vel_ICRS[1], vel_ICRS[2], days])   # Tp_dim
+# Define the initial state array
+state0 = np.append(np.append(pos_ICRS, vel_ICRS), days)   # Tp_dim
 
-statesFF, timesFF = statePropFF(state0,t_mjd,mu_star)
+# propagate the dynamics
+statesFF, timesFF = statePropFF(state0,t_mjd)
 posFF = statesFF[:,0:3]
 velFF = statesFF[:,3:6]
-print('FF done')
 
+# preallocate space
 r_PEM_r = np.zeros([len(timesFF),3])
 r_SunEM_r = np.zeros([len(timesFF),3])
 r_EarthEM_r = np.zeros([len(timesFF),3])
 r_MoonEM_r = np.zeros([len(timesFF),3])
 for ii in np.arange(len(timesFF)):
-    time = timesFF[ii] + t_mjd
+    time = timesFF[ii] + t_mjd  # sim time in mjd
     
+    # positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
     r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU').value
     r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU').value
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',time)
     r_EMO = EMO[0].get_xyz().to('AU').value
     
+    # convert from H frame to GCRS frame
     r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU,time)
     r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU,time)
     r_SunG = frameConversion.icrs2gcrs(r_SunO*u.AU,time)
     r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU,time)
     
+    # change the origin to the EM barycenter, G frame
     r_PEM = r_PG - r_EMG
     r_SunEM = r_SunG - r_EMG
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
+    # convert from G frame to I frame
     r_PEM_r[ii,:] = C_G2B@r_PEM.to('AU')
     r_SunEM_r[ii,:] = C_G2B@r_SunEM.to('AU')
     r_EarthEM_r[ii,:] = C_G2B@r_EarthEM.to('AU')
     r_MoonEM_r[ii,:] = C_G2B@r_MoonEM.to('AU')
 
-ax = plt.figure().add_subplot(projection='3d')
+# plots
+#ax = plt.figure().add_subplot(projection='3d')
+
+# plot CRTBP and FF solutions
 #ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r',label='CRTBP')
 #ax.plot(posFF[:,0],posFF[:,1],posFF[:,2],'b',label='Full Force')
 #ax.scatter(r_PEM_r[0,0],r_PEM_r[0,1],r_PEM_r[0,2],marker='*',label='FF Start')
 #ax.scatter(r_PEM_r[-1,0],r_PEM_r[-1,1],r_PEM_r[-1,2],label='FF End')
-#ax.scatter(r_PEM_r[-10:,0],r_PEM_r[-10:,1],r_PEM_r[-10:,2],marker='*',label='FF last 10')
-#ax.scatter(r_PEM_r[0:10,0],r_PEM_r[0:10,1],r_PEM_r[0:10,2],label='FF first 10')
-#ax.scatter(r_PEM_r[indMax,0],r_PEM_r[indMax,1],r_PEM_r[indMax,2],label='max Velocity')
+#plt.legend()
 
-ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'g',label='Earth')
-ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'r',label='Moon')
+# plot the bodies and the FF solution
+#ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'g',label='Earth')
+#ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'r',label='Moon')
 #ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2],'y',label='Sun')
-ax.plot(r_PEM_r[:,0],r_PEM_r[:,1],r_PEM_r[:,2],'b',label='Full Force')
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
-
-#ax = plt.figure().add_subplot(projection='3d')
-#ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2])
-#ax.scatter(r_SunEM_r[0,0],r_SunEM_r[0,1],r_SunEM_r[0,2])
+#ax.plot(r_PEM_r[:,0],r_PEM_r[:,1],r_PEM_r[:,2],'b',label='Full Force')
 #ax.set_xlabel('X [AU]')
 #ax.set_ylabel('Y [AU]')
 #ax.set_zlabel('Z [AU]')
-#
-#ax = plt.figure().add_subplot(projection='3d')
-#ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2])
-#ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2])
-
+#plt.legend()
 
 plt.show()
 breakpoint()
