@@ -5,9 +5,15 @@ import sys
 #import rebound
 import matplotlib.pyplot as plt
 
+<<<<<<< HEAD
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
+=======
+sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/tools')
+# import unitConversion
+# import frameConversion
+>>>>>>> d9a7e39f8fa0e88625bfe6f8f4f610384ffc6dd2
 
 import pdb
 
