@@ -138,12 +138,11 @@ def statePropCRTBP(freeVar,mu_star):
 
 
     Returns:
-        Returns:
-            tuple:
-            states ~numpy.ndarray(float):
-                Positions and velocities in non dimensional units
-            times ~numpy.ndarray(float):
-                Times in non dimensional units
+        tuple:
+        states ~numpy.ndarray(float):
+            Positions and velocities in non dimensional units
+        times ~numpy.ndarray(float):
+            Times in non dimensional units
 
     """
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
@@ -176,7 +175,7 @@ def statePropFF(state0,t_mjd):
     """
     T = state0[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -189,7 +188,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(60380,format='mjd',scale='utc')
-days = 10
+days = 30
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -216,6 +215,7 @@ Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
 
 # convert position from I frame to H frame
 C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
+C_G2B = C_B2G.T
 pos_GCRS = C_B2G@pos_dim
 
 pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS,t_mjd)).to('AU').value
@@ -237,8 +237,11 @@ r_PEM_r = np.zeros([len(timesFF),3])
 r_SunEM_r = np.zeros([len(timesFF),3])
 r_EarthEM_r = np.zeros([len(timesFF),3])
 r_MoonEM_r = np.zeros([len(timesFF),3])
+
+# sim time in mjd
+timesFF_mjd = timesFF + t_mjd
 for ii in np.arange(len(timesFF)):
-    time = timesFF[ii] + t_mjd  # sim time in mjd
+    time = timesFF_mjd[ii]
     
     # positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
     r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU').value
@@ -284,5 +287,5 @@ for ii in np.arange(len(timesFF)):
 #ax.set_zlabel('Z [AU]')
 #plt.legend()
 
-plt.show()
+#plt.show()
 breakpoint()
