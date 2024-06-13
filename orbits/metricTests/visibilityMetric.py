@@ -9,10 +9,13 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import cm
+import sys
+
 
 # ~~~~RETRIEVE DATA FROM FILE~~~~
 
-path_str = "orbitFiles/L2_S_6.0066_days.p"  # Change to whichever orbit you'd like
+sys.path.insert(1, 'orbits')
+path_str = "orbitFiles/DRO_11.241_days.p"  # Change to whichever orbit you'd like
 path_f1 = os.path.normpath(os.path.expandvars(path_str))
 f1 = open(path_f1, "rb")  # "rb" means "read binary"
 orbit_data = pickle.load(f1)  # open the pickled file (and unpickle it)
