@@ -28,7 +28,7 @@ for ii in np.arange(N):
     error = 10
     ctr = 0
     while error > eps and ctr < 1000:
-        Fx = orbitEOMProp.calcFx(X)
+        Fx = orbitEOMProp.calcFx(X,mu_star)
 
         error_new = np.linalg.norm(Fx)
 

@@ -304,7 +304,7 @@ def calcdFx(freeVar,mu_star,m1,m2):
     
     return dFx
 
-def calcFx(freeVar):
+def calcFx(freeVar,mu_star):
     """Applies constraints to the free variables
 
     Args:
