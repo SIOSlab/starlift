@@ -21,7 +21,7 @@ import pdb
 coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
-t_mjd = Time(57727,format='mjd',scale='utc')
+t_mjd = Time(60380,format='mjd',scale='utc')
 days = 30
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -33,17 +33,8 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.6816
 # Convert the velocity to inertial from I
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
-# Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
-
-# propagate the dynamics in the CRTBP model
-statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP,mu_star)
-posCRTBP = statesCRTBP[:,0:3]
-velCRTBP = statesCRTBP[:,3:6]
-
 # convert the states to dimensional units AU/d/kg
-posCRTBP = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
-pos_dim = posCRTBP[0]
+pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('AU')
 v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
 Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
 
@@ -104,11 +95,14 @@ for ii in np.arange(len(timesFF)):
 # plots
 #ax = plt.figure().add_subplot(projection='3d')
 
-# plot CRTBP and FF solutions
-#ax.plot(posCRTBP[:,0],posCRTBP[:,1],posCRTBP[:,2],'r',label='CRTBP')
-#ax.plot(posFF[:,0],posFF[:,1],posFF[:,2],'b',label='Full Force')
-#ax.scatter(r_PEM_r[0,0],r_PEM_r[0,1],r_PEM_r[0,2],marker='*',label='FF Start')
-#ax.scatter(r_PEM_r[-1,0],r_PEM_r[-1,1],r_PEM_r[-1,2],label='FF End')
+# plot the bodies and the FF solution
+#ax.plot(r_EarthEM_r[:,0],r_EarthEM_r[:,1],r_EarthEM_r[:,2],'g',label='Earth')
+#ax.plot(r_MoonEM_r[:,0],r_MoonEM_r[:,1],r_MoonEM_r[:,2],'r',label='Moon')
+#ax.plot(r_SunEM_r[:,0],r_SunEM_r[:,1],r_SunEM_r[:,2],'y',label='Sun')
+#ax.plot(r_PEM_r[:,0],r_PEM_r[:,1],r_PEM_r[:,2],'b',label='Full Force')
+#ax.set_xlabel('X [AU]')
+#ax.set_ylabel('Y [AU]')
+#ax.set_zlabel('Z [AU]')
 #plt.legend()
 
 #plt.show()

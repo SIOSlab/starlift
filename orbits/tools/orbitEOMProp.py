@@ -317,7 +317,26 @@ def calcFx(freeVar):
             constraint array
 
     """
-    s_T = stateProp_R(freeVar,mu_star)
+    s_T = stateProp(freeVar)
+    state = s_T[-1]
+
+    Fx = np.array([state[1], state[3], state[5]])
+    return Fx
+    
+def calcFx_R(freeVar, mu_star):
+    """Applies constraints to the free variables
+
+    Args:
+        freeVar (~numpy.ndarray(float)):
+            x and z positions, y velocity, and half the orbit period
+
+
+    Returns:
+        ~numpy.ndarray(float):
+            constraint array
+
+    """
+    s_T, times = stateProp_R(freeVar, mu_star)
     state = s_T[-1]
 
     Fx = np.array([state[1], state[3], state[5]])
@@ -347,10 +366,9 @@ def stateProp_R(freeVar,mu_star):
     sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,),rtol=1E-12,atol=1E-12,)
     states = sol_int.y.T
     times = sol_int.t
-    
     return states, times
     
-def fsolve_eqns(w,z,solp):
+def fsolve_eqns(w,z,solp, mu_star):
     """Finds the initial guess for a new orbit and the Jacobian for continuation
 
     Args:
@@ -367,7 +385,7 @@ def fsolve_eqns(w,z,solp):
             system of equations as a function of w
 
     """
-    Fx = calcFx(w)
+    Fx = calcFx_R(w, mu_star)
     zeq = z.T@(w-solp)
     sys_w = np.append(Fx,zeq)
 
