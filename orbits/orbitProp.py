@@ -40,26 +40,28 @@ freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
 posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
+#
+## convert the states to dimensional units AU/d/kg
+#posCRTBP = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
+#pos_dim = posCRTBP[0]
+#v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
+#Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
+#
+## convert position from I frame to H frame
+#C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+#C_G2B = C_B2G.T
+#pos_GCRS = C_B2G@pos_dim
+#
+#pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU').value
+#
+## convert velocity from I frame to H frame
+#v_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)[1].get_xyz().to('AU/day')
+#vel_ICRS = (v_EMO + v_dim).value
 
-# convert the states to dimensional units AU/d/kg
-posCRTBP = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
-pos_dim = posCRTBP[0]
-v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
-Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
-
-# convert position from I frame to H frame
-C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
-C_G2B = C_B2G.T
-pos_GCRS = C_B2G@pos_dim
-
-pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU').value
-
-# convert velocity from I frame to H frame
-v_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)[1].get_xyz().to('AU/day')
-vel_ICRS = (v_EMO + v_dim).value
+pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_R2H(posCRTBP[0], velCRTBP[0], t_mjd, timesCRTBP[-1], mu_star)
 
 # Define the initial state array
-state0 = np.append(np.append(pos_ICRS, vel_ICRS), days)   # Tp_dim
+state0 = np.append(np.append(pos_H.value, vel_H.value), days)   # Tp_dim.value
 
 # propagate the dynamics
 statesFF, timesFF = orbitEOMProp.statePropFF(state0,t_mjd)
