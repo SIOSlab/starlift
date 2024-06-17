@@ -47,9 +47,9 @@ velCRTBP = statesCRTBP[:, 3:6]
 #v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
 #Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
 #
-## convert position from I frame to H frame
-#C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
-#C_G2B = C_B2G.T
+# convert position from I frame to H frame
+C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+C_G2B = C_B2G.T
 #pos_GCRS = C_B2G@pos_dim
 #
 #pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU').value
@@ -109,6 +109,9 @@ ax.plot(posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2], 'r', label='CRTBP')
 ax.plot(posFF[:, 0], posFF[:, 1],posFF[:, 2], 'b', label='Full Force')
 ax.scatter(r_PEM_r[0, 0], r_PEM_r[0, 1], r_PEM_r[0, 2], marker='*', label='FF Start')
 ax.scatter(r_PEM_r[-1, 0], r_PEM_r[-1, 1], r_PEM_r[-1, 2], label='FF End')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
 plt.legend()
 
 # plot the bodies and the FF solution

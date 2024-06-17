@@ -419,7 +419,6 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
     
     C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
-    C_G2B = C_B2G.T
     pos_G = C_B2G@pos_I
     
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
