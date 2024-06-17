@@ -390,3 +390,45 @@ def fsolve_eqns(w,z,solp, mu_star):
     sys_w = np.append(Fx,zeq)
 
     return sys_w
+
+def convertIC_R2H(pos_R, vel_R, t_mjd):
+    """Propagates the dynamics using the free variables
+
+    Args:
+        pos_R (float n array):
+            Array of distance in canonical units
+        vel_R (float n array):
+            Array of velocities in canonical units
+        t_mjd (astropy Time array):
+            Mission start time in MJD
+
+
+    Returns:
+        tuple:
+        pos_H (float n array):
+            Array of distance in AU
+        vel_H (float n array):
+            Array of velocities in AU/day
+
+    """
+    pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
+    
+    C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+    C_G2B = C_B2G.T
+    pos_G = C_B2G@pos_dim
+    
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
+    posEMB = state_EMB[0].get_xyz().to('AU')
+    velEMB = stae_EMB[1].get_xyz().to('AU/day')
+    posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
+    posEMB_E = posE - posEMB
+
+    pos_GCRS = pos_G + pos_EMB_E
+    
+    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
+    
+    vel_I = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
+    v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
+    vel_H = v_EMO + v_dim
+    
+    return pos_H, vel_H
