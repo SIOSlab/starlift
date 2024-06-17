@@ -60,6 +60,10 @@ r_MoonEM_r = np.zeros([len(timesFF), 3])
 
 # sim time in mjd
 timesFF_mjd = timesFF + t_mjd
+
+# DCM for G frame and I frame
+C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
+C_G2B = C_B2G.T
 for ii in np.arange(len(timesFF)):
     time = timesFF_mjd[ii]
     

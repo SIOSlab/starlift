@@ -21,7 +21,7 @@ import pdb
 coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
-t_mjd = Time(60380,format='mjd',scale='utc')
+t_mjd = Time(57727,format='mjd',scale='utc')
 days = 30
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -30,27 +30,11 @@ m2 = mu_star
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.681604840704215]
 
-# Convert the velocity to inertial from I
-vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
-
-# convert the states to dimensional units AU/d/kg
-pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('AU')
-v_dim = unitConversion.convertVel_to_dim(vI).to('AU/day')
-Tp_dim = unitConversion.convertTime_to_dim(2*IC[6]).to('day').value
-
 # convert position from I frame to H frame
-C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
-C_G2B = C_B2G.T
-pos_GCRS = C_B2G@pos_dim
-
-pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS,t_mjd)).to('AU').value
-
-# convert velocity from I frame to H frame
-v_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_mjd)[1].get_xyz().to('AU/day')
-vel_ICRS = (v_EMO + v_dim).value
+pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_R2H(IC[0:3], IC[3:6], t_mjd, IC[-1], mu_star)
 
 # Define the initial state array
-state0 = np.append(np.append(pos_ICRS, vel_ICRS), days)   # Tp_dim
+state0 = np.append(np.append(pos_H.value, vel_H.value), Tp_dim.value)
 
 # propagate the dynamics
 statesFF, timesFF = orbitEOMProp.statePropFF(state0,t_mjd)
@@ -65,6 +49,10 @@ r_MoonEM_r = np.zeros([len(timesFF),3])
 
 # sim time in mjd
 timesFF_mjd = timesFF + t_mjd
+
+# DCM for G frame and I frame
+C_B2G = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
+C_G2B = C_B2G.T
 for ii in np.arange(len(timesFF)):
     time = timesFF_mjd[ii]
     
