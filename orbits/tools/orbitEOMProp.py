@@ -3,6 +3,7 @@ from scipy.integrate import solve_ivp
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import astropy.constants as const
 import frameConversion
+import unitConversion
 
 def CRTBP_EOM(t,w,mu_star):
     """Equations of motion for the CRTBP in the inertial frame
@@ -317,7 +318,26 @@ def calcFx(freeVar,mu_star):
             constraint array
 
     """
-    s_T = stateProp_R(freeVar,mu_star)
+    s_T = stateProp(freeVar)
+    state = s_T[-1]
+
+    Fx = np.array([state[1], state[3], state[5]])
+    return Fx
+    
+def calcFx_R(freeVar, mu_star):
+    """Applies constraints to the free variables
+
+    Args:
+        freeVar (~numpy.ndarray(float)):
+            x and z positions, y velocity, and half the orbit period
+
+
+    Returns:
+        ~numpy.ndarray(float):
+            constraint array
+
+    """
+    s_T, times = stateProp_R(freeVar, mu_star)
     state = s_T[-1]
 
     Fx = np.array([state[1], state[3], state[5]])
@@ -347,10 +367,9 @@ def stateProp_R(freeVar,mu_star):
     sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,),rtol=1E-12,atol=1E-12,)
     states = sol_int.y.T
     times = sol_int.t
-    
     return states, times
     
-def fsolve_eqns(w,z,solp):
+def fsolve_eqns(w,z,solp, mu_star):
     """Finds the initial guess for a new orbit and the Jacobian for continuation
 
     Args:
@@ -367,8 +386,55 @@ def fsolve_eqns(w,z,solp):
             system of equations as a function of w
 
     """
-    Fx = calcFx(w)
+    Fx = calcFx_R(w, mu_star)
     zeq = z.T@(w-solp)
     sys_w = np.append(Fx,zeq)
 
     return sys_w
+
+def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
+    """Propagates the dynamics using the free variables
+
+    Args:
+        pos_R (float n array):
+            Array of distance in canonical units
+        vel_R (float n array):
+            Array of velocities in canonical units
+        t_mjd (astropy Time array):
+            Mission start time in MJD
+        Tp_can (float n array):
+            Array of times in canonical units
+
+
+    Returns:
+        tuple:
+        pos_H (float n array):
+            Array of distance in AU
+        vel_H (float n array):
+            Array of velocities in AU/day
+        Tp_dim (float n array):
+            Array of times in units of days
+
+    """
+    pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
+    
+    C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+    pos_G = C_B2G@pos_I
+    
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
+    posEMB = state_EMB[0].get_xyz().to('AU')
+    velEMB = state_EMB[1].get_xyz().to('AU/day')
+    posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
+    posEMB_E = posE - posEMB
+
+    pos_GCRS = pos_G + posEMB_E
+    
+    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
+    
+    vel_I = frameConversion.rot2inertV(np.array(pos_R), np.array(vel_R), 0)
+    v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
+    vel_H = velEMB + v_dim
+    
+    Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
+    
+    return pos_H, vel_H, Tp_dim
