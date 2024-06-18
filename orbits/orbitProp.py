@@ -4,12 +4,13 @@ import pickle
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import sys
-import matplotlib.pyplot as plt
 import astropy.coordinates as coord
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 from astropy.time import Time
 import astropy.units as u
 import astropy.constants as const
+from matplotlib import pyplot as plt
+from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
@@ -91,16 +92,35 @@ for ii in np.arange(len(timesFF)):
     r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
     r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
 
+
+# animate the CRTBP orbit
+P = 50  # number of points plotted per frame
+def update(num, data, line):
+    line.set_data(data[0:2, 0:num*P])
+    line.set_3d_properties(data[2, 0:num*P])
+
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+data_CRTBP = np.array([posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2]])
+N = len(data_CRTBP[0])  # number of frames in animation
+line_CRTBP, = ax.plot(data_CRTBP[0, 0:1], data_CRTBP[1, 0:1], data_CRTBP[2, 0:1])
+
+ani = animation.FuncAnimation(fig, update, frames=N//P, fargs=(data_CRTBP, line_CRTBP), interval=1, repeat=False,
+                              cache_frame_data=False)
+
+"""
 # plot CRTBP and FF solutions
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2], 'r', label='CRTBP')
-ax.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
-ax.scatter(r_PEM_r[0, 0], r_PEM_r[0, 1], r_PEM_r[0, 2], marker='*', label='FF Start')
-ax.scatter(r_PEM_r[-1, 0], r_PEM_r[-1, 1], r_PEM_r[-1, 2], label='FF End')
+# ax.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
+# ax.scatter(r_PEM_r[0, 0], r_PEM_r[0, 1], r_PEM_r[0, 2], marker='*', label='FF Start')
+# ax.scatter(r_PEM_r[-1, 0], r_PEM_r[-1, 1], r_PEM_r[-1, 2], label='FF End')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
+plt.title('Orbital Motion in the Inertial Frame')
 plt.legend()
+
 
 # plot the bodies and the FF solution
 ax = plt.figure().add_subplot(projection='3d')
@@ -112,6 +132,7 @@ ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
 plt.legend()
+"""
 
 plt.show()
 # breakpoint()
