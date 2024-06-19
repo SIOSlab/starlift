@@ -43,8 +43,6 @@ posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
 
 # Preallocate space
-r_PEM_CRTBP = np.zeros([len(timesCRTBP), 3])
-r_SunEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_EarthEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 
