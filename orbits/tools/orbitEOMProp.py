@@ -426,6 +426,8 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     velEMB = state_EMB[1].get_xyz().to('AU/day')
     posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
     posEMB_E = posE - posEMB
+    
+    posEMB_E = (frameConversion.icrs2gcrs(posEMB_E,t_mjd)).to('AU')
 
     pos_GCRS = pos_G + posEMB_E
     
