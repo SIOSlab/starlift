@@ -135,7 +135,7 @@ def convertVel_to_dim(canonicalVel):
 
     Returns:
         dimVel (float n array):
-            Array of velocities in units of m/s
+            Array of velocities in units of m/day
     """
     
     DU2m = (3.844000E+5*u.km).to('m')
