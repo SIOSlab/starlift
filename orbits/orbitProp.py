@@ -81,7 +81,7 @@ for ii in np.arange(len(timesCRTBP)):
     r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
     r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
     
-    r_PEM_CRTBP[ii,:] = (unitConversion.convertPos_to_dim(posCRTBP[ii,:])).to('AU')
+    r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
 
 # # Plot the bodies and the CRTBP solution
 # ax = plt.figure().add_subplot(projection='3d')
@@ -160,30 +160,48 @@ line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1]
 line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
 
 
+def set_axes_equal(ax):
+    # Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
+    # Input ax: a matplotlib axis, e.g., as output from plt.gca().
+
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+
+    plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+
 def animate_CRTBP(num):
-    line_CRTBP.set_data(data_CRTBP[0, :num*P_CRTBP], data_CRTBP[1, :num*P_CRTBP])
+    line_CRTBP.set_data(data_CRTBP[0, :num*P_CRTBP], data_CRTBP[1, :num*P_CRTBP])  # Set the x and y positions
     line_CRTBP.set_3d_properties(data_CRTBP[2, :num * P_CRTBP])  # Set the z position
     line_Earth.set_data(data_Earth[0, :num*P_CRTBP], data_Earth[1, :num*P_CRTBP])
     line_Earth.set_3d_properties(data_Earth[2, :num * P_CRTBP])
     line_Moon.set_data(data_Moon[0, :num*P_CRTBP], data_Moon[1, :num*P_CRTBP])
     line_Moon.set_3d_properties(data_Moon[2, :num * P_CRTBP])
 
-    # # update the limits on the graph (not working, yet)
-    # ax.set_xlim3d(min(data_CRTBP[0]), max(data_CRTBP[0]))
-    # ax.set_ylim3d(min(data_CRTBP[1]), max(data_CRTBP[1]))
-    # ax.set_zlim3d(min(data_CRTBP[2]), max(data_CRTBP[2]))
-
 
 ani_CRTBP = animation.FuncAnimation(fig, animate_CRTBP, frames=N_CRTBP//P_CRTBP,
                                     interval=1, repeat=False)
-ax.set_xlim3d([-1.5, 1.5])
+
 ax.set_xlabel('X [AU]')
-ax.set_ylim3d([-1.5, 1.5])
 ax.set_ylabel('Y [AU]')
-ax.set_zlim3d([-1.5, 1.5])
 ax.set_zlabel('Z [AU]')
 plt.legend()
 plt.title('CRTBP model in the I frame')
+
+ax.set_box_aspect([1.0, 1.0, 1.0])
+set_axes_equal(ax)  # THIS IS NOT CENTERED (to be fixed)
 
 
 # # Animate the full force model
@@ -242,16 +260,16 @@ plt.title('CRTBP model in the I frame')
 # plt.legend()
 #
 #
-# Plot the bodies and the FF solution
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], 'g', label='Earth')
-ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], 'r', label='Moon')
-ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], 'y', label='Sun')
-ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Full Force')
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
+# # Plot the bodies and the FF solution
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], 'g', label='Earth')
+# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], 'r', label='Moon')
+# ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], 'y', label='Sun')
+# ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Full Force')
+# ax.set_xlabel('X [AU]')
+# ax.set_ylabel('Y [AU]')
+# ax.set_zlabel('Z [AU]')
+# plt.legend()
 
 plt.show()
 # breakpoint()
