@@ -1,6 +1,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import tools.constants as c
+import constants as c
+import frameConversion
+import unitConversion
+import astropy.coordinates as coord
+from astropy.coordinates.solar_system import get_body_barycentric_posvel
+import astropy.units as u
+
 
 def Orbit3D(solvec, time, args={}):
     """Plot the orbit in three dimensions. Default origin is the EM barycenter in the EM synodic reference frame. The dimensioned argument is also supplied to properly organize the display of the Earth, Moon, and axis scaling. 
@@ -51,12 +57,12 @@ def Orbit3D(solvec, time, args={}):
     plt.colorbar(traj)
     plt.show()
 
+
 def PlotManifold(solvec, time, mu, ax, title,eigval, eigvec):
     # _args = {'Frame': 'Synodic'}
     x_vals = np.array(solvec[0,:])
     y_vals = np.array(solvec[1,:])
     z_vals = np.array(solvec[2,:])
-
     
     # ax = plt.axes(projection='3d')
     traj = ax.scatter(x_vals,y_vals,z_vals, c=time, cmap = 'plasma',s=.5)
@@ -87,6 +93,7 @@ def PlotManifold(solvec, time, mu, ax, title,eigval, eigvec):
     plt.xlabel('X\n')
     plt.ylabel('Y\n')
     # plt.colorbar(traj)
+
 
 def plotConvertBodies(timesFF, posFF, t_mjd, frame):
     # ** Add documentation
@@ -165,11 +172,11 @@ def plotBodiesFF(timesFF,posFF,t_mjd,frame):
     r_PEM, r_SunEM, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF,posFF,t_mjd,frame)
     
     ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], 'g', label='Earth')
-    ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], 'r', label='Moon')
-    ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Full Force')
+    ax.plot(r_EarthEM[:, 0], r_EarthEM[:, 1], r_EarthEM[:, 2], 'g', label='Earth')
+    ax.plot(r_MoonEM[:, 0], r_MoonEM[:, 1], r_MoonEM[:, 2], 'r', label='Moon')
+    ax.plot(r_PEM[:, 0], r_PEM[:, 1], r_PEM[:, 2], 'b', label='Full Force')
     if frame == 0:
-        ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], 'y', label='Sun')
+        ax.plot(r_SunEM[:, 0], r_SunEM[:, 1], r_SunEM[:, 2], 'y', label='Sun')
     ax.set_xlabel('X [AU]')
     ax.set_ylabel('Y [AU]')
     ax.set_zlabel('Z [AU]')
@@ -178,16 +185,16 @@ def plotBodiesFF(timesFF,posFF,t_mjd,frame):
     # ** Add lines to resize figure and automatically save png and svg
     return
     
-def plotCompare_rot(timesFF,posFF,t_mjd,frame):
+def plotCompare_rot(timesFF, posFF, t_mjd, frame):
     # ** Add documentation
     
-    r_PEM, _, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF,posFF,t_mjd,frame)
+    r_PEM, _, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF, posFF, t_mjd, frame)
 
     ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2], 'r', label='CRTBP')
+    ax.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'r', label='CRTBP')
     ax.plot(posFF[:, 0], posFF[:, 1],posFF[:, 2], 'b', label='Full Force')
-    ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], 'g', label='Earth')
-    ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], 'r', label='Moon')
+    ax.plot(r_EarthEM[:, 0], r_EarthEM[:, 1], r_EarthEM[:, 2], 'g', label='Earth')
+    ax.plot(r_MoonEM[:, 0], r_MoonEM[:, 1], r_MoonEM[:, 2], 'r', label='Moon')
     ax.set_xlabel('X [AU]')
     ax.set_ylabel('Y [AU]')
     ax.set_zlabel('Z [AU]')
@@ -195,8 +202,9 @@ def plotCompare_rot(timesFF,posFF,t_mjd,frame):
     
     # ** Add lines to resize figure and automatically save png and svg
     return
-    
-def plotCompare_inert(timesCRTBP,posCRTBP,t_mjd,timesFF,posFF)
+
+
+def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF):
     # ** Add documentation
     
     times = timesCRTBP + t_mjd
@@ -207,7 +215,7 @@ def plotCompare_inert(timesCRTBP,posCRTBP,t_mjd,timesFF,posFF)
     pos_H = np.zeros([len(times),3])
     for ii in np.arange(len(timesCRTBP)):
         currentTime = times[ii]
-        pos_I = inert2rotP(pos_dim[ii],currentTime)
+        pos_I = frameConversion.inert2rotP(pos_dim[ii],currentTime)
         
         pos_G = C_B2G@pos_I
         
@@ -237,3 +245,24 @@ def plotCompare_inert(timesCRTBP,posCRTBP,t_mjd,timesFF,posFF)
     # ** Add lines to resize figure and automatically save png and svg
     return
 
+
+def set_axes_equal(ax):
+    # Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
+    # Input ax: a matplotlib axis, e.g., as output from plt.gca().
+
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+
+    plot_radius = 0.5 * max([x_range, y_range, z_range])
+
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])

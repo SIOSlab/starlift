@@ -15,6 +15,7 @@ sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
 import orbitEOMProp
+import plot_tools
 
 import pdb
 
@@ -160,28 +161,6 @@ line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1]
 line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
 
 
-def set_axes_equal(ax):
-    # Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
-    # Input ax: a matplotlib axis, e.g., as output from plt.gca().
-
-    x_limits = ax.get_xlim3d()
-    y_limits = ax.get_ylim3d()
-    z_limits = ax.get_zlim3d()
-
-    x_range = abs(x_limits[1] - x_limits[0])
-    x_middle = np.mean(x_limits)
-    y_range = abs(y_limits[1] - y_limits[0])
-    y_middle = np.mean(y_limits)
-    z_range = abs(z_limits[1] - z_limits[0])
-    z_middle = np.mean(z_limits)
-
-    plot_radius = 0.5 * max([x_range, y_range, z_range])
-
-    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
-    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
-    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
-
-
 def animate_CRTBP(num):
     line_CRTBP.set_data(data_CRTBP[0, :num*P_CRTBP], data_CRTBP[1, :num*P_CRTBP])  # Set the x and y positions
     line_CRTBP.set_3d_properties(data_CRTBP[2, :num * P_CRTBP])  # Set the z position
@@ -201,7 +180,7 @@ plt.legend()
 plt.title('CRTBP model in the I frame')
 
 ax.set_box_aspect([1.0, 1.0, 1.0])
-set_axes_equal(ax)  # THIS IS NOT CENTERED (to be fixed)
+plot_tools.set_axes_equal(ax)  # THIS IS NOT CENTERED (to be fixed)
 
 
 # # Animate the full force model
