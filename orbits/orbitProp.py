@@ -201,7 +201,7 @@ def animate_FF(num, data_FF, line_FF, data_MoonFF, line_MoonFF, data_EarthFF, li
 ani_FF = animation.FuncAnimation(figFF, animate_FF, frames=N_FF//P_FF, fargs=(data_FF, line_FF, data_MoonFF,
                                                                               line_MoonFF, data_EarthFF, line_EarthFF,
                                                                               data_SunFF, line_SunFF),
-                                    interval=10, repeat=False)
+                                 interval=10, repeat=False)
 axFF.set_xlim3d([-1, 1])
 axFF.set_xlabel('X [AU]')
 axFF.set_ylim3d([-1, 1])
