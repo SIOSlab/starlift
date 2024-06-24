@@ -4,7 +4,7 @@ import astropy.coordinates as coord
 from astropy.coordinates import GCRS, ICRS
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import sys
-sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/tools')
+sys.path.insert(1, 'tools')
 import unitConversion
 
 # From JPL Horizons
@@ -61,7 +61,7 @@ def rot(th, axis):
 
     return rot_th
     
-def body2geo(currentTime,equinox,mu_star):
+def body2geo(currentTime, equinox, mu_star):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame to the geocentric frame
     
@@ -78,8 +78,8 @@ def body2geo(currentTime,equinox,mu_star):
     
         
     # define vector in G
-    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter',currentTime)[0].get_xyz()
-    tmp_rG = -icrs2gcrs(tmp,currentTime)
+    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()
+    tmp_rG = -icrs2gcrs(tmp, currentTime)
     tmp_x = unitConversion.convertPos_to_canonical(tmp_rG[0])
     tmp_y = unitConversion.convertPos_to_canonical(tmp_rG[1])
     tmp_z = unitConversion.convertPos_to_canonical(tmp_rG[2])
@@ -131,15 +131,15 @@ def icrs2rot(pos,currentTime,equinox,mu_star):
     return r_rot
 
 
-def gcrs2inert(pos,currentTime,mu_star):
-    C_B2G = body2geo(currentTime,equinox,mu_star)
+def gcrs2inert(pos, currentTime, mu_star):
+    C_B2G = body2geo(currentTime, equinox, mu_star)
     C_G2B = C_B2G.T
     
     r_inert = C_G2B @ pos
     return r_inert
     
-def inert2gcrs(pos,currentTime,mu_star):
-    C_B2G = body2geo(currentTime,equinox,mu_star)
+def inert2gcrs(pos, currentTime, mu_star):
+    C_B2G = body2geo(currentTime, equinox, mu_star)
     
     r_gcrs = C_G2B @ pos
     return r_gcrs
@@ -150,7 +150,7 @@ def inert2rotP(pos,currentTime):
     
     return r_rot
     
-def rot2inertP(pos,currentTime):
+def rot2inertP(pos, currentTime):
     C_I2R = body2rot(currentTime)
     C_R2I = C_I2R.T
     
