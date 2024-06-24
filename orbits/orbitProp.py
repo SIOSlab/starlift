@@ -48,6 +48,9 @@ velCRTBP = statesCRTBP[:, 3:6]
 r_PEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_EarthEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_CRTBP = np.zeros([len(timesCRTBP), 3])
+posCRTBP_rot = np.zeros([len(timesCRTBP), 3])
+posEarthCRTBP_rot = np.zeros([len(timesCRTBP), 3])
+posMoonCRTBP_rot = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
 timesCRTBP_mjd = timesCRTBP + t_mjd
@@ -76,10 +79,13 @@ for ii in np.arange(len(timesCRTBP)):
     # Convert from G frame to I frame
     r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
     r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
-    r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
-    r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
     
     r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
+
+    # Convert from I frame to R frame (for plotting with GMAT)
+    posCRTBP_rot[ii, :] = frameConversion.inert2rotP(r_PEM_CRTBP[ii, :], time, t_mjd)
+    posEarthCRTBP_rot[ii, :] = frameConversion.inert2rotP(r_EarthEM_CRTBP[ii, :], time, t_mjd)
+    posMoonCRTBP_rot[ii, :] = frameConversion.inert2rotP(r_MoonEM_CRTBP[ii, :], time, t_mjd)
 
 
 # ~~~~~PLOT SOLUTION AND GMAT IN THE ROTATING FRAME~~~~
@@ -104,11 +110,6 @@ with open(file_name) as file:
 gmat_x = list(map(lambda x: x[0], gmat_CRTBP))
 gmat_y = list(map(lambda x: x[1], gmat_CRTBP))
 gmat_z = list(map(lambda x: x[2], gmat_CRTBP))
-
-# Convert position results to R frame from I frame
-posCRTBP_rot = frameConversion.inert2rotP(r_PEM_CRTBP, timesCRTBP_mjd, t_mjd)
-posEarthCRTBP_rot = frameConversion.inert2rotP(r_EarthEM_CRTBP, timesCRTBP_mjd, t_mjd)
-posMoonCRTBP_rot = frameConversion.inert2rotP(r_MoonEM_CRTBP, timesCRTBP_mjd, t_mjd)
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(posEarthCRTBP_rot[:, 0], posEarthCRTBP_rot[:, 1], posEarthCRTBP_rot[:, 2], color='green', label='Earth')
