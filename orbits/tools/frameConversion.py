@@ -4,7 +4,7 @@ import astropy.coordinates as coord
 from astropy.coordinates import GCRS, ICRS
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import sys
-sys.path.insert(1, '/Users/gracegenszler/Documents/Research/starlift/tools')
+sys.path.insert(1, 'tools')
 import unitConversion
 
 # From JPL Horizons
@@ -61,7 +61,7 @@ def rot(th, axis):
 
     return rot_th
     
-def body2geo(currentTime,equinox,mu_star):
+def body2geo(currentTime, equinox, mu_star):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame to the geocentric frame
     
@@ -79,8 +79,8 @@ def body2geo(currentTime,equinox,mu_star):
     """
     
     # define vector in G
-    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter',currentTime)[0].get_xyz()
-    tmp_rG = -icrs2gcrs(tmp,currentTime)
+    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()
+    tmp_rG = -icrs2gcrs(tmp, currentTime)
     tmp_x = unitConversion.convertPos_to_canonical(tmp_rG[0])
     tmp_y = unitConversion.convertPos_to_canonical(tmp_rG[1])
     tmp_z = unitConversion.convertPos_to_canonical(tmp_rG[2])
