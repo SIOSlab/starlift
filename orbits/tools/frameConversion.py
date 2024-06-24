@@ -55,7 +55,7 @@ def rot(th, axis):
             [
                 [np.cos(th), np.sin(th), 0.0],
                 [-np.sin(th), np.cos(th), 0.0],
-                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0]
             ]
         )
 
@@ -131,7 +131,7 @@ def body2rot(currentTime,equinox):
     dt = currentTime.value - equinox.value
     theta = unitConversion.convertTime_to_canonical(dt*u.d)
     
-    C_I2R = rot(theta,3)
+    C_I2R = rot(theta, 3)
     
     return C_I2R
         
