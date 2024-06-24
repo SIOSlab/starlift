@@ -67,7 +67,7 @@ def body2geo(currentTime, equinox, mu_star):
     
     Args:
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         r_earth_bary_B (float n array):
             Array of distance in perifocal frame
         mu_star (float):
@@ -119,7 +119,7 @@ def body2rot(currentTime,equinox):
     
     Args:
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         equinox (astropy Time array):
             Mission start time in MJD
 
@@ -143,7 +143,7 @@ def icrs2rot(pos,currentTime,equinox,mu_star):
         pos (float n array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         equinox (astropy Time array):
             Mission start time in MJD
         mu_star (float):
@@ -170,7 +170,7 @@ def gcrs2inert(pos,currentTime,equinox,mu_star):
         pos (float n array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         equinox (astropy Time array):
             Mission start time in MJD
         mu_star (float):
@@ -194,7 +194,7 @@ def inert2gcrs(pos,currentTime,equinox,mu_star):
         pos (float n array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         equinox (astropy Time array):
             Mission start time in MJD
         mu_star (float):
@@ -217,7 +217,7 @@ def inert2rotP(pos,currentTime,equinox):
         pos (float n array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         equinox (astropy Time array):
             Mission start time in MJD
 
@@ -238,7 +238,7 @@ def rot2inertP(pos,currentTime,equinox):
         pos (float n array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
         equinox (astropy Time array):
             Mission start time in MJD
 
@@ -261,7 +261,7 @@ def icrs2gcrs(pos,currentTime):
         pos (float n array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
 
 
     Returns:
@@ -284,7 +284,7 @@ def gcrs2icrs(pos,currentTime):
         pos (float n array):
             Position vector in GCRS (geocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
-            Current absolute mission time in MJD
+            Current mission time in MJD
 
 
     Returns:
