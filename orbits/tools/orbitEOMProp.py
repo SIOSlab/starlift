@@ -19,6 +19,7 @@ def CRTBP_EOM(t,w,mu_star):
             Time derivative of the state [velocity, acceleration]
 
     """
+    
     [x,y,z,vx,vy,vz] = w
     
     m1 = 1 - mu_star
@@ -129,11 +130,12 @@ def statePropCRTBP(freeVar,mu_star):
     Returns:
         tuple:
         states ~numpy.ndarray(float):
-            Positions and velocities in non dimensional units
+            Positions and velocities in AU and AU/d
         times ~numpy.ndarray(float):
-            Times in non dimensional units
+            Times in d
 
     """
+    
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
     T = freeVar[-1]
 
@@ -148,8 +150,8 @@ def statePropFF(state0,t_mjd):
     """Propagates the dynamics using the free variables
 
     Args:
-        state(~numpy.ndarray(float)):
-            Position in non dimensional units
+        state0 (~numpy.ndarray(float)):
+            x and z positions (AU), y velocity (AU/d), and orbit period (d)
         t_mjd (astropy Time array):
             Mission start time in MJD
 
@@ -157,11 +159,12 @@ def statePropFF(state0,t_mjd):
     Returns:
         tuple:
         states ~numpy.ndarray(float):
-            Positions and velocities in non dimensional units
+            Positions and velocities in AU and AU/d
         times ~numpy.ndarray(float):
-            Times in non dimensional units
+            Times in d
 
     """
+    
     T = state0[-1]
 
     sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA')
@@ -185,6 +188,7 @@ def CRTBP_EOM_R(t,w,mu_star):
             Time derivative of the state [velocity, acceleration]
 
     """
+    
     [x,y,z,vx,vy,vz] = w
     
     m1 = 1 - mu_star
@@ -236,6 +240,7 @@ def calcMonodromyMatrix(freeVar,mu_star,m1,m2):
             monodromy matrix
 
     """
+    
     x = freeVar[0]
     y = freeVar[1]
     z = freeVar[2]
@@ -318,6 +323,7 @@ def calcFx(freeVar,mu_star):
             constraint array
 
     """
+    
     s_T = stateProp(freeVar)
     state = s_T[-1]
 
@@ -337,6 +343,7 @@ def calcFx_R(freeVar, mu_star):
             constraint array
 
     """
+    
     s_T, times = stateProp_R(freeVar, mu_star)
     state = s_T[-1]
 
@@ -361,6 +368,7 @@ def stateProp_R(freeVar,mu_star):
             Times in non dimensional units
 
     """
+    
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
     T = freeVar[-1]
 
@@ -386,6 +394,7 @@ def fsolve_eqns(w,z,solp, mu_star):
             system of equations as a function of w
 
     """
+    
     Fx = calcFx_R(w, mu_star)
     zeq = z.T@(w-solp)
     sys_w = np.append(Fx,zeq)
@@ -416,6 +425,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
             Array of times in units of days
 
     """
+    
     pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
     
     C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
@@ -440,3 +450,9 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
     
     return pos_H, vel_H, Tp_dim
+    
+#def calcFx_FF():
+#    
+#    states, times = statePropFF(state0,t_mjd):
+#
+#    return Fx

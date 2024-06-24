@@ -70,13 +70,14 @@ def body2geo(currentTime,equinox,mu_star):
             Current absolute mission time in MJD
         r_earth_bary_B (float n array):
             Array of distance in perifocal frame
+        mu_star (float):
+            Non-dimensional mass parameter
 
     Returns:
         C_B2G (float n array):
             3x3 Array for the directional cosine matrix
     """
     
-        
     # define vector in G
     tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter',currentTime)[0].get_xyz()
     tmp_rG = -icrs2gcrs(tmp,currentTime)
@@ -113,6 +114,20 @@ def body2geo(currentTime,equinox,mu_star):
     return C_B2G
 
 def body2rot(currentTime,equinox):
+    """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
+    perifocal frame to the Earth-Moon CR3BP rotating frame
+    
+    Args:
+        currentTime (astropy Time array):
+            Current absolute mission time in MJD
+        equinox (astropy Time array):
+            Mission start time in MJD
+
+    Returns:
+        C_I2R (float n array):
+            3x3 Array for the directional cosine matrix
+    """
+    
     dt = currentTime.value - equinox.value
     theta = unitConversion.convertTime_to_canonical(dt*u.d)
     
@@ -122,6 +137,23 @@ def body2rot(currentTime,equinox):
         
 # position conversions
 def icrs2rot(pos,currentTime,equinox,mu_star):
+    """Convert position vector in ICRS coordinate frame to rotating coordinate frame
+    
+    Args:
+        pos (float n array):
+            Position vector in ICRS (heliocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current absolute mission time in MJD
+        equinox (astropy Time array):
+            Mission start time in MJD
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        r_rot (float n array):
+            Position vector in rotating frame in km
+    """
+    
     r_gcrs = icrs2gcrs(pos,currentTime)
     C_B2G = body2geo(currentTime,equinox,mu_star)
     C_G2B = C_B2G.T
@@ -131,27 +163,91 @@ def icrs2rot(pos,currentTime,equinox,mu_star):
     return r_rot
 
 
-def gcrs2inert(pos,currentTime,mu_star):
+def gcrs2inert(pos,currentTime,equinox,mu_star):
+    """Convert position vector in GCRS coordinate frame to inertial Earth-Moon CR3BP coordinate frame
+    
+    Args:
+        pos (float n array):
+            Position vector in ICRS (heliocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current absolute mission time in MJD
+        equinox (astropy Time array):
+            Mission start time in MJD
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        r_inert (float n array):
+            Position vector in the inertial Earth-Moon CR3BP frame in km
+    """
+    
     C_B2G = body2geo(currentTime,equinox,mu_star)
     C_G2B = C_B2G.T
     
     r_inert = C_G2B @ pos
     return r_inert
     
-def inert2gcrs(pos,currentTime,mu_star):
+def inert2gcrs(pos,currentTime,equinox,mu_star):
+    """Convert position vector in inertial Earth-Moon CR3BP coordinate frame to GCRS coordinate frame
+    
+    Args:
+        pos (float n array):
+            Position vector in ICRS (heliocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current absolute mission time in MJD
+        equinox (astropy Time array):
+            Mission start time in MJD
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        r_gcrs (float n array):
+            Position vector in the GCRS frame in km
+    """
+    
     C_B2G = body2geo(currentTime,equinox,mu_star)
     
     r_gcrs = C_G2B @ pos
     return r_gcrs
     
-def inert2rotP(pos,currentTime):
-    C_I2R = body2rot(currentTime)
+def inert2rotP(pos,currentTime,equinox):
+    """Convert position vector in inertial Earth-Moon CR3BP coordinate frame to rotating Earth-Moon CR3BP coordinate frame
+    
+    Args:
+        pos (float n array):
+            Position vector in ICRS (heliocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current absolute mission time in MJD
+        equinox (astropy Time array):
+            Mission start time in MJD
+
+    Returns:
+        r_rot (float n array):
+            Position vector in the rotating Earth-Moon CR3BP frame in km
+    """
+    
+    C_I2R = body2rot(currentTime,equinox)
     r_rot = C_I2R @ pos
     
     return r_rot
     
-def rot2inertP(pos,currentTime):
-    C_I2R = body2rot(currentTime)
+def rot2inertP(pos,currentTime,equinox):
+    """Convert position vector in rotating Earth-Moon CR3BP coordinate frame to inertial Earth-Moon CR3BP coordinate frame
+    
+    Args:
+        pos (float n array):
+            Position vector in ICRS (heliocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current absolute mission time in MJD
+        equinox (astropy Time array):
+            Mission start time in MJD
+
+    Returns:
+        r_inert (float n array):
+            Position vector in the rotating Earth-Moon CR3BP frame in km
+    """
+    
+    C_I2R = body2rot(currentTime,equinox)
     C_R2I = C_I2R.T
     
     r_inert = C_R2I @ pos
@@ -172,6 +268,7 @@ def icrs2gcrs(pos,currentTime):
         r_gcrs (float n array):
             Position vector in GCRS (geocentric) frame in km
     """
+    
     pos = pos.to('km')
     r_icrs = coord.SkyCoord(x = pos[0].value, y = pos[1].value, z = pos[2].value, unit='km', representation_type='cartesian', frame='icrs')
     r_gcrs = r_icrs.transform_to(GCRS(obstime=currentTime))    # this throws an EFRA warning re: leap seconds, but it's fine
@@ -217,6 +314,7 @@ def rot2inertV(rR, vR, t_norm):
         float nx3 array:
             Inertial frame velocity vectors
     """
+    
     if rR.shape[0] == 3 and len(rR.shape) == 1:
         At = rot(t_norm, 3).T
         drR = np.array([-rR[1], rR[0], 0])
@@ -244,6 +342,7 @@ def inert2rotV(rR, vI, t_norm):
         float nx3 array:
             Rotating frame velocity vectors
     """
+    
     if t_norm.size == 1:
         t_norm = np.array([t_norm])
     vR = np.zeros([len(t_norm), 3])
