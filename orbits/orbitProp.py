@@ -56,7 +56,7 @@ timesCRTBP_mjd = timesCRTBP + t_mjd
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
-# This for loop exists to plot the Earth and the Moon in the CRTBP model, but it takes a LONG time...
+# Obtain Moon and Earth positions for CRTBP
 for ii in np.arange(len(timesCRTBP)):
     time = timesCRTBP_mjd[ii]
 
@@ -66,17 +66,14 @@ for ii in np.arange(len(timesCRTBP)):
     r_EMO = EMO[0].get_xyz().to('AU').value
 
     # Convert from H frame to GCRS frame
-    # r_PG = frameConversion.icrs2gcrs(posCRTBP[ii] * u.AU, time)
     r_EMG = frameConversion.icrs2gcrs(r_EMO * u.AU, time)
     r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
 
     # Change the origin to the EM barycenter, G frame
-    # r_PEM = r_PG - r_EMG
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
 
     # Convert from G frame to I frame
-    # r_PEM_CRTBP[ii, :] = C_G2B @ r_PEM.to('AU')
     r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
     r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
     r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
@@ -85,41 +82,47 @@ for ii in np.arange(len(timesCRTBP)):
     r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
 
 
-# # ~~~~~PLOT SOLUTION AND GMAT IN THE ROTATING FRAME~~~~
-#
-# # Obtain CRTBP data from GMAT
-# file_name = "gmatFiles/ECEP.txt"
-# gmat_CRTBP = []
-# with open(file_name) as file:
-#     next(file)
-#     for line in file:
-#         row = line.split()
-#         row = [float(x) for x in row]
-#         gmat_CRTBP.append(row)
-#         # print(row)
-#
-# gmat_x = list(map(lambda x: x[0], gmat_CRTBP))
-# gmat_y = list(map(lambda x: x[1], gmat_CRTBP))
-# gmat_z = list(map(lambda x: x[2], gmat_CRTBP))
-#
-# # Convert position results to R frame from I frame
-# posCRTBP_rot = frameConversion.inert2rotP(r_PEM_CRTBP, timesCRTBP)
-# posEarthCRTBP_rot = frameConversion.inert2rotP(r_EarthEM_CRTBP, timesCRTBP)
-# posMoonCRTBP_rot = frameConversion.inert2rotP(r_MoonEM_CRTBP, timesCRTBP)
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(posEarthCRTBP_rot[:, 0], posEarthCRTBP_rot[:, 1], posEarthCRTBP_rot[:, 2], color='green', label='Earth')
-# ax.plot(posMoonCRTBP_rot[:, 0], posMoonCRTBP_rot[:, 1], posMoonCRTBP_rot[:, 2], color='gray', label='Moon')
-# ax.plot(posCRTBP_rot[:, 0], posCRTBP_rot[:, 1], posCRTBP_rot[:, 2], color='blue', label='Propagated CRTBP')
-# ax.plot(gmat_x, gmat_y, gmat_z, color='red', label='GMAT Orbit')
-# ax.set_xlabel('X [AU]')
-# ax.set_ylabel('Y [AU]')
-# ax.set_zlabel('Z [AU]')
-# plt.title('CRTBP in the Rotating Frame')
-# plt.legend()
-# plt.show()
-#
-# breakpoint()
+# ~~~~~PLOT SOLUTION AND GMAT IN THE ROTATING FRAME~~~~
+
+# print(type(t_mjd))
+# print(t_mjd)
+# print(type(timesCRTBP))
+# print(timesCRTBP)
+# print(timesCRTBP_mjd)
+# print(type(timesCRTBP_mjd))
+
+# Obtain CRTBP data from GMAT
+file_name = "gmatFiles/ECEP.txt"
+gmat_CRTBP = []
+with open(file_name) as file:
+    next(file)
+    for line in file:
+        row = line.split()
+        row = [float(x) for x in row]
+        gmat_CRTBP.append(row)
+
+gmat_x = list(map(lambda x: x[0], gmat_CRTBP))
+gmat_y = list(map(lambda x: x[1], gmat_CRTBP))
+gmat_z = list(map(lambda x: x[2], gmat_CRTBP))
+
+# Convert position results to R frame from I frame
+posCRTBP_rot = frameConversion.inert2rotP(r_PEM_CRTBP, timesCRTBP_mjd, t_mjd)
+posEarthCRTBP_rot = frameConversion.inert2rotP(r_EarthEM_CRTBP, timesCRTBP_mjd, t_mjd)
+posMoonCRTBP_rot = frameConversion.inert2rotP(r_MoonEM_CRTBP, timesCRTBP_mjd, t_mjd)
+
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(posEarthCRTBP_rot[:, 0], posEarthCRTBP_rot[:, 1], posEarthCRTBP_rot[:, 2], color='green', label='Earth')
+ax.plot(posMoonCRTBP_rot[:, 0], posMoonCRTBP_rot[:, 1], posMoonCRTBP_rot[:, 2], color='gray', label='Moon')
+ax.plot(posCRTBP_rot[:, 0], posCRTBP_rot[:, 1], posCRTBP_rot[:, 2], color='blue', label='Propagated CRTBP')
+ax.plot(gmat_x, gmat_y, gmat_z, color='red', label='GMAT Orbit')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+plt.title('CRTBP in the Rotating Frame')
+plt.legend()
+plt.show()
+
+breakpoint()
 
 # ~~~~~
 
@@ -143,78 +146,78 @@ r_MoonEM_r = np.zeros([len(timesFF), 3])
 # sim time in mjd
 timesFF_mjd = timesFF + t_mjd
 
-# for ii in np.arange(len(timesFF)):
-#     time = timesFF_mjd[ii]
-#
-#     # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
-#     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU').value
-#     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
-#     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
-#     r_EMO = EMO[0].get_xyz().to('AU').value
-#
-#     # Convert from H frame to GCRS frame
-#     r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
-#     r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU, time)
-#     r_SunG = frameConversion.icrs2gcrs(r_SunO*u.AU, time)
-#     r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU, time)
-#
-#     # Change the origin to the EM barycenter, G frame
-#     r_PEM = r_PG - r_EMG
-#     r_SunEM = r_SunG - r_EMG
-#     r_EarthEM = -r_EMG
-#     r_MoonEM = r_MoonG - r_EMG
-#
-#     # Convert from G frame to I frame
-#     r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
-#     r_SunEM_r[ii, :] = C_G2B@r_SunEM.to('AU')
-#     r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
-#     r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
+for ii in np.arange(len(timesFF)):
+    time = timesFF_mjd[ii]
+
+    # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU').value
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
+    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
+    r_EMO = EMO[0].get_xyz().to('AU').value
+
+    # Convert from H frame to GCRS frame
+    r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
+    r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU, time)
+    r_SunG = frameConversion.icrs2gcrs(r_SunO*u.AU, time)
+    r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU, time)
+
+    # Change the origin to the EM barycenter, G frame
+    r_PEM = r_PG - r_EMG
+    r_SunEM = r_SunG - r_EMG
+    r_EarthEM = -r_EMG
+    r_MoonEM = r_MoonG - r_EMG
+
+    # Convert from G frame to I frame
+    r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
+    r_SunEM_r[ii, :] = C_G2B@r_SunEM.to('AU')
+    r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
+    r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
 
 
 # ~~~~~PLOT~~~~~
 
-# Animate the CRTBP model
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-
-# Collect animation data for CRTBP
-N_CRTBP = len(r_PEM_CRTBP[:, 0])  # number of frames in animation
-P_CRTBP = 50  # number of points plotted per frame
-
-data_CRTBP = np.array([r_PEM_CRTBP[:, 0], r_PEM_CRTBP[:, 1], r_PEM_CRTBP[:, 2]])
-data_Earth = np.array([r_EarthEM_CRTBP[:, 0], r_EarthEM_CRTBP[:, 1], r_EarthEM_CRTBP[:, 2]])
-data_Moon = np.array([r_MoonEM_CRTBP[:, 0], r_MoonEM_CRTBP[:, 1], r_MoonEM_CRTBP[:, 2]])
-
-# Initialize the first point for each body
-line_CRTBP, = ax.plot(data_CRTBP[0, 0:1], data_CRTBP[1, 0:1], data_CRTBP[2, 0:1], color='blue', label='Orbit')
-line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1], color='green', label='Earth')
-line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
-
-
-def animate_CRTBP(i):
-    line_CRTBP.set_data(data_CRTBP[0, :i*P_CRTBP], data_CRTBP[1, :i*P_CRTBP])  # Set the x and y positions
-    line_CRTBP.set_3d_properties(data_CRTBP[2, :i*P_CRTBP])  # Set the z position
-    line_Earth.set_data(data_Earth[0, :i*P_CRTBP], data_Earth[1, :i*P_CRTBP])
-    line_Earth.set_3d_properties(data_Earth[2, :i * P_CRTBP])
-    line_Moon.set_data(data_Moon[0, :i*P_CRTBP], data_Moon[1, :i*P_CRTBP])
-    line_Moon.set_3d_properties(data_Moon[2, :i * P_CRTBP])
-
-
-ani_CRTBP = animation.FuncAnimation(fig, animate_CRTBP, frames=N_CRTBP//P_CRTBP, interval=1, repeat=False)
-
-# Set axes limits
-ax.set_xlim3d(min(data_CRTBP[0]), max(data_CRTBP[0]))
-ax.set_ylim3d(min(data_CRTBP[1]), max(data_CRTBP[1]))
-ax.set_zlim3d(min(data_CRTBP[2]), max(data_CRTBP[2]))
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
-
-# Set labels
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
-plt.title('CRTBP model in the I frame')
+# # Animate the CRTBP model
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+#
+# # Collect animation data for CRTBP
+# N_CRTBP = len(r_PEM_CRTBP[:, 0])  # number of frames in animation
+# P_CRTBP = 50  # number of points plotted per frame
+#
+# data_CRTBP = np.array([r_PEM_CRTBP[:, 0], r_PEM_CRTBP[:, 1], r_PEM_CRTBP[:, 2]])
+# data_Earth = np.array([r_EarthEM_CRTBP[:, 0], r_EarthEM_CRTBP[:, 1], r_EarthEM_CRTBP[:, 2]])
+# data_Moon = np.array([r_MoonEM_CRTBP[:, 0], r_MoonEM_CRTBP[:, 1], r_MoonEM_CRTBP[:, 2]])
+#
+# # Initialize the first point for each body
+# line_CRTBP, = ax.plot(data_CRTBP[0, 0:1], data_CRTBP[1, 0:1], data_CRTBP[2, 0:1], color='blue', label='Orbit')
+# line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1], color='green', label='Earth')
+# line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
+#
+#
+# def animate_CRTBP(i):
+#     line_CRTBP.set_data(data_CRTBP[0, :i*P_CRTBP], data_CRTBP[1, :i*P_CRTBP])  # Set the x and y positions
+#     line_CRTBP.set_3d_properties(data_CRTBP[2, :i*P_CRTBP])  # Set the z position
+#     line_Earth.set_data(data_Earth[0, :i*P_CRTBP], data_Earth[1, :i*P_CRTBP])
+#     line_Earth.set_3d_properties(data_Earth[2, :i * P_CRTBP])
+#     line_Moon.set_data(data_Moon[0, :i*P_CRTBP], data_Moon[1, :i*P_CRTBP])
+#     line_Moon.set_3d_properties(data_Moon[2, :i * P_CRTBP])
+#
+#
+# ani_CRTBP = animation.FuncAnimation(fig, animate_CRTBP, frames=N_CRTBP//P_CRTBP, interval=1, repeat=False)
+#
+# # Set axes limits
+# ax.set_xlim3d(min(data_CRTBP[0]), max(data_CRTBP[0]))
+# ax.set_ylim3d(min(data_CRTBP[1]), max(data_CRTBP[1]))
+# ax.set_zlim3d(min(data_CRTBP[2]), max(data_CRTBP[2]))
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+#
+# # Set labels
+# ax.set_xlabel('X [AU]')
+# ax.set_ylabel('Y [AU]')
+# ax.set_zlabel('Z [AU]')
+# plt.legend()
+# plt.title('CRTBP model in the I frame')
 
 
 # Animate the full force model
