@@ -295,7 +295,7 @@ def gcrs2icrs(pos, currentTime):
     r_gcrs = coord.SkyCoord(x = pos[0].value, y = pos[1].value, z = pos[2].value, unit='km', representation_type='cartesian', frame='gcrs', obstime=currentTime)
     r_icrs = r_gcrs.transform_to(ICRS())    # this throws an EFRA warning re: leap seconds, but it's fine
     r_icrs = r_icrs.cartesian.get_xyz()
-    breakpoint()
+
     return r_icrs
 
 

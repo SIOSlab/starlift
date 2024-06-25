@@ -88,7 +88,6 @@ C_G2B = C_B2G.T
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_R2H(posCRTBP[0], velCRTBP[0], t_mjd, timesCRTBP[-1], mu_star)
 
-breakpoint()
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)   # Tp_dim.value
 

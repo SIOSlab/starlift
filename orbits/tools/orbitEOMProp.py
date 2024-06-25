@@ -449,7 +449,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     vel_H = velEMB + v_dim
     
     Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
-    breakpoint()
+
     return pos_H, vel_H, Tp_dim
     
 #def calcFx_FF():
