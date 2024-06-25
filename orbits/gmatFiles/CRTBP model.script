@@ -69,6 +69,7 @@ GMAT DefaultSC.EulerAngleSequence = '321';
 
 
 
+
 %----------------------------------------
 %---------- ForceModels
 %----------------------------------------
@@ -124,9 +125,9 @@ GMAT EMInert.Axes = MJ2000Eq;
 Create OrbitView DefaultOrbitView;
 GMAT DefaultOrbitView.SolverIterations = Current;
 GMAT DefaultOrbitView.UpperLeft = [ 0 0 ];
-GMAT DefaultOrbitView.Size = [ 0.8376741368867353 0.84765625 ];
-GMAT DefaultOrbitView.RelativeZOrder = 163;
-GMAT DefaultOrbitView.Maximized = false;
+GMAT DefaultOrbitView.Size = [ 0.8376470588235294 1.036529680365297 ];
+GMAT DefaultOrbitView.RelativeZOrder = 108;
+GMAT DefaultOrbitView.Maximized = true;
 GMAT DefaultOrbitView.Add = {DefaultSC, Earth, Luna};
 GMAT DefaultOrbitView.CoordinateSystem = EMInert;
 GMAT DefaultOrbitView.DrawObject = [ true true true ];
@@ -136,7 +137,7 @@ GMAT DefaultOrbitView.NumPointsToRedraw = 0;
 GMAT DefaultOrbitView.ShowPlot = true;
 GMAT DefaultOrbitView.MaxPlotPoints = 20000;
 GMAT DefaultOrbitView.ShowLabels = true;
-GMAT DefaultOrbitView.ViewPointReference = Earth;
+GMAT DefaultOrbitView.ViewPointReference = EarthMoonBarycenter;
 GMAT DefaultOrbitView.ViewPointVector = [ 0 0 500000 ];
 GMAT DefaultOrbitView.ViewDirection = Earth;
 GMAT DefaultOrbitView.ViewScaleFactor = 1;
@@ -155,13 +156,13 @@ GMAT DefaultOrbitView.EnableConstellations = On;
 
 Create ReportFile ECEP;
 GMAT ECEP.SolverIterations = Current;
-GMAT ECEP.UpperLeft = [ 0.03755299818291944 0.078125 ];
-GMAT ECEP.Size = [ 0.5984251968503937 0.7955729166666666 ];
-GMAT ECEP.RelativeZOrder = 109;
-GMAT ECEP.Maximized = false;
+GMAT ECEP.UpperLeft = [ 0.2811764705882353 0.0578386605783866 ];
+GMAT ECEP.Size = [ 0.5958823529411764 0.7884322678843226 ];
+GMAT ECEP.RelativeZOrder = 99;
+GMAT ECEP.Maximized = true;
 GMAT ECEP.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\ECEP.txt';
 GMAT ECEP.Precision = 16;
-GMAT ECEP.Add = {DefaultSC.EMBaryRot.X, DefaultSC.EMBaryRot.Y, DefaultSC.EMBaryRot.Z};
+GMAT ECEP.Add = {DefaultSC.EMBaryRot.X, DefaultSC.EMBaryRot.Y, DefaultSC.EMBaryRot.Z, DefaultSC.UTCModJulian};
 GMAT ECEP.WriteHeaders = false;
 GMAT ECEP.LeftJustify = On;
 GMAT ECEP.ZeroFill = Off;
