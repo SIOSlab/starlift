@@ -179,6 +179,7 @@ for ii in np.arange(len(timesFF)):
 
 
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
+# NEEDS FIXING
 
 # Obtain FF data from GMAT
 file_name = "gmatFiles/FF_ECNP.txt"
@@ -218,6 +219,11 @@ ax.plot(gmat_posinertFF[:, 0], gmat_posinertFF[:, 1], gmat_posinertFF[:, 2], col
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
+ax.set_xlim3d(min(r_PEM_r[:, 0]), max(r_PEM_r[:, 0]))
+ax.set_ylim3d(min(r_PEM_r[:, 1]), max(r_PEM_r[:, 1]))
+ax.set_zlim3d(min(r_PEM_r[:, 2]), max(r_PEM_r[:, 2]))
+ax.set_box_aspect([1.0, 1.0, 1.0])
+plot_tools.set_axes_equal(ax)
 plt.title('FF Model in the Inertial (I) Frame')
 plt.legend()
 plt.show()
