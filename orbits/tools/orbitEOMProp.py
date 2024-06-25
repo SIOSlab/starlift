@@ -401,8 +401,9 @@ def fsolve_eqns(w,z,solp, mu_star):
 
     return sys_w
 
+
 def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
-    """Propagates the dynamics using the free variables
+    """Converts initial conditions from the I frame to the H frame
 
     Args:
         pos_R (float n array):
@@ -437,9 +438,9 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
     posEMB_E = posE - posEMB
     
-    posEMB_E = (frameConversion.icrs2gcrs(posEMB_E,t_mjd)).to('AU')
+    posEMB_E = (frameConversion.icrs2gcrs(posEMB_E, t_mjd)).to('AU')
 
-    pos_GCRS = pos_G + posEMB_E
+    pos_GCRS = pos_G + posEMB_E  # G frame
     
     pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
     
