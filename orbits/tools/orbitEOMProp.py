@@ -436,11 +436,11 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     posEMB = state_EMB[0].get_xyz().to('AU')
     velEMB = state_EMB[1].get_xyz().to('AU/day')
     posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
-    posEMB_E = posE - posEMB
+    posE_EM = posE - posEMB
     
-    posEMB_E = (frameConversion.icrs2gcrs(posEMB_E, t_mjd)).to('AU')
+    posEMB_E = (frameConversion.icrs2gcrs(posE_EM, t_mjd)).to('AU')
 
-    pos_GCRS = pos_G + posEMB_E  # G frame
+    pos_GCRS = pos_G - posE_EM  # G frame
     
     pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
     
@@ -449,7 +449,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     vel_H = velEMB + v_dim
     
     Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
-    
+    breakpoint()
     return pos_H, vel_H, Tp_dim
     
 #def calcFx_FF():
