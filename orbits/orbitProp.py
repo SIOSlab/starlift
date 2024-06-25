@@ -138,7 +138,7 @@ for ii in np.arange(len(timesFF)):
 # # ~~~~~PLOT CRTBP SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 #
 # # Obtain CRTBP data from GMAT
-# file_name = "gmatFiles/ECEP.txt"
+# file_name = "gmatFiles/CRTBP_ECEP.txt"
 # gmat_CRTBP = []
 # with open(file_name) as file:
 #     next(file)
@@ -178,7 +178,53 @@ for ii in np.arange(len(timesFF)):
 # plt.legend()
 # plt.show()
 
-# ~~~~~ANIMATE~~~~~
+
+# ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
+
+# Obtain FF data from GMAT
+file_name = "gmatFiles/FF_ECNP.txt"
+gmat_FF = []
+with open(file_name) as file:
+    next(file)
+    for line in file:
+        row = line.split()
+        row = [float(x) for x in row]
+        gmat_FF.append(row)
+
+gmat_x_kmFF = list(map(lambda x: x[0], gmat_FF)) * u.km
+gmat_y_kmFF = list(map(lambda x: x[1], gmat_FF)) * u.km
+gmat_z_kmFF = list(map(lambda x: x[2], gmat_FF)) * u.km
+gmat_timeFF = Time(list(map(lambda x: x[3], gmat_FF)), format='mjd', scale='utc')
+
+# Convert to AU and put in a single matrix
+gmat_xrotFF = gmat_x_kmFF.to(u.AU)
+gmat_yrotFF = gmat_y_kmFF.to(u.AU)
+gmat_zrotFF = gmat_z_kmFF.to(u.AU)
+gmat_posrotFF = np.array([gmat_xrotFF.value, gmat_yrotFF.value, gmat_zrotFF.value]).T
+
+# Preallocate space
+gmat_posinertFF = np.zeros([len(gmat_timeFF), 3])
+
+# Convert to I frame from R frame
+for ii in np.arange(len(gmat_timeFF)):
+    gmat_posinertFF[ii, :] = frameConversion.rot2inertP(gmat_posrotFF[ii, :], gmat_timeFF[ii], t_mjd)
+
+# Plot
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
+ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
+ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
+ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
+ax.plot(gmat_posinertFF[:, 0], gmat_posinertFF[:, 1], gmat_posinertFF[:, 2], color='red', label='GMAT Orbit')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+plt.title('FF Model in the Inertial (I) Frame')
+plt.legend()
+plt.show()
+
+
+# ~~~~~ANIMATIONS~~~~~
 
 # # Animate the CRTBP model
 # fig = plt.figure()
@@ -270,6 +316,7 @@ for ii in np.arange(len(timesFF)):
 # plt.legend()
 # plt.title('Full force model in the I frame')
 
+# ~~~~~ NORMAL PLOTS~~~~~
 
 # # Plot CRTBP and FF solutions
 # ax = plt.figure().add_subplot(projection='3d')
@@ -284,17 +331,17 @@ for ii in np.arange(len(timesFF)):
 # plt.legend()
 #
 #
-# Plot the bodies and the FF solution
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], 'g', label='Earth')
-ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], 'r', label='Moon')
-ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], 'y', label='Sun')
-ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Full Force')
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
+# # Plot the bodies and the FF solution
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], 'g', label='Earth')
+# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], 'r', label='Moon')
+# ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], 'y', label='Sun')
+# ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Full Force')
+# ax.set_xlabel('X [AU]')
+# ax.set_ylabel('Y [AU]')
+# ax.set_zlabel('Z [AU]')
+# plt.legend()
 
 plt.show()
-breakpoint()
+# breakpoint()
 
