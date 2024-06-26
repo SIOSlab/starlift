@@ -24,7 +24,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
-days = 30
+days = 300
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -55,29 +55,29 @@ timesCRTBP_mjd = timesCRTBP + t_mjd
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
-# Obtain Moon and Earth positions for CRTBP
-for ii in np.arange(len(timesCRTBP)):
-    time = timesCRTBP_mjd[ii]
-
-    # Positions of the Moon and EM barycenter relative SS barycenter in H frame
-    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
-    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
-    r_EMO = EMO[0].get_xyz().to('AU').value
-
-    # Convert from H frame to GCRS frame
-    r_EMG = frameConversion.icrs2gcrs(r_EMO * u.AU, time)
-    r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
-
-    # Change the origin to the EM barycenter, G frame
-    r_EarthEM = -r_EMG
-    r_MoonEM = r_MoonG - r_EMG
-
-    # Convert from G frame to I frame
-    r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
-    r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
-
-    # Convert to AU
-    r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
+# # Obtain Moon and Earth positions for CRTBP
+# for ii in np.arange(len(timesCRTBP)):
+#     time = timesCRTBP_mjd[ii]
+#
+#     # Positions of the Moon and EM barycenter relative SS barycenter in H frame
+#     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
+#     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
+#     r_EMO = EMO[0].get_xyz().to('AU').value
+#
+#     # Convert from H frame to GCRS frame
+#     r_EMG = frameConversion.icrs2gcrs(r_EMO * u.AU, time)
+#     r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
+#
+#     # Change the origin to the EM barycenter, G frame
+#     r_EarthEM = -r_EMG
+#     r_MoonEM = r_MoonG - r_EMG
+#
+#     # Convert from G frame to I frame
+#     r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
+#     r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
+#
+#     # Convert to AU
+#     r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
 
 
 # Convert position from I frame to H frame [AU]
@@ -129,106 +129,106 @@ for ii in np.arange(len(timesFF)):
     r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
 
 
-# ~~~~~PLOT CRTBP SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
-
-# Obtain CRTBP data from GMAT
-file_name = "gmatFiles/CRTBP_ECEP.txt"
-gmat_CRTBP = []
-with open(file_name) as file:
-    next(file)
-    for line in file:
-        row = line.split()
-        row = [float(x) for x in row]
-        gmat_CRTBP.append(row)
-
-gmat_x_km = list(map(lambda x: x[0], gmat_CRTBP)) * u.km
-gmat_y_km = list(map(lambda x: x[1], gmat_CRTBP)) * u.km
-gmat_z_km = list(map(lambda x: x[2], gmat_CRTBP)) * u.km
-gmat_time = Time(list(map(lambda x: x[3], gmat_CRTBP)), format='mjd', scale='utc')
-
-# Convert to AU and put in a single matrix
-gmat_xrot = gmat_x_km.to(u.AU)
-gmat_yrot = gmat_y_km.to(u.AU)
-gmat_zrot = gmat_z_km.to(u.AU)
-gmat_posrot = np.array([gmat_xrot.value, gmat_yrot.value, gmat_zrot.value]).T
-
-# Preallocate space
-gmat_posinert = np.zeros([len(gmat_time), 3])
-
-# Convert to I frame from R frame
-for ii in np.arange(len(gmat_time)):
-    gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], gmat_time[0])
-
-# Plot
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_PEM_CRTBP[:, 0], r_PEM_CRTBP[:, 1], r_PEM_CRTBP[:, 2], color='blue', label='Propagated CRTBP')
-ax.plot(r_EarthEM_CRTBP[:, 0], r_EarthEM_CRTBP[:, 1], r_EarthEM_CRTBP[:, 2], color='green', label='Earth')
-ax.plot(r_MoonEM_CRTBP[:, 0], r_MoonEM_CRTBP[:, 1], r_MoonEM_CRTBP[:, 2], color='gray', label='Moon')
-ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.title('CRTBP in the Inertial (I) Frame')
-plt.legend()
-plt.show()
-
-
-# # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
-# # NEEDS FIXING
+# # ~~~~~PLOT CRTBP SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 #
-# # Obtain FF data from GMAT
-# file_name = "gmatFiles/FF_ECNP.txt"
-# gmat_FF = []
+# # Obtain CRTBP data from GMAT
+# file_name = "gmatFiles/CRTBP_ECEP.txt"
+# gmat_CRTBP = []
 # with open(file_name) as file:
 #     next(file)
 #     for line in file:
 #         row = line.split()
 #         row = [float(x) for x in row]
-#         gmat_FF.append(row)
+#         gmat_CRTBP.append(row)
 #
-# gmat_x_kmFF = list(map(lambda x: x[0], gmat_FF)) * u.km
-# gmat_y_kmFF = list(map(lambda x: x[1], gmat_FF)) * u.km
-# gmat_z_kmFF = list(map(lambda x: x[2], gmat_FF)) * u.km
-# gmat_timeFF = Time(list(map(lambda x: x[3], gmat_FF)), format='mjd', scale='utc')
-#
-# # # Plot rotating frame (to check)
-# # ax = plt.figure().add_subplot(projection='3d')
-# # ax.plot(gmat_x_kmFF, gmat_y_kmFF, gmat_z_kmFF, color='red', label='GMAT Orbit')
-# # ax.set_box_aspect([1.0, 1.0, 1.0])
-# # plot_tools.set_axes_equal(ax)
+# gmat_x_km = list(map(lambda x: x[0], gmat_CRTBP)) * u.km
+# gmat_y_km = list(map(lambda x: x[1], gmat_CRTBP)) * u.km
+# gmat_z_km = list(map(lambda x: x[2], gmat_CRTBP)) * u.km
+# gmat_time = Time(list(map(lambda x: x[3], gmat_CRTBP)), format='mjd', scale='utc')
 #
 # # Convert to AU and put in a single matrix
-# gmat_xrotFF = gmat_x_kmFF.to(u.AU)
-# gmat_yrotFF = gmat_y_kmFF.to(u.AU)
-# gmat_zrotFF = gmat_z_kmFF.to(u.AU)
-#
-# gmat_posrotFF = np.array([gmat_xrotFF.value, gmat_yrotFF.value, gmat_zrotFF.value]).T
+# gmat_xrot = gmat_x_km.to(u.AU)
+# gmat_yrot = gmat_y_km.to(u.AU)
+# gmat_zrot = gmat_z_km.to(u.AU)
+# gmat_posrot = np.array([gmat_xrot.value, gmat_yrot.value, gmat_zrot.value]).T
 #
 # # Preallocate space
-# gmat_posinertFF = np.zeros([len(gmat_timeFF), 3])
+# gmat_posinert = np.zeros([len(gmat_time), 3])
 #
 # # Convert to I frame from R frame
-# for ii in np.arange(len(gmat_timeFF)):
-#     gmat_posinertFF[ii, :] = frameConversion.rot2inertP(gmat_posrotFF[ii, :], gmat_timeFF[ii], gmat_timeFF[0])
+# for ii in np.arange(len(gmat_time)):
+#     gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], gmat_time[0])
 #
 # # Plot
 # ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
-# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
-# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
-# ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
-# ax.plot(gmat_posinertFF[:, 0], gmat_posinertFF[:, 1], gmat_posinertFF[:, 2], color='red', label='GMAT Orbit')
+# ax.plot(r_PEM_CRTBP[:, 0], r_PEM_CRTBP[:, 1], r_PEM_CRTBP[:, 2], color='blue', label='Propagated CRTBP')
+# ax.plot(r_EarthEM_CRTBP[:, 0], r_EarthEM_CRTBP[:, 1], r_EarthEM_CRTBP[:, 2], color='green', label='Earth')
+# ax.plot(r_MoonEM_CRTBP[:, 0], r_MoonEM_CRTBP[:, 1], r_MoonEM_CRTBP[:, 2], color='gray', label='Moon')
+# ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
 # ax.set_xlabel('X [AU]')
 # ax.set_ylabel('Y [AU]')
 # ax.set_zlabel('Z [AU]')
-# ax.set_xlim3d(min(r_PEM_r[:, 0]), max(r_PEM_r[:, 0]))
-# ax.set_ylim3d(min(r_PEM_r[:, 1]), max(r_PEM_r[:, 1]))
-# ax.set_zlim3d(min(r_PEM_r[:, 2]), max(r_PEM_r[:, 2]))
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-# plt.title('FF Model in the Inertial (I) Frame')
+# plt.title('CRTBP in the Inertial (I) Frame')
 # plt.legend()
 # plt.show()
+
+
+# ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
+# NEEDS FIXING
+
+# Obtain FF data from GMAT
+file_name = "gmatFiles/FF_ECNP.txt"
+gmat_FF = []
+with open(file_name) as file:
+    next(file)
+    for line in file:
+        row = line.split()
+        row = [float(x) for x in row]
+        gmat_FF.append(row)
+
+gmat_x_kmFF = list(map(lambda x: x[0], gmat_FF)) * u.km
+gmat_y_kmFF = list(map(lambda x: x[1], gmat_FF)) * u.km
+gmat_z_kmFF = list(map(lambda x: x[2], gmat_FF)) * u.km
+gmat_timeFF = Time(list(map(lambda x: x[3], gmat_FF)), format='mjd', scale='utc')
+
+# # Plot rotating frame (to check)
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(gmat_x_kmFF, gmat_y_kmFF, gmat_z_kmFF, color='red', label='GMAT Orbit')
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+
+# Convert to AU and put in a single matrix
+gmat_xrotFF = gmat_x_kmFF.to(u.AU)
+gmat_yrotFF = gmat_y_kmFF.to(u.AU)
+gmat_zrotFF = gmat_z_kmFF.to(u.AU)
+
+gmat_posrotFF = np.array([gmat_xrotFF.value, gmat_yrotFF.value, gmat_zrotFF.value]).T
+
+# Preallocate space
+gmat_posinertFF = np.zeros([len(gmat_timeFF), 3])
+
+# Convert to I frame from R frame
+for ii in np.arange(len(gmat_timeFF)):
+    gmat_posinertFF[ii, :] = frameConversion.rot2inertP(gmat_posrotFF[ii, :], gmat_timeFF[ii], gmat_timeFF[0])
+
+# Plot
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
+ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
+ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
+ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
+ax.plot(gmat_posinertFF[:, 0], gmat_posinertFF[:, 1], gmat_posinertFF[:, 2], color='red', label='GMAT Orbit')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+ax.set_xlim3d(min(r_PEM_r[:, 0]), max(r_PEM_r[:, 0]))
+ax.set_ylim3d(min(r_PEM_r[:, 1]), max(r_PEM_r[:, 1]))
+ax.set_zlim3d(min(r_PEM_r[:, 2]), max(r_PEM_r[:, 2]))
+ax.set_box_aspect([1.0, 1.0, 1.0])
+plot_tools.set_axes_equal(ax)
+plt.title('FF Model in the Inertial (I) Frame')
+plt.legend()
+plt.show()
 
 
 # ~~~~~ANIMATIONS~~~~~
