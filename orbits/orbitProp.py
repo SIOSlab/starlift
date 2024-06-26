@@ -11,11 +11,6 @@ import astropy.units as u
 import astropy.constants as const
 from matplotlib import pyplot as plt
 from matplotlib import animation
-#sys.path.insert(1, 'tools')
-#import unitConversion
-#import frameConversion
-#import orbitEOMProp
-#import plot_tools
 import tools.unitConversion as unitConversion
 import tools.frameConversion as frameConversion
 import tools.orbitEOMProp as orbitEOMProp
