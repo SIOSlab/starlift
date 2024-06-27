@@ -452,8 +452,19 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
 
     return pos_H, vel_H, Tp_dim
     
-#def calcFx_FF():
-#    
-#    states, times = statePropFF(state0,t_mjd):
-#
-#    return Fx
+def calcFx_FF(X,taus,N,t_mjd,X0):
+    
+    ctr = 0
+    Fx = np.zeros((1,6*(N-1))
+    for ii in np.arange(N-1):
+        IC = X[ctr*7:((ctr+1)*7)]
+        tau = taus[ctr]
+        const = X0[ctr*6:((ctr+1)*6)]
+        
+        states, times = statePropFF(IC,tau)
+        
+        Fx[ctr*6:(ctr+1)*6] = states[-1,:] - const
+        
+        ctr = ctr + 1
+    
+    return Fx
