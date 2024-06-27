@@ -11,11 +11,6 @@ import astropy.units as u
 import astropy.constants as const
 from matplotlib import pyplot as plt
 from matplotlib import animation
-#sys.path.insert(1, 'tools')
-#import unitConversion
-#import frameConversion
-#import orbitEOMProp
-#import plot_tools
 import tools.unitConversion as unitConversion
 import tools.frameConversion as frameConversion
 import tools.orbitEOMProp as orbitEOMProp
@@ -29,7 +24,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
-days = 200
+days = 300
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -162,7 +157,7 @@ for ii in np.arange(len(timesFF)):
 #
 # # Convert to I frame from R frame
 # for ii in np.arange(len(gmat_time)):
-#     gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], t_mjd)
+#     gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], gmat_time[0])
 #
 # # Plot
 # ax = plt.figure().add_subplot(projection='3d')
@@ -179,6 +174,7 @@ for ii in np.arange(len(timesFF)):
 
 
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
+# NEEDS FIXING
 
 # Obtain FF data from GMAT
 file_name = "gmatFiles/FF_ECNP.txt"
@@ -195,10 +191,17 @@ gmat_y_kmFF = list(map(lambda x: x[1], gmat_FF)) * u.km
 gmat_z_kmFF = list(map(lambda x: x[2], gmat_FF)) * u.km
 gmat_timeFF = Time(list(map(lambda x: x[3], gmat_FF)), format='mjd', scale='utc')
 
+# # Plot rotating frame (to check)
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(gmat_x_kmFF, gmat_y_kmFF, gmat_z_kmFF, color='red', label='GMAT Orbit')
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+
 # Convert to AU and put in a single matrix
 gmat_xrotFF = gmat_x_kmFF.to(u.AU)
 gmat_yrotFF = gmat_y_kmFF.to(u.AU)
 gmat_zrotFF = gmat_z_kmFF.to(u.AU)
+
 gmat_posrotFF = np.array([gmat_xrotFF.value, gmat_yrotFF.value, gmat_zrotFF.value]).T
 
 # Preallocate space
@@ -206,7 +209,7 @@ gmat_posinertFF = np.zeros([len(gmat_timeFF), 3])
 
 # Convert to I frame from R frame
 for ii in np.arange(len(gmat_timeFF)):
-    gmat_posinertFF[ii, :] = frameConversion.rot2inertP(gmat_posrotFF[ii, :], gmat_timeFF[ii], t_mjd)
+    gmat_posinertFF[ii, :] = frameConversion.rot2inertP(gmat_posrotFF[ii, :], gmat_timeFF[ii], gmat_timeFF[0])
 
 # Plot
 ax = plt.figure().add_subplot(projection='3d')
@@ -218,6 +221,11 @@ ax.plot(gmat_posinertFF[:, 0], gmat_posinertFF[:, 1], gmat_posinertFF[:, 2], col
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
+ax.set_xlim3d(min(r_PEM_r[:, 0]), max(r_PEM_r[:, 0]))
+ax.set_ylim3d(min(r_PEM_r[:, 1]), max(r_PEM_r[:, 1]))
+ax.set_zlim3d(min(r_PEM_r[:, 2]), max(r_PEM_r[:, 2]))
+ax.set_box_aspect([1.0, 1.0, 1.0])
+plot_tools.set_axes_equal(ax)
 plt.title('FF Model in the Inertial (I) Frame')
 plt.legend()
 plt.show()
