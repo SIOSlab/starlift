@@ -30,7 +30,7 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-# Initial condition in non dimensional units in rotating frame R [pos, vel]
+# Initial condition in non dimensional units in rotating frame R [pos, vel, T/2]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.681604840704215]
 
 # Convert the velocity to inertial from R
@@ -50,7 +50,8 @@ r_EarthEM_r = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_r = np.zeros([len(timesCRTBP), 3])
 
 # Sim time in mjd
-timesCRTBP_mjd = timesCRTBP + t_mjd
+times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
+timesCRTBP_mjd = times_dim + t_mjd
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
@@ -59,7 +60,7 @@ C_G2B = C_B2G.T
 for ii in np.arange(len(timesCRTBP)):
     time = timesCRTBP_mjd[ii]
     
-    # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
+    # Positions of the Moon and EM barycenter relative SS barycenter in H frame
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
     r_EMO = EMO[0].get_xyz().to('AU').value
@@ -71,7 +72,7 @@ for ii in np.arange(len(timesCRTBP)):
     # Change the origin to the EM barycenter, G frame
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
-    
+
     # Convert from G frame to I frame
     r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
     r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')

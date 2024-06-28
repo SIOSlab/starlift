@@ -53,7 +53,8 @@ r_EarthEM_r = np.zeros([len(timesFF), 3])
 r_MoonEM_r = np.zeros([len(timesFF), 3])
 
 # Sim time in mjd
-timesFF_mjd = timesFF + t_mjd
+times_dim = unitConversion.convertTime_to_dim(timesFF)
+timesFF_mjd = times_dim + t_mjd
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
@@ -133,7 +134,6 @@ ax.set_box_aspect([1.0, 1.0, 1.0])
 plot_tools.set_axes_equal(ax)
 plt.title('FF Model in the Inertial (I) Frame')
 plt.legend()
-plt.show()
 
 
 # ~~~~~ANIMATION~~~~~

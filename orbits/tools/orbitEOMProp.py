@@ -5,7 +5,8 @@ import astropy.constants as const
 import frameConversion
 import unitConversion
 
-def CRTBP_EOM(t,w,mu_star):
+
+def CRTBP_EOM(t, w, mu_star):
     """Equations of motion for the CRTBP in the inertial frame
 
     Args:
@@ -20,24 +21,24 @@ def CRTBP_EOM(t,w,mu_star):
 
     """
     
-    [x,y,z,vx,vy,vz] = w
+    [x, y, z, vx, vy, vz] = w
     
     m1 = 1 - mu_star
     m2 = mu_star
 
     r1 = mu_star
     r2 = 1 - mu_star
-    r_1O_R = r1*np.array([-1,0,0])
-    r_2O_R = r2*np.array([1,0,0])
+    r_1O_R = r1*np.array([-1, 0, 0])
+    r_2O_R = r2*np.array([1, 0, 0])
     
-    C_I2R = frameConversion.rot(t,3)
+    C_I2R = frameConversion.rot(t, 3)
     C_R2I = C_I2R.T
     
     r_1O_I = C_R2I@r_1O_R
     r_2O_I = C_R2I@r_2O_R
 
-    r_PO_I = np.array([x,y,z])
-    v_PO_I = np.array([vx,vy,vz])
+    r_PO_I = np.array([x, y, z])
+    v_PO_I = np.array([vx, vy, vz])
 
     r_P1_I = r_PO_I - r_1O_I
     r_P2_I = r_PO_I - r_2O_I
@@ -55,7 +56,7 @@ def CRTBP_EOM(t,w,mu_star):
     ay = a_PO_I[1]
     az = a_PO_I[2]
 
-    dw = [vx,vy,vz,ax,ay,az]
+    dw = [vx, vy, vz, ax, ay, az]
     return dw
 
 
@@ -139,14 +140,14 @@ def statePropCRTBP(freeVar,mu_star):
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
     T = freeVar[-1]
 
-    sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,),rtol=1E-12,atol=1E-12,)
+    sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12,)
     states = sol_int.y.T
     times = sol_int.t
     
     return states, times
 
 
-def statePropFF(state0,t_mjd):
+def statePropFF(state0, t_mjd):
     """Propagates the dynamics using the free variables
 
     Args:

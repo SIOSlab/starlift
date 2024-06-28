@@ -35,11 +35,12 @@ def convertTime_to_canonical(dimTime):
     
     return canonicalTime
 
+
 def convertTime_to_dim(canonicalTime):
-    """Convert array of times from canonical units to unit of years
+    """Convert array of times from canonical units to unit of days
     
     Method converts the times inside the array from canonical units of the
-    CR3BP into year units. 1 month = 2 pi TU where TU are the canonical time
+    CR3BP into day units. 1 month = 2 pi TU where TU are the canonical time
     units.
     
     Args:
@@ -55,6 +56,7 @@ def convertTime_to_dim(canonicalTime):
     dimTime = canonicalTime * u.day * 27.321582
     
     return dimTime
+
 
 # converting distances
 def convertPos_to_canonical(dimPos):
@@ -84,7 +86,7 @@ def convertPos_to_dim(canonicalPos):
     """Convert array of positions from canonical units to dimensional units
     
     Method converts the positions inside the array from canonical units of
-    the CR3BP into units of AU. (3.844000E+5*u.km).to('m') = 1 DU
+    the CR3BP into units of m. (3.844000E+5*u.km).to('m') = 1 DU
     
     Args:
         canonicalPos (float n array):
