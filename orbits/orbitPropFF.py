@@ -24,7 +24,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
-days = 300
+days = 200
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star

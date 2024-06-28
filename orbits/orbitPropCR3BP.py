@@ -33,16 +33,16 @@ m2 = mu_star
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.681604840704215]
 
-# Convert the velocity to inertial from I
+# Convert the velocity to inertial from R
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
 freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
 
 # Propagate the dynamics in the CRTBP model
-statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP,mu_star)
-posCRTBP = statesCRTBP[:,0:3]
-velCRTBP = statesCRTBP[:,3:6]
+statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
+posCRTBP = statesCRTBP[:, 0:3]
+velCRTBP = statesCRTBP[:, 3:6]
 
 # Preallocate space
 r_PEM_r = np.zeros([len(timesCRTBP), 3])

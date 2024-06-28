@@ -69,6 +69,10 @@ GMAT DefaultSC.EulerAngleSequence = '321';
 
 
 
+
+
+
+
 %----------------------------------------
 %---------- ForceModels
 %----------------------------------------
@@ -124,8 +128,8 @@ GMAT EMInert.Axes = MJ2000Eq;
 Create OrbitView DefaultOrbitView;
 GMAT DefaultOrbitView.SolverIterations = Current;
 GMAT DefaultOrbitView.UpperLeft = [ 0 0 ];
-GMAT DefaultOrbitView.Size = [ 0.8376741368867353 0.84765625 ];
-GMAT DefaultOrbitView.RelativeZOrder = 163;
+GMAT DefaultOrbitView.Size = [ 0.8364705882352941 1.033582089552239 ];
+GMAT DefaultOrbitView.RelativeZOrder = 128;
 GMAT DefaultOrbitView.Maximized = false;
 GMAT DefaultOrbitView.Add = {DefaultSC, Earth, Luna};
 GMAT DefaultOrbitView.CoordinateSystem = EMInert;
@@ -136,7 +140,7 @@ GMAT DefaultOrbitView.NumPointsToRedraw = 0;
 GMAT DefaultOrbitView.ShowPlot = true;
 GMAT DefaultOrbitView.MaxPlotPoints = 20000;
 GMAT DefaultOrbitView.ShowLabels = true;
-GMAT DefaultOrbitView.ViewPointReference = Earth;
+GMAT DefaultOrbitView.ViewPointReference = EarthMoonBarycenter;
 GMAT DefaultOrbitView.ViewPointVector = [ 0 0 500000 ];
 GMAT DefaultOrbitView.ViewDirection = Earth;
 GMAT DefaultOrbitView.ViewScaleFactor = 1;
@@ -153,22 +157,22 @@ GMAT DefaultOrbitView.StarCount = 7000;
 GMAT DefaultOrbitView.EnableStars = On;
 GMAT DefaultOrbitView.EnableConstellations = On;
 
-Create ReportFile ECEP;
-GMAT ECEP.SolverIterations = Current;
-GMAT ECEP.UpperLeft = [ 0.03755299818291944 0.078125 ];
-GMAT ECEP.Size = [ 0.5984251968503937 0.7955729166666666 ];
-GMAT ECEP.RelativeZOrder = 109;
-GMAT ECEP.Maximized = false;
-GMAT ECEP.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\ECEP.txt';
-GMAT ECEP.Precision = 16;
-GMAT ECEP.Add = {DefaultSC.EMBaryRot.X, DefaultSC.EMBaryRot.Y, DefaultSC.EMBaryRot.Z};
-GMAT ECEP.WriteHeaders = false;
-GMAT ECEP.LeftJustify = On;
-GMAT ECEP.ZeroFill = Off;
-GMAT ECEP.FixedWidth = true;
-GMAT ECEP.Delimiter = ' ';
-GMAT ECEP.ColumnWidth = 23;
-GMAT ECEP.WriteReport = true;
+Create ReportFile CRTBP_ECEP;
+GMAT CRTBP_ECEP.SolverIterations = Current;
+GMAT CRTBP_ECEP.UpperLeft = [ 0.2805882352941176 0.05721393034825871 ];
+GMAT CRTBP_ECEP.Size = [ 0.5952941176470589 0.7873134328358209 ];
+GMAT CRTBP_ECEP.RelativeZOrder = 112;
+GMAT CRTBP_ECEP.Maximized = false;
+GMAT CRTBP_ECEP.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\CRTBP_ECEP.txt';
+GMAT CRTBP_ECEP.Precision = 16;
+GMAT CRTBP_ECEP.Add = {DefaultSC.EMBaryRot.X, DefaultSC.EMBaryRot.Y, DefaultSC.EMBaryRot.Z, DefaultSC.UTCModJulian};
+GMAT CRTBP_ECEP.WriteHeaders = false;
+GMAT CRTBP_ECEP.LeftJustify = On;
+GMAT CRTBP_ECEP.ZeroFill = Off;
+GMAT CRTBP_ECEP.FixedWidth = true;
+GMAT CRTBP_ECEP.Delimiter = ' ';
+GMAT CRTBP_ECEP.ColumnWidth = 23;
+GMAT CRTBP_ECEP.WriteReport = true;
 
 
 %----------------------------------------

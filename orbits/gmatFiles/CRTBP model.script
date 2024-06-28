@@ -73,6 +73,7 @@ GMAT DefaultSC.EulerAngleSequence = '321';
 
 
 
+
 %----------------------------------------
 %---------- ForceModels
 %----------------------------------------
@@ -128,8 +129,8 @@ GMAT EMInert.Axes = MJ2000Eq;
 Create OrbitView DefaultOrbitView;
 GMAT DefaultOrbitView.SolverIterations = Current;
 GMAT DefaultOrbitView.UpperLeft = [ 0 0 ];
-GMAT DefaultOrbitView.Size = [ 0.8364705882352941 1.033582089552239 ];
-GMAT DefaultOrbitView.RelativeZOrder = 128;
+GMAT DefaultOrbitView.Size = [ 0.8363201911589009 1.032338308457711 ];
+GMAT DefaultOrbitView.RelativeZOrder = 11;
 GMAT DefaultOrbitView.Maximized = false;
 GMAT DefaultOrbitView.Add = {DefaultSC, Earth, Luna};
 GMAT DefaultOrbitView.CoordinateSystem = EMInert;
