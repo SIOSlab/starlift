@@ -455,7 +455,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
 def calcFx_FF(X,taus,N,t_mjd,X0):
     
     ctr = 0
-    Fx = np.zeros((1,6*(N-1))
+    Fx = np.zeros((1,6*(N-1)))
     for ii in np.arange(N-1):
         IC = X[ctr*7:((ctr+1)*7)]
         tau = taus[ctr]

@@ -136,52 +136,52 @@ plt.legend()
 plt.show()
 
 
-# # ~~~~~ANIMATION~~~~~
-#
-# fig = plt.figure()
-# ax = fig.add_subplot(projection='3d')
-#
-# # Collect animation data for full force
-# N_FF = len(r_PEM_r[:, 0])  # Number of frames in animation
-# P_FF = 1  # Number of points plotted per frame
-#
-# data_FF = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
-# data_EarthFF = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
-# data_MoonFF = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
-# data_SunFF = np.array([r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2]])
-#
-# line_FF, = ax.plot(data_FF[0, 0:1], data_FF[1, 0:1], data_FF[2, 0:1], color='blue', label='Orbit')
-# line_EarthFF, = ax.plot(data_EarthFF[0, 0:1], data_EarthFF[1, 0:1], data_EarthFF[2, 0:1], color='green', label='Earth')
-# line_MoonFF, = ax.plot(data_MoonFF[0, 0:1], data_MoonFF[1, 0:1], data_MoonFF[2, 0:1], color='gray', label='Moon')
-# line_SunFF, = ax.plot(data_SunFF[0, 0:1], data_SunFF[1, 0:1], data_SunFF[2, 0:1], color='orange', label='Sun')
-#
-#
-# def animate(i):
-#     line_FF.set_data(data_FF[0, :i*P_FF], data_FF[1, :i*P_FF])
-#     line_FF.set_3d_properties(data_FF[2, :i*P_FF])
-#     line_EarthFF.set_data(data_EarthFF[0, :i*P_FF], data_EarthFF[1, :i*P_FF])
-#     line_EarthFF.set_3d_properties(data_EarthFF[2, 0:i*P_FF])
-#     line_MoonFF.set_data(data_MoonFF[0, :i*P_FF], data_MoonFF[1, :i*P_FF])
-#     line_MoonFF.set_3d_properties(data_MoonFF[2, 0:i*P_FF])
-#     line_SunFF.set_data(data_SunFF[0, :i*P_FF], data_SunFF[1, :i*P_FF])
-#     line_SunFF.set_3d_properties(data_SunFF[2, 0:i*P_FF])
-#
-#
-# ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=10, repeat=False)
-#
-# # Set axes limits
-# ax.set_xlim3d(min(data_FF[0]), max(data_FF[0]))
-# ax.set_ylim3d(min(data_FF[1]), max(data_FF[1]))
-# ax.set_zlim3d(min(data_FF[2]), max(data_FF[2]))
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-#
-# # Set labels
-# ax.set_xlabel('X [AU]')
-# ax.set_ylabel('Y [AU]')
-# ax.set_zlabel('Z [AU]')
-# plt.legend()
-# plt.title('Full force model in the I frame')
+# ~~~~~ANIMATION~~~~~
+
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+
+# Collect animation data for full force
+N_FF = len(r_PEM_r[:, 0])  # Number of frames in animation
+P_FF = 1  # Number of points plotted per frame
+
+data_FF = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
+data_EarthFF = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
+data_MoonFF = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
+data_SunFF = np.array([r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2]])
+
+line_FF, = ax.plot(data_FF[0, 0:1], data_FF[1, 0:1], data_FF[2, 0:1], color='blue', label='Orbit')
+line_EarthFF, = ax.plot(data_EarthFF[0, 0:1], data_EarthFF[1, 0:1], data_EarthFF[2, 0:1], color='green', label='Earth')
+line_MoonFF, = ax.plot(data_MoonFF[0, 0:1], data_MoonFF[1, 0:1], data_MoonFF[2, 0:1], color='gray', label='Moon')
+line_SunFF, = ax.plot(data_SunFF[0, 0:1], data_SunFF[1, 0:1], data_SunFF[2, 0:1], color='orange', label='Sun')
+
+
+def animate(i):
+    line_FF.set_data(data_FF[0, :i*P_FF], data_FF[1, :i*P_FF])
+    line_FF.set_3d_properties(data_FF[2, :i*P_FF])
+    line_EarthFF.set_data(data_EarthFF[0, :i*P_FF], data_EarthFF[1, :i*P_FF])
+    line_EarthFF.set_3d_properties(data_EarthFF[2, 0:i*P_FF])
+    line_MoonFF.set_data(data_MoonFF[0, :i*P_FF], data_MoonFF[1, :i*P_FF])
+    line_MoonFF.set_3d_properties(data_MoonFF[2, 0:i*P_FF])
+    line_SunFF.set_data(data_SunFF[0, :i*P_FF], data_SunFF[1, :i*P_FF])
+    line_SunFF.set_3d_properties(data_SunFF[2, 0:i*P_FF])
+
+
+ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=10, repeat=False)
+
+# Set axes limits
+ax.set_xlim3d(min(data_FF[0]), max(data_FF[0]))
+ax.set_ylim3d(min(data_FF[1]), max(data_FF[1]))
+ax.set_zlim3d(min(data_FF[2]), max(data_FF[2]))
+ax.set_box_aspect([1.0, 1.0, 1.0])
+plot_tools.set_axes_equal(ax)
+
+# Set labels
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+plt.legend()
+plt.title('Full force model in the I frame')
 
 
 # # ~~~~~NORMAL PLOTS~~~~~
