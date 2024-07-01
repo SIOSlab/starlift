@@ -11,10 +11,16 @@ import astropy.units as u
 import astropy.constants as const
 from matplotlib import pyplot as plt
 from matplotlib import animation
-import tools.unitConversion as unitConversion
-import tools.frameConversion as frameConversion
-import tools.orbitEOMProp as orbitEOMProp
-import tools.plot_tools as plot_tools
+sys.path.insert(1, 'tools')
+import unitConversion
+import frameConversion
+import orbitEOMProp
+import plot_tools
+
+#import tools.unitConversion as unitConversion
+#import tools.frameConversion as frameConversion
+#import tools.orbitEOMProp as orbitEOMProp
+#import tools.plot_tools as plot_tools
 import pdb
 
 # ~~~~~PROPAGATE THE DYNAMICS  ~~~~~
@@ -36,7 +42,7 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.6816
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 2*IC[-1]])   # 2*IC[-1] for 1 period
 
 # Propagate the dynamics in the CRTBP model
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
@@ -44,52 +50,192 @@ posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
 
 # Preallocate space
+r_PO_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_PEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_EarthEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_CRTBP = np.zeros([len(timesCRTBP), 3])
+r_CRTBP_rot = np.zeros([len(timesCRTBP), 3])
+
+r_PEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
+r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
-timesCRTBP_mjd = timesCRTBP + t_mjd
+times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
+timesCRTBP_mjd = times_dim + t_mjd
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
-# # Obtain Moon and Earth positions for CRTBP
-# for ii in np.arange(len(timesCRTBP)):
-#     time = timesCRTBP_mjd[ii]
+# Obtain Moon and Earth positions for CRTBP
+for ii in np.arange(len(timesCRTBP)):
+    time = timesCRTBP_mjd[ii]
+
+#    # Positions of the Moon and EM barycenter relative SS barycenter in H frame
+#    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
+    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
+    r_EMO = EMO[0].get_xyz().to('AU').value
 #
-#     # Positions of the Moon and EM barycenter relative SS barycenter in H frame
-#     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
-#     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
-#     r_EMO = EMO[0].get_xyz().to('AU').value
+#    # Convert from H frame to GCRS frame
+    r_EMG = (frameConversion.icrs2gcrs(r_EMO * u.AU, time)).to('AU')
+#    r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
 #
-#     # Convert from H frame to GCRS frame
-#     r_EMG = frameConversion.icrs2gcrs(r_EMO * u.AU, time)
-#     r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
+#    # Change the origin to the EM barycenter, G frame
+#    r_EarthEM = -r_EMG
+#    r_MoonEM = r_MoonG - r_EMG
 #
-#     # Change the origin to the EM barycenter, G frame
-#     r_EarthEM = -r_EMG
-#     r_MoonEM = r_MoonG - r_EMG
-#
-#     # Convert from G frame to I frame
-#     r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
-#     r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
-#
-#     # Convert to AU
-#     r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
+#    # Convert from G frame to I frame
+#    r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
+#    r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
+
+    # Convert to AU
+#    r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
+    r_dim = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU').value
+    r_EM = C_B2G @ r_dim
+    r_GCRS = r_EM +  r_EMG.value
+    r_ICRS = (frameConversion.gcrs2icrs(r_GCRS * u.AU, time)).to('AU').value
+    r_PO_CRTBP[ii, :] = r_ICRS
+    
+    C_I2R = frameConversion.body2rot(time,t_mjd)
+    r_CRTBP_rot[ii,:] = C_I2R @ r_dim
 
 
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_R2H(posCRTBP[0], velCRTBP[0], t_mjd, timesCRTBP[-1], mu_star)
 
+N = 8
+
+dt = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/N
+taus = Time(np.zeros(N), format='mjd', scale='utc')
+Ts = Time(np.zeros(N), format='mjd', scale='utc')
+X = np.array([])
+X0 = np.array([])
+for ii in np.arange(N):
+    time_i = ii*dt
+
+    difference_array_i = np.absolute(times_dim.value-time_i)
+    index_i = difference_array_i.argmin()
+
+    taus[ii] = timesCRTBP_mjd[index_i]
+    pos_i = posCRTBP[index_i]
+    vel_i = velCRTBP[index_i]
+
+    pos_Hi, vel_Hi = orbitEOMProp.convertIC_R2H(pos_i, vel_i, taus[ii], mu_star)
+    X = np.append(X,np.append(pos_Hi.value,vel_Hi.value))
+    
+    time_f = (ii+1)*dt
+
+    difference_array_f = np.absolute(times_dim.value-time_f)
+    index_f = difference_array_f.argmin()
+
+    tau_f = timesCRTBP_mjd[index_f]
+    pos_f = posCRTBP[index_f]
+    vel_f = velCRTBP[index_f]
+
+    pos_Hf, vel_Hf = orbitEOMProp.convertIC_R2H(pos_f, vel_f, tau_f, mu_star)
+    
+    X0 = np.append(X0,np.append(pos_Hf.value,vel_Hf.value))
+
+eps = 1E-12
+error = 10
+
+while error > eps:
+    Fx = orbitEOMProp.calcFx_FF(X,taus,N,t_mjd,X0,dt)
+    
+    error = np.linalg.norm(Fx)
+    print('Error is')
+    print(error)
+    dFx = orbitEOMProp.calcdFx_FF(X,taus,N,t_mjd,X0,dt)
+
+    X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
+
+ctr = 0
+posI = np.array([np.NaN,np.NaN,np.NaN])
+timesAll = np.array([])
+for ii in np.arange(N):
+    IC = np.append(X[ctr*6:((ctr+1)*6)],dt)
+    tau = taus[ctr]
+    states, timesT = orbitEOMProp.statePropFF(IC,tau)
+    posFF = states[:,0:3]
+
+    posI = np.block([[posI],[posFF]])
+    
+    tt = tau + timesT
+    timesAll = np.append(timesAll, tt)
+
+    ctr = ctr + 1
+
+posI = posI[1:,:]
+
+ax1 = plt.figure().add_subplot(projection='3d')
+ax1.plot(posI[:, 0], posI[:, 1], posI[:, 2])
+ax1.set_title('Full Force in H frame (ICRS)')
+ax1.set_xlabel('X [AU]')
+ax1.set_ylabel('Y [AU]')
+ax1.set_zlabel('Z [AU]')
+
+goodInds = (np.arange(0,len(timesAll),np.round(len(timesAll)/len(timesCRTBP_mjd)))).astype(int)
+timesPartial = timesAll[goodInds]
+posIPartial = posI[goodInds,:]
+posR = np.array([np.NaN,np.NaN,np.NaN])
+ax2 = plt.figure().add_subplot(projection='3d')
+for ii in np.arange(len(timesPartial)):
+    tt = timesPartial[ii]
+
+    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
+    r_EMO = EMO[0].get_xyz().to('AU').value
+    
+    r_PG = (frameConversion.icrs2gcrs(posIPartial[ii,:]*u.AU, tt)).to('AU')
+    r_EMG = (frameConversion.icrs2gcrs(r_EMO*u.AU, tt)).to('AU')
+    
+    r_PEM = r_PG - r_EMG
+    r_PEM_I = C_G2B @ r_PEM
+    
+    C_I2R = frameConversion.body2rot(tt,t_mjd)
+    r_PEM_r = C_I2R@r_PEM_I.to('AU')
+    
+    posR = np.block([[posR],[r_PEM_r]])
+
+posR = posR[1:,:]
+ax2.plot(posR[:, 0], posR[:, 1], posR[:, 2])
+ax2.set_title('Full Force in R frame (Rotating)')
+ax2.set_xlabel('X [AU]')
+ax2.set_ylabel('Y [AU]')
+ax2.set_zlabel('Z [AU]')
+
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), days)   # Tp_dim.value
+state0 = np.append(np.append(pos_H.value, vel_H.value), Tp_dim.value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
+
+ax3 = plt.figure().add_subplot(projection='3d')
+ax3.plot(posI[:, 0], posI[:, 1], posI[:, 2],'b',label='Multi Segment')
+ax3.plot(r_PO_CRTBP[:, 0], r_PO_CRTBP[:, 1], r_PO_CRTBP[:, 2],'r',label='CRTBP')
+ax3.scatter(posI[0, 0], posI[0, 1], posI[0, 2])
+ax3.scatter(r_PO_CRTBP[0, 0], r_PO_CRTBP[0, 1], r_PO_CRTBP[0, 2])
+ax3.set_title('FF vs CRTBP in H frame (ICRS)')
+ax3.set_xlabel('X [AU]')
+ax3.set_ylabel('Y [AU]')
+ax3.set_zlabel('Z [AU]')
+plt.legend()
+
+
+ax4 = plt.figure().add_subplot(projection='3d')
+ax4.plot(posR[:, 0], posR[:, 1], posR[:, 2],'b',label='Multi Segment')
+ax4.plot(r_CRTBP_rot[:, 0], r_CRTBP_rot[:, 1], r_CRTBP_rot[:, 2],'r',label='CRTBP')
+ax4.scatter(posR[0, 0], posR[0, 1], posR[0, 2])
+ax4.scatter(r_CRTBP_rot[0, 0], r_CRTBP_rot[0, 1], r_CRTBP_rot[0, 2])
+ax4.set_title('FF vs CRTBP in R frame (Rotating)')
+ax4.set_xlabel('X [AU]')
+ax4.set_ylabel('Y [AU]')
+ax4.set_zlabel('Z [AU]')
+plt.legend()
+
+plt.show()
+breakpoint()
 
 # Preallocate space
 r_PEM_r = np.zeros([len(timesFF), 3])
@@ -328,7 +474,7 @@ plt.show()
 # # Plot CRTBP and FF solutions
 # ax = plt.figure().add_subplot(projection='3d')
 # ax.plot(posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2], 'r', label='CRTBP')
-# # ax.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
+#  ax.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
 # # ax.scatter(r_PEM_r[0, 0], r_PEM_r[0, 1], r_PEM_r[0, 2], marker='*', label='FF Start')
 # # ax.scatter(r_PEM_r[-1, 0], r_PEM_r[-1, 1], r_PEM_r[-1, 2], label='FF End')
 # ax.set_xlabel('X [AU]')

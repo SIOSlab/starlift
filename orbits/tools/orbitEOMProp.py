@@ -122,7 +122,7 @@ def statePropCRTBP(freeVar,mu_star):
 
     Args:
         freeVar (~numpy.ndarray(float)):
-            x and z positions (AU), y velocity (AU/d), and orbit period (d)
+            x and z positions (DU), y velocity (DU/TU), and orbit period (DU)
         mu_star (float):
             Non-dimensional mass parameter
 
@@ -130,9 +130,9 @@ def statePropCRTBP(freeVar,mu_star):
     Returns:
         tuple:
         states ~numpy.ndarray(float):
-            Positions and velocities in AU and AU/d
+            Positions and velocities in DU and DU/TU
         times ~numpy.ndarray(float):
-            Times in d
+            Times in DU
 
     """
     
@@ -167,7 +167,7 @@ def statePropFF(state0,t_mjd):
     
     T = state0[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA',t_eval=np.arange(0,T,1E-4))
 
     states = sol_int.y.T
     times = sol_int.t
@@ -402,7 +402,7 @@ def fsolve_eqns(w,z,solp, mu_star):
     return sys_w
 
 
-def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
+def convertIC_R2H(pos_R, vel_R, t_mjd, mu_star, Tp_can = None):
     """Converts initial conditions from the I frame to the H frame
 
     Args:
@@ -412,8 +412,10 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
             Array of velocities in canonical units
         t_mjd (astropy Time array):
             Mission start time in MJD
-        Tp_can (float n array):
-            Array of times in canonical units
+        mu_star (float):
+            Non-dimensional mass parameter
+        Tp_can (float n array, optional):
+            Optional array of times in canonical units
 
 
     Returns:
@@ -448,23 +450,53 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can, mu_star):
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_H = velEMB + v_dim
     
-    Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
-
-    return pos_H, vel_H, Tp_dim
+    if Tp_can is not None:
+        Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
+        return pos_H, vel_H, Tp_dim
+    else:
+        return pos_H, vel_H
     
-def calcFx_FF(X,taus,N,t_mjd,X0):
+def calcFx_FF(X,taus,N,t_mjd,X0,dt):
     
     ctr = 0
-    Fx = np.zeros((1,6*(N-1))
-    for ii in np.arange(N-1):
-        IC = X[ctr*7:((ctr+1)*7)]
+    Fx = np.array([])
+
+    for ii in np.arange(N):
+        IC = np.append(X[ctr*6:((ctr+1)*6)],dt)
         tau = taus[ctr]
         const = X0[ctr*6:((ctr+1)*6)]
-        
         states, times = statePropFF(IC,tau)
-        
-        Fx[ctr*6:(ctr+1)*6] = states[-1,:] - const
+
+        Fx = np.append(Fx,states[-1,:] - const)
         
         ctr = ctr + 1
     
     return Fx
+    
+def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
+    hstep = .001
+    
+    Fx_0 = calcFx_FF(X,taus,N,t_mjd,X0,dt)
+    
+    dFx = np.zeros((6*N,6*N))
+    indsXh = np.arange(0,N*6,6)
+    indsD = np.arange(0,N*6,6)
+    for ii in np.arange(6):
+        dh = np.zeros(N*6)
+        dh[indsXh] = hstep
+
+        Xh = X + dh
+        
+        Fx_ii = calcFx_FF(Xh,taus,N,t_mjd,X0,dt)
+        
+        dFx_ii = (Fx_ii - Fx_0)/hstep
+        
+        for jj in np.arange(len(indsD)):
+            ind1 = indsD[jj]
+            ind2 = ind1 + 6
+            dFx[jj*6:(jj+1)*6,ind1] = dFx_ii[jj*6:(jj+1)*6]
+        
+        indsD = indsD + 1
+        indsXh = indsXh + 1
+
+    return dFx

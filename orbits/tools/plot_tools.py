@@ -95,16 +95,16 @@ def PlotManifold(solvec, time, mu, ax, title,eigval, eigvec):
     # plt.colorbar(traj)
 
 
-def plotConvertBodies(timesFF, posFF, t_mjd, frame):
+def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B):
     # ** Add documentation
 
 
 
     # preallocate space
-    r_PEM = np.zeros([len(timesFF), 3])
-    r_SunEM = np.zeros([len(timesFF), 3])
-    r_EarthEM = np.zeros([len(timesFF), 3])
-    r_MoonEM = np.zeros([len(timesFF), 3])
+    r_PEM_r = np.zeros([len(timesFF), 3])
+    r_SunEM_r = np.zeros([len(timesFF), 3])
+    r_EarthEM_r = np.zeros([len(timesFF), 3])
+    r_MoonEM_r = np.zeros([len(timesFF), 3])
 
     # sim time in mjd
     timesFF_mjd = timesFF + t_mjd
@@ -129,15 +129,15 @@ def plotConvertBodies(timesFF, posFF, t_mjd, frame):
             r_EarthEM = -r_EMG
             r_MoonEM = r_MoonG - r_EMG
             
-            r_PEM[ii, :] = r_PEM
-            r_SunEM[ii, :] = r_SunEM
-            r_EarthEM[ii, :] = r_EarthEM
-            r_MoonEM[ii, :] = r_MoonEM
+            r_PEM_r[ii, :] = r_PEM
+            r_SunEM_r[ii, :] = r_SunEM
+            r_EarthEM_r[ii, :] = r_EarthEM
+            r_MoonEM_r[ii, :] = r_MoonEM
             
         elif frame >= 1:
             # positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
             r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
-            r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time).get_xyz().to('AU')
+            r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz().to('AU')
             
             # convert from H frame to GCRS frame
             r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
@@ -155,15 +155,16 @@ def plotConvertBodies(timesFF, posFF, t_mjd, frame):
             r_MoonEM = C_G2B@r_MoonEM.to('AU')
             
             if frame == 2:
+                C_I2R = frameConversion.body2rot(time, t_mjd)
                 r_PEM = C_I2R@r_PEM.to('AU')
                 r_EarthEM = C_I2R@r_EarthEM.to('AU')
                 r_MoonEM = C_I2R@r_MoonEM.to('AU')
-                    
-            r_PEM[ii, :] = r_PEM
-            r_EarthEM[ii, :] = r_EarthEM
-            r_MoonEM[ii, :] = r_MoonEM
 
-    return r_PEM, r_SunEM, r_EarthEM, r_MoonEM
+            r_PEM_r[ii, :] = r_PEM.value
+            r_EarthEM_r[ii, :] = r_EarthEM.value
+            r_MoonEM_r[ii, :] = r_MoonEM.value
+
+    return r_PEM_r, r_SunEM_r, r_EarthEM_r, r_MoonEM_r
 
         
 def plotBodiesFF(timesFF,posFF,t_mjd,frame):
@@ -185,37 +186,39 @@ def plotBodiesFF(timesFF,posFF,t_mjd,frame):
     # ** Add lines to resize figure and automatically save png and svg
     return
     
-def plotCompare_rot(timesFF, posFF, t_mjd, frame):
+def plotCompare_rot(timesFF, posFF, t_mjd, frame, timesCRTBP, posCRTBP, C_G2B):
     # ** Add documentation
     
-    r_PEM, _, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF, posFF, t_mjd, frame)
+    r_PEM, _, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B)
 
+    posCRTBP = (unitConversion.convertPos_to_dim(posCRTBP).to('AU')).value
     ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'r', label='CRTBP')
-    ax.plot(posFF[:, 0], posFF[:, 1],posFF[:, 2], 'b', label='Full Force')
+    ax.plot(posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2], 'k', label='CRTBP')
+    ax.plot(r_PEM[:, 0], r_PEM[:, 1],r_PEM[:, 2], 'b', label='Full Force')
     ax.plot(r_EarthEM[:, 0], r_EarthEM[:, 1], r_EarthEM[:, 2], 'g', label='Earth')
     ax.plot(r_MoonEM[:, 0], r_MoonEM[:, 1], r_MoonEM[:, 2], 'r', label='Moon')
     ax.set_xlabel('X [AU]')
     ax.set_ylabel('Y [AU]')
     ax.set_zlabel('Z [AU]')
     plt.legend()
-    
+    breakpoint()
     # ** Add lines to resize figure and automatically save png and svg
     return
 
 
-def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF):
+def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF,mu_star):
+    # Fix this. Determine which inertial frame this should be
     # ** Add documentation
     
     times = timesCRTBP + t_mjd
-    pos_dim = unitConversion.convertPos_to_dim(pos_R).to('AU')
+    pos_dim = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
     
     C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
     
     pos_H = np.zeros([len(times),3])
     for ii in np.arange(len(timesCRTBP)):
         currentTime = times[ii]
-        pos_I = frameConversion.inert2rotP(pos_dim[ii],currentTime)
+        pos_I = frameConversion.inert2rotP(pos_dim[ii],currentTime,t_mjd)
         
         pos_G = C_B2G@pos_I
         
@@ -223,9 +226,9 @@ def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF):
         posEMB = state_EMB[0].get_xyz().to('AU')
         velEMB = state_EMB[1].get_xyz().to('AU/day')
         posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
-        posEMB_E = posE - posEMB
+        posE_EMB = posE - posEMB
 
-        pos_GCRS = pos_G + posEMB_E
+        pos_GCRS = pos_G - posE_EMB
         
         pos_H[ii,:] = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
 
@@ -233,15 +236,15 @@ def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF):
     r_MoonO = get_body_barycentric_posvel('Moon', times)[0].get_xyz().to('AU')
     
     ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(pos_H[:, 0], pos_H[:, 1], pos_H[:, 2], 'r', label='CRTBP')
+    ax.plot(pos_H[:, 0], pos_H[:, 1], pos_H[:, 2], 'k', label='CRTBP')
     ax.plot(posFF[:, 0], posFF[:, 1],posFF[:, 2], 'b', label='Full Force')
-    ax.plot(r_EarthO[:, 0], r_EarthO[:, 1], r_EarthO[:, 2], 'g', label='Earth')
-    ax.plot(r_MoonO[:, 0], r_MoonO[:, 1], r_MoonO[:, 2], 'r', label='Moon')
+#    ax.plot(r_EarthO[:, 0], r_EarthO[:, 1], r_EarthO[:, 2], 'g', label='Earth')
+#    ax.plot(r_MoonO[:, 0], r_MoonO[:, 1], r_MoonO[:, 2], 'r', label='Moon')
     ax.set_xlabel('X [AU]')
     ax.set_ylabel('Y [AU]')
     ax.set_zlabel('Z [AU]')
     plt.legend()
-    
+    breakpoint()
     # ** Add lines to resize figure and automatically save png and svg
     return
 
