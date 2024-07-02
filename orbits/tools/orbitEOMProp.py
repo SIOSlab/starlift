@@ -114,11 +114,12 @@ def FF_EOM(tt,w,t_mjd):
     ay = a_PO[1]
     az = a_PO[2]
 
-    dw = [vx,vy,vz,ax,ay,az]
+    dw = [vx, vy, vz, ax, ay, az]
     
     return dw
 
-def statePropCRTBP(freeVar,mu_star):
+
+def statePropCRTBP(freeVar, mu_star):
     """Propagates the dynamics using the free variables
 
     Args:

@@ -46,6 +46,8 @@ statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
+breakpoint()
+
 # Preallocate space
 r_PEM_r = np.zeros([len(timesFF), 3])
 r_SunEM_r = np.zeros([len(timesFF), 3])
@@ -183,17 +185,5 @@ ax.set_zlabel('Z [AU]')
 plt.legend()
 plt.title('Full force model in the I frame')
 
-
-# # ~~~~~NORMAL PLOTS~~~~~
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
-# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
-# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
-# ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
-# ax.set_xlabel('X [AU]')
-# ax.set_ylabel('Y [AU]')
-# ax.set_zlabel('Z [AU]')
-# plt.legend()
 
 plt.show()

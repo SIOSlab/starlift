@@ -20,12 +20,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 389198.4834348325;
-GMAT SC1.Y = -22791.45880162008;
-GMAT SC1.Z = -66520.74285615757;
-GMAT SC1.VX = 0.2777256014283485;
-GMAT SC1.VY = -5.673156650087479;
-GMAT SC1.VZ = 0.01869216475095144;
+GMAT SC1.X = 388641.8766523502;
+GMAT SC1.Y = 5.820766091346741e-11;
+GMAT SC1.Z = -66558.85993853994;
+GMAT SC1.VX = 4.163336342344337e-17;
+GMAT SC1.VY = -0.07982111000000003;
+GMAT SC1.VZ = -5.551115123125783e-17;
 GMAT SC1.DryMass = 850;
 GMAT SC1.Cd = 2.2;
 GMAT SC1.Cr = 1.8;
@@ -73,13 +73,16 @@ GMAT SC1.EulerAngleSequence = '321';
 
 
 
+
+
+
 %----------------------------------------
 %---------- ForceModels
 %----------------------------------------
 
 Create ForceModel DefaultProp_ForceModel;
 GMAT DefaultProp_ForceModel.CentralBody = Earth;
-GMAT DefaultProp_ForceModel.PointMasses = {Luna, Sun};
+GMAT DefaultProp_ForceModel.PointMasses = {Earth, Luna, Sun};
 GMAT DefaultProp_ForceModel.Drag = None;
 GMAT DefaultProp_ForceModel.SRP = Off;
 GMAT DefaultProp_ForceModel.RelativisticCorrection = Off;
@@ -106,8 +109,8 @@ GMAT DefaultProp.StopIfAccuracyIsViolated = true;
 Create CoordinateSystem EMBaryRot;
 GMAT EMBaryRot.Origin = EarthMoonBarycenter;
 GMAT EMBaryRot.Axes = ObjectReferenced;
-GMAT EMBaryRot.XAxis = -R;
-GMAT EMBaryRot.YAxis = V;
+GMAT EMBaryRot.XAxis = R;
+GMAT EMBaryRot.ZAxis = N;
 GMAT EMBaryRot.Primary = Earth;
 GMAT EMBaryRot.Secondary = Luna;
 
@@ -122,8 +125,8 @@ GMAT EMInert.Axes = MJ2000Eq;
 Create OrbitView Inertial;
 GMAT Inertial.SolverIterations = Current;
 GMAT Inertial.UpperLeft = [ 0 0 ];
-GMAT Inertial.Size = [ 0.833435394978567 0.800711743772242 ];
-GMAT Inertial.RelativeZOrder = 89;
+GMAT Inertial.Size = [ 0.832821143208359 0.7997512437810945 ];
+GMAT Inertial.RelativeZOrder = 323;
 GMAT Inertial.Maximized = false;
 GMAT Inertial.Add = {SC1, Earth, Luna, Sun};
 GMAT Inertial.CoordinateSystem = EMInert;
@@ -138,7 +141,7 @@ GMAT Inertial.ViewPointReference = Earth;
 GMAT Inertial.ViewPointVector = [ 0 0 50000000 ];
 GMAT Inertial.ViewDirection = Earth;
 GMAT Inertial.ViewScaleFactor = 1;
-GMAT Inertial.ViewUpCoordinateSystem = EMBaryRot;
+GMAT Inertial.ViewUpCoordinateSystem = EMInert;
 GMAT Inertial.ViewUpAxis = Z;
 GMAT Inertial.EclipticPlane = Off;
 GMAT Inertial.XYPlane = On;
@@ -167,6 +170,38 @@ GMAT FF_ECNP.FixedWidth = true;
 GMAT FF_ECNP.Delimiter = ' ';
 GMAT FF_ECNP.ColumnWidth = 23;
 GMAT FF_ECNP.WriteReport = true;
+
+Create OrbitView Rotating;
+GMAT Rotating.SolverIterations = Current;
+GMAT Rotating.UpperLeft = [ 0.003073140749846343 0 ];
+GMAT Rotating.Size = [ 0.5003073140749846 0.4502487562189055 ];
+GMAT Rotating.RelativeZOrder = 303;
+GMAT Rotating.Maximized = false;
+GMAT Rotating.Add = {SC1, Earth, Luna, Sun};
+GMAT Rotating.CoordinateSystem = EMBaryRot;
+GMAT Rotating.DrawObject = [ true true true true ];
+GMAT Rotating.DataCollectFrequency = 1;
+GMAT Rotating.UpdatePlotFrequency = 50;
+GMAT Rotating.NumPointsToRedraw = 0;
+GMAT Rotating.ShowPlot = true;
+GMAT Rotating.MaxPlotPoints = 20000;
+GMAT Rotating.ShowLabels = true;
+GMAT Rotating.ViewPointReference = Earth;
+GMAT Rotating.ViewPointVector = [ 0 0 50000000 ];
+GMAT Rotating.ViewDirection = Earth;
+GMAT Rotating.ViewScaleFactor = 1;
+GMAT Rotating.ViewUpCoordinateSystem = EMBaryRot;
+GMAT Rotating.ViewUpAxis = Z;
+GMAT Rotating.EclipticPlane = Off;
+GMAT Rotating.XYPlane = On;
+GMAT Rotating.WireFrame = Off;
+GMAT Rotating.Axes = On;
+GMAT Rotating.Grid = Off;
+GMAT Rotating.SunLine = Off;
+GMAT Rotating.UseInitialView = On;
+GMAT Rotating.StarCount = 7000;
+GMAT Rotating.EnableStars = On;
+GMAT Rotating.EnableConstellations = On;
 
 
 %----------------------------------------
