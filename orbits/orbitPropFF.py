@@ -145,7 +145,7 @@ ax = fig.add_subplot(projection='3d')
 
 # Collect animation data for full force
 N_FF = len(r_PEM_r[:, 0])  # Number of frames in animation
-P_FF = 1  # Number of points plotted per frame
+P_FF = 8  # Number of points plotted per frame
 
 data_FF = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
 data_EarthFF = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
@@ -169,7 +169,7 @@ def animate(i):
     line_SunFF.set_3d_properties(data_SunFF[2, 0:i*P_FF])
 
 
-ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=10, repeat=False)
+ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=1, repeat=False)
 
 # Set axes limits
 ax.set_xlim3d(min(data_FF[0]), max(data_FF[0]))

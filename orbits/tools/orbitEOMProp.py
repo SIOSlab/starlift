@@ -153,7 +153,7 @@ def statePropFF(state0, t_mjd):
 
     Args:
         state0 (~numpy.ndarray(float)):
-            x and z positions (AU), y velocity (AU/d), and orbit period (d)
+            Position and velocity in the H frame
         t_mjd (astropy Time array):
             Mission start time in MJD
 
@@ -169,7 +169,7 @@ def statePropFF(state0, t_mjd):
     
     T = state0[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
