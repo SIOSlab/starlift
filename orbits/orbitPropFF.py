@@ -46,8 +46,6 @@ statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
-breakpoint()
-
 # Preallocate space
 r_PEM_r = np.zeros([len(timesFF), 3])
 r_SunEM_r = np.zeros([len(timesFF), 3])
@@ -55,8 +53,9 @@ r_EarthEM_r = np.zeros([len(timesFF), 3])
 r_MoonEM_r = np.zeros([len(timesFF), 3])
 
 # Sim time in mjd
-times_dim = unitConversion.convertTime_to_dim(timesFF)
-timesFF_mjd = times_dim + t_mjd
+# times_dim = unitConversion.convertTime_to_dim(timesFF)
+# timesFF_mjd = times_dim + t_mjd
+timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
@@ -91,7 +90,6 @@ for ii in np.arange(len(timesFF)):
 
 
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
-# NEEDS FIXING
 
 # Obtain FF data from GMAT
 file_name = "gmatFiles/FF_ECNP.txt"
