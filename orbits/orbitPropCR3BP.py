@@ -16,7 +16,6 @@ import tools.frameConversion as frameConversion
 import tools.orbitEOMProp as orbitEOMProp
 import tools.plot_tools as plot_tools
 import pdb
-import pdb
 
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
 

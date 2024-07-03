@@ -36,10 +36,10 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.6816
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Convert from I frame to H frame
-pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_R2H(IC[0:3], vI, t_mjd, IC[-1], mu_star)
+pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, mu_star, Tp_can=None)
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), days)   # Tp_dim.value
+state0 = np.append(np.append(pos_H.value, vel_H.value), days)
 
 # Propagate the dynamics
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
