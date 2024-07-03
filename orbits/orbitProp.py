@@ -63,7 +63,8 @@ r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
 times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
-timesCRTBP_mjd = times_dim + t_mjd
+# timesCRTBP_mjd = times_dim + t_mjd
+timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
@@ -154,12 +155,12 @@ while error > eps:
     X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
 
 ctr = 0
-posH = np.array([np.NaN,np.NaN,np.NaN])
+posH = np.array([np.nan, np.nan, np.nan])
 timesAll = np.array([])
 for ii in np.arange(N):
-    IC = np.append(X[ctr*6:((ctr+1)*6)],dt)
+    IC = np.append(X[ctr*6:((ctr+1)*6)], dt)
     tau = taus[ctr]
-    states, timesT = orbitEOMProp.statePropFF(IC,tau)
+    states, timesT = orbitEOMProp.statePropFF(IC, tau)
     posFF = states[:,0:3]
 
     posH = np.block([[posH],[posFF]])
@@ -180,23 +181,23 @@ posH = posH[1:,:]
 #velFF = statesFF[:, 3:6]
 
 #goodInds = np.arange(len(timesAll))
-goodInds = (np.arange(0,len(timesAll),np.floor(len(timesAll)/len(timesCRTBP_mjd)))).astype(int)
+goodInds = (np.arange(0,len(timesAll), np.floor(len(timesAll)/len(timesCRTBP_mjd)))).astype(int)
 timesPartial = timesAll[goodInds]
-posIPartial = posH[goodInds,:]
-pos_msI = np.array([np.NaN,np.NaN,np.NaN])
-pos_msG = np.array([np.NaN,np.NaN,np.NaN])
-posR = np.array([np.NaN,np.NaN,np.NaN])
+posIPartial = posH[goodInds, :]
+pos_msI = np.array([np.nan, np.nan, np.nan])
+pos_msG = np.array([np.nan, np.nan, np.nan])
+posR = np.array([np.nan, np.nan, np.nan])
 for ii in np.arange(len(timesPartial)):
     tt = timesPartial[ii]
 
     state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
     
-    r_PE_gcrs = frameConversion.icrs2gcrs(posIPartial[ii,:]*u.AU,t_mjd)
-    r_EME_gcrs = frameConversion.icrs2gcrs(r_EMG_icrs,t_mjd)
+    r_PE_gcrs = frameConversion.icrs2gcrs(posIPartial[ii, :]*u.AU, t_mjd)
+    r_EME_gcrs = frameConversion.icrs2gcrs(r_EMG_icrs, t_mjd)
     r_PEM = r_PE_gcrs - r_EME_gcrs
 
-    C_I2R = frameConversion.body2rot(tt,t_mjd)
+    C_I2R = frameConversion.body2rot(tt, t_mjd)
     
     r_PEM_I = C_G2B@r_PEM
     r_PEM_r = C_G2B@C_I2R@r_PEM
@@ -207,18 +208,18 @@ for ii in np.arange(len(timesPartial)):
     pos_msI = np.block([[pos_msI],[r_PEM_I.to('AU')]])
     pos_msG = np.block([[pos_msG],[r_PE_gcrs.to('AU')]])
     
-posTMP = np.array([np.NaN,np.NaN,np.NaN])
+posTMP = np.array([np.nan, np.nan, np.nan])
 for ii in np.arange(len(timesCRTBP)):
     tt = timesCRTBP_mjd[ii]
 
     state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
     
-    r_CRTBP_gcrs = frameConversion.icrs2gcrs(r_PO_CRTBP[ii,:]*u.AU,t_mjd)
-    r_EME_gcrs = frameConversion.icrs2gcrs(r_EMG_icrs,t_mjd)
+    r_CRTBP_gcrs = frameConversion.icrs2gcrs(r_PO_CRTBP[ii, :]*u.AU, t_mjd)
+    r_EME_gcrs = frameConversion.icrs2gcrs(r_EMG_icrs, t_mjd)
     r_CRTBP_EM = r_CRTBP_gcrs - r_EME_gcrs
 
-    C_I2R = frameConversion.body2rot(tt,t_mjd)
+    C_I2R = frameConversion.body2rot(tt, t_mjd)
     
 #    tmp1 = C_G2B@r_CRTBP_EM
     tmp1 = C_G2B@C_I2R@r_CRTBP_EM
@@ -243,7 +244,7 @@ ax1.set_ylabel('Y [AU]')
 ax1.set_zlabel('Z [AU]')
 plt.legend()
 
-fig3, ax3 = plt.subplots(2,2)
+fig3, ax3 = plt.subplots(2, 2)
 ax3[0,1].plot(posH[:, 0], posH[:, 1], 'b')
 ax3[0,1].plot(r_PO_CRTBP[:, 0], r_PO_CRTBP[:, 1], 'r')
 ax3[0,1].set_xlabel('X [AU]')

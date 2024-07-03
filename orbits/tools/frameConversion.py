@@ -64,13 +64,13 @@ def rot(th, axis):
 
 def body2geo(currentTime, equinox, mu_star):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
-    perifocal frame to the geocentric frame
+    perifocal frame (I) to the geocentric frame (G)
     
     Args:
         currentTime (astropy Time array):
             Current mission time in MJD
-        r_earth_bary_B (float n array):
-            Array of distance in perifocal frame
+        equinox (astropy Time array):
+            Mission start time in MJD
         mu_star (float):
             Non-dimensional mass parameter
 
@@ -79,7 +79,7 @@ def body2geo(currentTime, equinox, mu_star):
             3x3 Array for the directional cosine matrix
     """
     
-    # define vector in G
+    # Define vector in G
     tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()
     tmp_rG = -icrs2gcrs(tmp, currentTime)
     tmp_x = unitConversion.convertPos_to_canonical(tmp_rG[0])
@@ -88,7 +88,7 @@ def body2geo(currentTime, equinox, mu_star):
     r_earth_bary_G = np.array([tmp_x, tmp_y, tmp_z])
     mu_star = np.linalg.norm(r_earth_bary_G)
     
-    # define vector in B
+    # Define vector in B
     r_earth_bary_R = mu_star*np.array([-1, 0, 0])
     
     dt = currentTime.value - equinox.value
@@ -98,7 +98,7 @@ def body2geo(currentTime, equinox, mu_star):
     
     r_earth_bary_B = C_R2B @ r_earth_bary_R
     
-    # find the DCM to rotate vec 1 to vec 2
+    # Find the DCM to rotate vec 1 to vec 2
     n_vec = np.cross(r_earth_bary_B, r_earth_bary_G.T)
     n_hat = n_vec/np.linalg.norm(n_vec)
     

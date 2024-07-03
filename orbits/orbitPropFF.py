@@ -53,8 +53,6 @@ r_EarthEM_r = np.zeros([len(timesFF), 3])
 r_MoonEM_r = np.zeros([len(timesFF), 3])
 
 # Sim time in mjd
-# times_dim = unitConversion.convertTime_to_dim(timesFF)
-# timesFF_mjd = times_dim + t_mjd
 timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
 
 # DCM for G frame and I frame
@@ -70,19 +68,19 @@ for ii in np.arange(len(timesFF)):
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
     r_EMO = EMO[0].get_xyz().to('AU').value
     
-    # convert from H frame to GCRS frame
+    # Convert from H frame to GCRS frame
     r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
     r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU, time)
     r_SunG = frameConversion.icrs2gcrs(r_SunO*u.AU, time)
     r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU, time)
     
-    # change the origin to the EM barycenter, G frame
+    # Change the origin to the EM barycenter, G frame
     r_PEM = r_PG - r_EMG
     r_SunEM = r_SunG - r_EMG
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
-    # convert from G frame to I frame
+    # Convert from G frame to I frame
     r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
     r_SunEM_r[ii, :] = C_G2B@r_SunEM.to('AU')
     r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')

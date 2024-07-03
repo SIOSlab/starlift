@@ -17,6 +17,7 @@ import tools.orbitEOMProp as orbitEOMProp
 import tools.plot_tools as plot_tools
 import pdb
 
+
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
 
 # Initialize the kernel
@@ -49,15 +50,13 @@ r_EarthEM_r = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_r = np.zeros([len(timesCRTBP), 3])
 
 # Sim time in mjd
-# times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
-# timesCRTBP_mjd = times_dim + t_mjd
 timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
-
-breakpoint()
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
+
+breakpoint()
 
 for ii in np.arange(len(timesCRTBP)):
     time = timesCRTBP_mjd[ii]
@@ -81,6 +80,7 @@ for ii in np.arange(len(timesCRTBP)):
 
     # Convert to AU
     r_PEM_r[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
+
 
 # ~~~~~PLOT SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
