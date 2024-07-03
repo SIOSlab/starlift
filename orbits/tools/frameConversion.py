@@ -60,7 +60,8 @@ def rot(th, axis):
         )
 
     return rot_th
-    
+
+
 def body2geo(currentTime, equinox, mu_star):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame to the geocentric frame
@@ -92,26 +93,33 @@ def body2geo(currentTime, equinox, mu_star):
     
     dt = currentTime.value - equinox.value
     theta = unitConversion.convertTime_to_canonical(dt*u.d)
-    C_B2R = rot(theta,3)
+    C_B2R = rot(theta, 3)
     C_R2B = C_B2R.T
     
     r_earth_bary_B = C_R2B @ r_earth_bary_R
     
     # find the DCM to rotate vec 1 to vec 2
-    n_vec = np.cross(r_earth_bary_B,r_earth_bary_G.T)
+    n_vec = np.cross(r_earth_bary_B, r_earth_bary_G.T)
     n_hat = n_vec/np.linalg.norm(n_vec)
     
     r_sin = (np.linalg.norm(n_vec)/mu_star**2)
+<<<<<<< HEAD
     r_cos = (np.dot(r_earth_bary_B/mu_star,r_earth_bary_G.T/mu_star))
     theta = np.arctan2(r_sin,r_cos)
+=======
+    r_cos = (np.dot(r_earth_bary_B/mu_star, r_earth_bary_G.T/mu_star))
+
+    r_theta = np.arctan2(r_sin, r_cos)
+>>>>>>> f7e48a50b0ff66fca953653210cca3183d116a95
     
     r_skew = np.array([[0, -n_hat[2], n_hat[1]],
-                        [n_hat[2], 0, -n_hat[0]],
-                        [-n_hat[1], n_hat[0], 0]])
+                       [n_hat[2], 0, -n_hat[0]],
+                       [-n_hat[1], n_hat[0], 0]])
                         
     C_B2G = np.identity(3) + r_skew*np.sin(theta) + r_skew@r_skew*(1 - np.cos(theta))
 
     return C_B2G
+
 
 def body2rot(currentTime,equinox):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
@@ -134,7 +142,8 @@ def body2rot(currentTime,equinox):
     C_I2R = rot(theta, 3)
     
     return C_I2R
-        
+
+
 # position conversions
 def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
