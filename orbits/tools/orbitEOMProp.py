@@ -2,6 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import astropy.constants as const
+import astropy.units as u
 import frameConversion
 import unitConversion
 
@@ -437,16 +438,65 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, mu_star, Tp_can = None):
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
     posEMB = state_EMB[0].get_xyz().to('AU')
     velEMB = state_EMB[1].get_xyz().to('AU/day')
-    posE = get_body_barycentric_posvel('Earth', t_mjd)[0].get_xyz().to('AU')
-    posE_EM = posE - posEMB
     
-    posEMB_E = (frameConversion.icrs2gcrs(posE_EM, t_mjd)).to('AU')
+    posEMB_E = (frameConversion.icrs2gcrs(posEMB, t_mjd)).to('AU')
 
-    pos_GCRS = pos_G - posE_EM  # G frame
+    pos_GCRS = pos_G + posEMB_E  # G frame
     
     pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
     
     vel_I = frameConversion.rot2inertV(np.array(pos_R), np.array(vel_R), 0)
+    v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
+    vel_H = velEMB + v_dim
+    
+    if Tp_can is not None:
+        Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
+        return pos_H, vel_H, Tp_dim
+    else:
+        return pos_H, vel_H
+        
+def convertIC_I2H(pos_I, vel_I, t_mjd, mu_star, Tp_can = None):
+    """Converts initial conditions from the I frame to the H frame
+
+    Args:
+        pos_R (float n array):
+            Array of distance in canonical units
+        vel_R (float n array):
+            Array of velocities in canonical units
+        t_mjd (astropy Time array):
+            Mission start time in MJD
+        mu_star (float):
+            Non-dimensional mass parameter
+        Tp_can (float n array, optional):
+            Optional array of times in canonical units
+
+
+    Returns:
+        tuple:
+        pos_H (float n array):
+            Array of distance in AU
+        vel_H (float n array):
+            Array of velocities in AU/day
+        Tp_dim (float n array):
+            Array of times in units of days
+
+    """
+    
+    pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
+    
+    C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+    pos_G = C_B2G@pos_I
+    
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
+    posEMB = state_EMB[0].get_xyz().to('AU')
+    velEMB = state_EMB[1].get_xyz().to('AU/day')
+    
+    posEMB_E = (frameConversion.icrs2gcrs(posEMB, t_mjd)).to('AU')
+
+    pos_GCRS = pos_G + posEMB_E  # G frame
+    
+    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
+    
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_H = velEMB + v_dim
     
@@ -470,11 +520,10 @@ def calcFx_FF(X,taus,N,t_mjd,X0,dt):
         Fx = np.append(Fx,states[-1,:] - const)
         
         ctr = ctr + 1
-    
     return Fx
     
 def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
-    hstep = .001
+    hstep = 1E-4
     
     Fx_0 = calcFx_FF(X,taus,N,t_mjd,X0,dt)
     

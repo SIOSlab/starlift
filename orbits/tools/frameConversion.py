@@ -100,16 +100,16 @@ def body2geo(currentTime, equinox, mu_star):
     # find the DCM to rotate vec 1 to vec 2
     n_vec = np.cross(r_earth_bary_B,r_earth_bary_G.T)
     n_hat = n_vec/np.linalg.norm(n_vec)
+    
     r_sin = (np.linalg.norm(n_vec)/mu_star**2)
     r_cos = (np.dot(r_earth_bary_B/mu_star,r_earth_bary_G.T/mu_star))
-
-    r_theta = np.arctan2(r_sin,r_cos)
+    theta = np.arctan2(r_sin,r_cos)
     
     r_skew = np.array([[0, -n_hat[2], n_hat[1]],
                         [n_hat[2], 0, -n_hat[0]],
                         [-n_hat[1], n_hat[0], 0]])
                         
-    C_B2G = np.identity(3) + r_skew*r_sin + r_skew@r_skew*(1 - r_cos)
+    C_B2G = np.identity(3) + r_skew*np.sin(theta) + r_skew@r_skew*(1 - np.cos(theta))
 
     return C_B2G
 
@@ -136,7 +136,7 @@ def body2rot(currentTime,equinox):
     return C_I2R
         
 # position conversions
-def icrs2rot(pos,currentTime,equinox,mu_star):
+def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
     Args:
@@ -154,12 +154,18 @@ def icrs2rot(pos,currentTime,equinox,mu_star):
             Position vector in rotating frame in km
     """
     
-    r_gcrs = icrs2gcrs(pos,currentTime)
-    C_B2G = body2geo(currentTime,equinox,mu_star)
-    C_G2B = C_B2G.T
+    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
+    r_EMG_icrs = state_EM[0].get_xyz().to('AU')
+    
+    r_PE_gcrs = icrs2gcrs(pos,currentTime)
+    r_rot = r_PE_gcrs
+    r_EME_gcrs = icrs2gcrs(r_EMG_icrs,currentTime)
+    r_PEM = r_PE_gcrs - r_EME_gcrs
+
     C_I2R = body2rot(currentTime,equinox)
     
-    r_rot = C_G2B@C_I2R@r_gcrs
+    r_rot = C_G2B@C_I2R@r_PEM
+#    breakpoint()
     return r_rot
 
 
@@ -206,6 +212,7 @@ def inert2gcrs(pos,currentTime,equinox,mu_star):
     """
     
     C_B2G = body2geo(currentTime,equinox,mu_star)
+    C_G2B = C_B2G.T
     
     r_gcrs = C_G2B @ pos
     return r_gcrs
