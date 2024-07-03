@@ -103,14 +103,8 @@ def body2geo(currentTime, equinox, mu_star):
     n_hat = n_vec/np.linalg.norm(n_vec)
     
     r_sin = (np.linalg.norm(n_vec)/mu_star**2)
-<<<<<<< HEAD
     r_cos = (np.dot(r_earth_bary_B/mu_star,r_earth_bary_G.T/mu_star))
     theta = np.arctan2(r_sin,r_cos)
-=======
-    r_cos = (np.dot(r_earth_bary_B/mu_star, r_earth_bary_G.T/mu_star))
-
-    r_theta = np.arctan2(r_sin, r_cos)
->>>>>>> f7e48a50b0ff66fca953653210cca3183d116a95
     
     r_skew = np.array([[0, -n_hat[2], n_hat[1]],
                        [n_hat[2], 0, -n_hat[0]],
