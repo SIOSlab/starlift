@@ -62,8 +62,8 @@ r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
 times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
-# timesCRTBP_mjd = times_dim + t_mjd
-timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
+timesCRTBP_mjd = times_dim + t_mjd      # works in Grace's code
+#timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')     # works in Anna's code
 
 # DCM for G frame and I frame
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
