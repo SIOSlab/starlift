@@ -458,13 +458,13 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, mu_star, Tp_can = None):
     else:
         return pos_H, vel_H
         
-def convertIC_I2H(pos_I, vel_I, t_mjd, mu_star, Tp_can = None):
+def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can = None):
     """Converts initial conditions from the I frame to the H frame
 
     Args:
-        pos_R (float n array):
+        pos_I (float n array):
             Array of distance in canonical units
-        vel_R (float n array):
+        vel_I (float n array):
             Array of velocities in canonical units
         t_mjd (astropy Time array):
             Mission start time in MJD
@@ -487,18 +487,17 @@ def convertIC_I2H(pos_I, vel_I, t_mjd, mu_star, Tp_can = None):
     
     pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
     
-    C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
     pos_G = C_B2G@pos_I
     
-    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', tau)
     posEMB = state_EMB[0].get_xyz().to('AU')
     velEMB = state_EMB[1].get_xyz().to('AU/day')
     
-    posEMB_E = (frameConversion.icrs2gcrs(posEMB, t_mjd)).to('AU')
+    posEMB_E = (frameConversion.icrs2gcrs(posEMB, tau)).to('AU')
 
     pos_GCRS = pos_G + posEMB_E  # G frame
     
-    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
+    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, tau)).to('AU')
     
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_H = velEMB + v_dim

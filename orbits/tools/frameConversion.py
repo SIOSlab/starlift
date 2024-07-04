@@ -157,12 +157,12 @@ def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
             Position vector in rotating frame in km
     """
     
-    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
+    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
     
-    r_PE_gcrs = icrs2gcrs(pos,currentTime)
+    r_PE_gcrs = icrs2gcrs(pos,equinox)
     r_rot = r_PE_gcrs
-    r_EME_gcrs = icrs2gcrs(r_EMG_icrs,currentTime)
+    r_EME_gcrs = icrs2gcrs(r_EMG_icrs,equinox)
     r_PEM = r_PE_gcrs - r_EME_gcrs
 
     C_I2R = body2rot(currentTime,equinox)
