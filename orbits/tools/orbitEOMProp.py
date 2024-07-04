@@ -407,7 +407,7 @@ def fsolve_eqns(w,z,solp, mu_star):
 
 
 def convertIC_R2H(pos_R, vel_R, t_mjd, mu_star, Tp_can = None):
-    """Converts initial conditions from the I frame to the H frame
+    """Converts initial conditions from the R frame to the H frame
 
     Args:
         pos_R (float n array):
