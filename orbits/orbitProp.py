@@ -75,11 +75,11 @@ for kk in np.arange(len(timesCRTBP)):
 
 #    # Positions of the Moon and EM barycenter relative SS barycenter in H frame
 #    r_MoonO = get_body_barycentric_posvel('Moon', tim)[0].get_xyz().to('AU').value
-    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)    # change this
+    EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
     r_EMO = EMO[0].get_xyz().to('AU').value
 #
 #    # Convert from H frame to GCRS frame
-    r_EMG = (frameConversion.icrs2gcrs(r_EMO * u.AU, time)).to('AU')        # change this
+    r_EMG = (frameConversion.icrs2gcrs(r_EMO * u.AU, time)).to('AU')
 #    r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
 #
 #    # Change the origin to the EM barycenter, G frame
@@ -104,19 +104,11 @@ for kk in np.arange(len(timesCRTBP)):
     r_CRTBP_I[kk,:] = r_dim
 #    r_CRTBP_G[kk,:] = r_GCRS
     r_CRTBP_G[kk,:] = r_EM
-    
-#    tmpGCRS = frameConversion.icrs2gcrs(r_PO_H,time).to('AU')
-#    tmpG = tmpGCRS - r_EMG
-#    
-#    diff = np.linalg.norm(tmpG - r_EM*u.AU)
-#    print(np.linalg.norm(r_EMG))
-#breakpoint()
-#    print(C_I2R)
 
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, t_mjd, mu_star, C_B2G, timesCRTBP[-1])
 
-N = 8
+N = 50
 
 dt = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/N
 taus = Time(np.zeros(N), format='mjd', scale='utc')
@@ -172,7 +164,6 @@ posR = np.array([np.nan,np.nan,np.nan])
 posEM = np.array([np.nan,np.nan,np.nan])
 nanArray = np.array([np.nan,np.nan,np.nan])
 timesAll = np.array([])
-#ax1 = plt.figure().add_subplot(projection='3d')
 for ii in np.arange(N):
     IC = np.append(X[ctr*6:((ctr+1)*6)], dt)
     tau = taus[ctr]
@@ -186,50 +177,6 @@ for ii in np.arange(N):
 
     ctr = ctr + 1
     
-    # tt, t_mjd     jagged
-    # t_mjd, t_mjd  straight line
-    # t_mjd, tt     straight line
-    # tt, tt        jagged
-#    for jj in np.arange(len(timesT)):
-#        tt = timesT[jj] + tau
-#
-#        r_EMO_icrs = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)[0].get_xyz().to('AU')
-#        
-#        r_PE_gcrs = frameConversion.icrs2gcrs(states[jj,:]*u.AU,tt)
-#        r_EME_gcrs = frameConversion.icrs2gcrs(r_EMO_icrs,tt)
-#        r_PEM = r_PE_gcrs - r_EME_gcrs
-#
-#        C_I2R = frameConversion.body2rot(tt,t_mjd)
-#        
-#        r_PEM_I = C_G2B@r_PEM
-#        r_PEM_r = C_G2B@C_I2R@r_PEM
-##        breakpoint()
-#        posR = np.block([[posR],[r_PEM_r.to('AU')]])
-#        pos_msI = np.block([[pos_msI],[r_PEM_I.to('AU')]])
-##        pos_msG = np.block([[pos_msG],[r_PE_gcrs.to('AU')]])
-#        pos_msG = np.block([[pos_msG],[r_PEM.to('AU')]])
-#        posEM = np.block([[posEM],[r_EME_gcrs.to('AU')]])
-    
-#    ax1 = plt.figure().add_subplot(projection='3d')
-#    ax1.plot(posR[:, 0], posR[:, 1], posR[:, 2],'b',label='Multi Segment')
-#    ax1.plot(r_CRTBP_rot[:, 0], r_CRTBP_rot[:, 1], r_CRTBP_rot[:, 2],'r',label='CRTBP')
-#    ax1 = plt.figure().add_subplot(projection='3d')
-#    ax1.plot(pos_msI[:, 0], pos_msI[:, 1], pos_msI[:, 2],'b',label='Multi Segment')
-#    ax1.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2],'r',label='CRTBP')
-#    ax1.scatter(pos_msI[-1, 0], pos_msI[-1, 1], pos_msI[-1, 2])
-#    ax1 = plt.figure().add_subplot(projection='3d')
-#    ax1.plot(pos_msG[:, 0], pos_msG[:, 1], pos_msG[:, 2],'b',label='Multi Segment')
-#    ax1.plot(r_CRTBP_G[:, 0], r_CRTBP_G[:, 1], r_CRTBP_G[:, 2],'r',label='CRTBP')
-#    ax1.scatter(pos_msG[-1, 0], pos_msG[-1, 1], pos_msG[-1, 2])
-#    plt.legend()
-#    pos_msI = np.block([[pos_msI],[nanArray]])
-#    pos_msG = np.block([[pos_msG],[nanArray]])
-#    ax2 = plt.figure().add_subplot(projection='3d')
-#    ax2.plot(posH[:, 0], posH[:, 1], posH[:, 2],'b',label='Multi Segment')
-#    ax2.plot(r_PO_CRTBP[:, 0], r_PO_CRTBP[:, 1], r_PO_CRTBP[:, 2],'r',label='CRTBP')
-#plt.show()
-#breakpoint()
-    
 posH = posH[1:,:]
 
 ## Define the initial state array
@@ -241,7 +188,6 @@ posH = posH[1:,:]
 #velFF = statesFF[:, 3:6]
 
 goodInds = np.arange(len(timesAll))
-#breakpoint()
 #goodInds = (np.arange(0,len(timesAll),np.floor(len(timesAll)/len(timesCRTBP_mjd)))).astype(int)
 timesPartial = timesAll[goodInds]
 posHPartial = posH[goodInds,:]
@@ -251,7 +197,7 @@ posR = np.array([np.nan,np.nan,np.nan])
 for ii in np.arange(len(timesPartial)):
     tt = timesPartial[ii]
 
-    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)     # change this
+    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
     
     r_PE_gcrs = frameConversion.icrs2gcrs(posHPartial[ii,:]*u.AU,tt)
@@ -261,13 +207,11 @@ for ii in np.arange(len(timesPartial)):
     C_I2R3 = frameConversion.body2rot(tt,t_mjd)
     
     r_PEM_I = C_G2B@r_PEM
-    r_PEM_r = C_G2B@C_I2R3@r_PEM
-    
-#    r_PEM_r = (frameConversion.icrs2rot(posIPartial[ii,:]*u.AU,tt,t_mjd,mu_star,C_G2B)).to('AU')
-#    breakpoint()
+    r_PEM_r = C_I2R3@r_PEM_I
+
     posR = np.block([[posR],[r_PEM_r.to('AU')]])
     pos_msI = np.block([[pos_msI],[r_PEM_I.to('AU')]])
-#    pos_msG = np.block([[pos_msG],[r_PE_gcrs.to('AU')]])
+#    pos_msGCRS = np.block([[pos_msGCRS],[r_PE_gcrs.to('AU')]])
     pos_msG = np.block([[pos_msG],[r_PEM.to('AU')]])
     posEM = np.block([[posEM],[r_EME_gcrs.to('AU')]])
     
@@ -278,7 +222,7 @@ r_CRTBP2_rot = np.array([np.nan,np.nan,np.nan])
 for ii in np.arange(len(timesCRTBP)):
     tt = timesCRTBP_mjd[ii]
 
-    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)     # change this
+    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
     
     r_CRTBP_gcrs = frameConversion.icrs2gcrs(r_PO_CRTBP[ii,:]*u.AU,tt)
@@ -295,7 +239,6 @@ for ii in np.arange(len(timesCRTBP)):
     r_CRTBP2_I = np.block([[r_CRTBP2_I],[tmp1.to('AU')]])
     r_CRTBP2_rot = np.block([[r_CRTBP2_rot],[tmp2.to('AU')]])
 #    posTMP = np.block([[posTMP],[r_CRTBP_gcrs.to('AU')]])
-#    print(C_I2R2)
 
 posR = posR[1:,:]
 pos_msI = pos_msI[1:,:]
@@ -305,8 +248,6 @@ posEM = posEM[1:,:]
 r_CRTBP_EMs = r_CRTBP_EMs[1:,:]
 r_CRTBP2_I = r_CRTBP2_I[1:,:]
 r_CRTBP2_rot = r_CRTBP2_rot[1:,:]
-
-breakpoint()
 
 ax1 = plt.figure().add_subplot(projection='3d')
 ax1.plot(posH[:, 0], posH[:, 1], posH[:, 2],'b',label='Multi Segment')
