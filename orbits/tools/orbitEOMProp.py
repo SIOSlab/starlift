@@ -142,7 +142,7 @@ def statePropCRTBP(freeVar, mu_star):
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
     T = freeVar[-1]
 
-    sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12,)
+    sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), method='LSODA', first_step=0.0001, min_step=1E-10, max_step=2700, rtol=1E-12, atol=1E-12)
     states = sol_int.y.T
     times = sol_int.t
     

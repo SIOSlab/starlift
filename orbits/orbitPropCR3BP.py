@@ -21,7 +21,7 @@ import pdb
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
 
 # Initialize the kernel
-coord.solar_system.solar_system_ephemeris.set('de432s')
+coord.solar_system.solar_system_ephemeris.set('de440')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
@@ -43,6 +43,8 @@ freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], days])
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
 posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
+
+breakpoint()
 
 # Preallocate space
 r_PEM_r = np.zeros([len(timesCRTBP), 3])

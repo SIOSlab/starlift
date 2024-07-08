@@ -20,11 +20,11 @@ GMAT DefaultSC.DateFormat = UTCModJulian;
 GMAT DefaultSC.Epoch = '57727';
 GMAT DefaultSC.CoordinateSystem = EMBaryRot;
 GMAT DefaultSC.DisplayStateType = Cartesian;
-GMAT DefaultSC.X = 388641.8766523502;
-GMAT DefaultSC.Y = 5.820766091346741e-11;
-GMAT DefaultSC.Z = -66558.85993853994;
-GMAT DefaultSC.VX = 4.163336342344337e-17;
-GMAT DefaultSC.VY = -0.07982111000000003;
+GMAT DefaultSC.X = 388641.8766523503;
+GMAT DefaultSC.Y = 1.455191522836685e-10;
+GMAT DefaultSC.Z = -66558.8599385399;
+GMAT DefaultSC.VX = 9.71445146547012e-17;
+GMAT DefaultSC.VY = -0.07982111000000014;
 GMAT DefaultSC.VZ = -5.551115123125783e-17;
 GMAT DefaultSC.DryMass = 850;
 GMAT DefaultSC.Cd = 2.2;
@@ -61,6 +61,7 @@ GMAT DefaultSC.AttitudeDisplayStateType = 'Quaternion';
 GMAT DefaultSC.AttitudeRateDisplayStateType = 'AngularVelocity';
 GMAT DefaultSC.AttitudeCoordinateSystem = EarthMJ2000Eq;
 GMAT DefaultSC.EulerAngleSequence = '321';
+
 
 
 
