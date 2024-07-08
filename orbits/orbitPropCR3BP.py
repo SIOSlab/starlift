@@ -56,8 +56,6 @@ timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
-breakpoint()
-
 for ii in np.arange(len(timesCRTBP)):
     time = timesCRTBP_mjd[ii]
     

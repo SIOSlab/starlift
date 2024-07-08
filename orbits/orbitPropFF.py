@@ -35,8 +35,12 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.6816
 # Convert the velocity to I frame from R frame (position is the same in both)
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
-# Convert from I frame to H frame
-pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, mu_star, Tp_can=None)
+# DCM for G frame and I frame
+C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+C_G2B = C_B2G.T
+
+# Convert ICs to H frame from I frame
+pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, Tp_can=None)
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)
@@ -46,18 +50,14 @@ statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
+# Sim time in mjd
+timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
+
 # Preallocate space
 r_PEM_r = np.zeros([len(timesFF), 3])
 r_SunEM_r = np.zeros([len(timesFF), 3])
 r_EarthEM_r = np.zeros([len(timesFF), 3])
 r_MoonEM_r = np.zeros([len(timesFF), 3])
-
-# Sim time in mjd
-timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
-
-# DCM for G frame and I frame
-C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
-C_G2B = C_B2G.T
 
 for ii in np.arange(len(timesFF)):
     time = timesFF_mjd[ii]
