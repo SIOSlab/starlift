@@ -115,7 +115,7 @@ def body2geo(currentTime, equinox, mu_star):
     return C_B2G
 
 
-def body2rot(currentTime,equinox):
+def body2rot(currentTime, equinox):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame to the Earth-Moon CR3BP rotating frame
     
@@ -139,7 +139,7 @@ def body2rot(currentTime,equinox):
 
 
 # position conversions
-def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
+def icrs2rot(pos,currentTime,equinox, mu_star, C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
     Args:
@@ -165,7 +165,7 @@ def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
     r_EME_gcrs = icrs2gcrs(r_EMG_icrs,equinox)
     r_PEM = r_PE_gcrs - r_EME_gcrs
 
-    C_I2R = body2rot(currentTime,equinox)
+    C_I2R = body2rot(currentTime, equinox)
     
     r_rot = C_G2B@C_I2R@r_PEM
 #    breakpoint()
