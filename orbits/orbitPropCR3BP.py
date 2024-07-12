@@ -116,7 +116,7 @@ ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propag
 ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
 ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
 ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
-# ax.plot(gmat_posrot[:, 0], gmat_posrot[:, 1], gmat_posrot[:, 2], color='red', label='GMAT Orbit')
+# ax.plot(gmat_posrot[:, 0], gmat_posrot[:, 1], gmat_posrot[:, 2], color='red', label='GMAT Orbit, rotating frame')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
