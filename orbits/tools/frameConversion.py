@@ -103,8 +103,8 @@ def body2geo(currentTime, equinox, mu_star):
     n_hat = n_vec/np.linalg.norm(n_vec)
     
     r_sin = (np.linalg.norm(n_vec)/mu_star**2)
-    r_cos = (np.dot(r_earth_bary_B/mu_star,r_earth_bary_G.T/mu_star))
-    theta = np.arctan2(r_sin,r_cos)
+    r_cos = (np.dot(r_earth_bary_B/mu_star, r_earth_bary_G.T/mu_star))
+    theta = np.arctan2(r_sin, r_cos)
     
     r_skew = np.array([[0, -n_hat[2], n_hat[1]],
                        [n_hat[2], 0, -n_hat[0]],
@@ -115,7 +115,7 @@ def body2geo(currentTime, equinox, mu_star):
     return C_B2G
 
 
-def body2rot(currentTime,equinox):
+def body2rot(currentTime, equinox):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame to the Earth-Moon CR3BP rotating frame
     
@@ -139,7 +139,7 @@ def body2rot(currentTime,equinox):
 
 
 # position conversions
-def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
+def icrs2rot(pos,currentTime,equinox, mu_star, C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
     Args:
@@ -165,7 +165,7 @@ def icrs2rot(pos,currentTime,equinox,mu_star,C_G2B):
     r_EME_gcrs = icrs2gcrs(r_EMG_icrs,equinox)
     r_PEM = r_PE_gcrs - r_EME_gcrs
 
-    C_I2R = body2rot(currentTime,equinox)
+    C_I2R = body2rot(currentTime, equinox)
     
     r_rot = C_G2B@C_I2R@r_PEM
 #    breakpoint()
@@ -280,7 +280,7 @@ def icrs2gcrs(pos,currentTime):
     """
     
     pos = pos.to('km')
-    r_icrs = coord.SkyCoord(x = pos[0].value, y = pos[1].value, z = pos[2].value, unit='km', representation_type='cartesian', frame='icrs')
+    r_icrs = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km', representation_type='cartesian', frame='icrs')
     r_gcrs = r_icrs.transform_to(GCRS(obstime=currentTime))    # this throws an EFRA warning re: leap seconds, but it's fine
     r_gcrs = r_gcrs.cartesian.get_xyz()
     

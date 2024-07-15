@@ -21,7 +21,7 @@ import pdb
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
 
 # Initialize the kernel
-coord.solar_system.solar_system_ephemeris.set('de432s')
+coord.solar_system.solar_system_ephemeris.set('de440')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
@@ -56,20 +56,18 @@ timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
 C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
-breakpoint()
-
 for ii in np.arange(len(timesCRTBP)):
     time = timesCRTBP_mjd[ii]
-    
+
     # Positions of the Moon and EM barycenter relative SS barycenter in H frame
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
     r_EMO = EMO[0].get_xyz().to('AU').value
-    
+
     # Convert from H frame to GCRS frame
     r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU, time)
     r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU, time)
-    
+
     # Change the origin to the EM barycenter, G frame
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
@@ -118,6 +116,7 @@ ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propag
 ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
 ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
 ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
+# ax.plot(gmat_posrot[:, 0], gmat_posrot[:, 1], gmat_posrot[:, 2], color='red', label='GMAT Orbit, rotating frame')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
@@ -127,49 +126,49 @@ plt.title('CRTBP in the Inertial (I) Frame')
 plt.legend()
 
 
-# ~~~~~ANIMATION~~~~~
-
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-
-# Collect animation data for CRTBP
-N_CRTBP = len(r_PEM_r[:, 0])  # number of frames in animation
-P_CRTBP = 50  # number of points plotted per frame
-
-data_CRTBP = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
-data_Earth = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
-data_Moon = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
-
-# Initialize the first point for each body
-line_CRTBP, = ax.plot(data_CRTBP[0, 0:1], data_CRTBP[1, 0:1], data_CRTBP[2, 0:1], color='blue', label='Orbit')
-line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1], color='green', label='Earth')
-line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
-
-
-def animate(i):
-    line_CRTBP.set_data(data_CRTBP[0, :i*P_CRTBP], data_CRTBP[1, :i*P_CRTBP])  # Set the x and y positions
-    line_CRTBP.set_3d_properties(data_CRTBP[2, :i*P_CRTBP])  # Set the z position
-    line_Earth.set_data(data_Earth[0, :i*P_CRTBP], data_Earth[1, :i*P_CRTBP])
-    line_Earth.set_3d_properties(data_Earth[2, :i * P_CRTBP])
-    line_Moon.set_data(data_Moon[0, :i*P_CRTBP], data_Moon[1, :i*P_CRTBP])
-    line_Moon.set_3d_properties(data_Moon[2, :i * P_CRTBP])
-
-
-ani_CRTBP = animation.FuncAnimation(fig, animate, frames=N_CRTBP//P_CRTBP, interval=1, repeat=False)
-
-# Set axes limits
-ax.set_xlim3d(min(data_CRTBP[0]), max(data_CRTBP[0]))
-ax.set_ylim3d(min(data_CRTBP[1]), max(data_CRTBP[1]))
-ax.set_zlim3d(min(data_CRTBP[2]), max(data_CRTBP[2]))
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
-
-# Set labels
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
-plt.title('CRTBP model in the I frame')
+# # ~~~~~ANIMATION~~~~~
+#
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+#
+# # Collect animation data for CRTBP
+# N_CRTBP = len(r_PEM_r[:, 0])  # number of frames in animation
+# P_CRTBP = 50  # number of points plotted per frame
+#
+# data_CRTBP = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
+# data_Earth = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
+# data_Moon = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
+#
+# # Initialize the first point for each body
+# line_CRTBP, = ax.plot(data_CRTBP[0, 0:1], data_CRTBP[1, 0:1], data_CRTBP[2, 0:1], color='blue', label='Orbit')
+# line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1], color='green', label='Earth')
+# line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
+#
+#
+# def animate(i):
+#     line_CRTBP.set_data(data_CRTBP[0, :i*P_CRTBP], data_CRTBP[1, :i*P_CRTBP])  # Set the x and y positions
+#     line_CRTBP.set_3d_properties(data_CRTBP[2, :i*P_CRTBP])  # Set the z position
+#     line_Earth.set_data(data_Earth[0, :i*P_CRTBP], data_Earth[1, :i*P_CRTBP])
+#     line_Earth.set_3d_properties(data_Earth[2, :i * P_CRTBP])
+#     line_Moon.set_data(data_Moon[0, :i*P_CRTBP], data_Moon[1, :i*P_CRTBP])
+#     line_Moon.set_3d_properties(data_Moon[2, :i * P_CRTBP])
+#
+#
+# ani_CRTBP = animation.FuncAnimation(fig, animate, frames=N_CRTBP//P_CRTBP, interval=1, repeat=False)
+#
+# # Set axes limits
+# ax.set_xlim3d(min(data_CRTBP[0]), max(data_CRTBP[0]))
+# ax.set_ylim3d(min(data_CRTBP[1]), max(data_CRTBP[1]))
+# ax.set_zlim3d(min(data_CRTBP[2]), max(data_CRTBP[2]))
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+#
+# # Set labels
+# ax.set_xlabel('X [AU]')
+# ax.set_ylabel('Y [AU]')
+# ax.set_zlabel('Z [AU]')
+# plt.legend()
+# plt.title('CRTBP model in the I frame')
 
 
 plt.show()

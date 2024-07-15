@@ -240,18 +240,18 @@ for ii in np.arange(len(timesCRTBP)):
     r_CRTBP2_rot = np.block([[r_CRTBP2_rot],[tmp2.to('AU')]])
 #    posTMP = np.block([[posTMP],[r_CRTBP_gcrs.to('AU')]])
 
-posR = posR[1:,:]
-pos_msI = pos_msI[1:,:]
-pos_msG = pos_msG[1:,:]
-posTMP = posTMP[1:,:]
-posEM = posEM[1:,:]
-r_CRTBP_EMs = r_CRTBP_EMs[1:,:]
-r_CRTBP2_I = r_CRTBP2_I[1:,:]
-r_CRTBP2_rot = r_CRTBP2_rot[1:,:]
+posR = posR[1:, :]
+pos_msI = pos_msI[1:, :]
+pos_msG = pos_msG[1:, :]
+posTMP = posTMP[1:, :]
+posEM = posEM[1:, :]
+r_CRTBP_EMs = r_CRTBP_EMs[1:, :]
+r_CRTBP2_I = r_CRTBP2_I[1:, :]
+r_CRTBP2_rot = r_CRTBP2_rot[1:, :]
 
 ax1 = plt.figure().add_subplot(projection='3d')
-ax1.plot(posH[:, 0], posH[:, 1], posH[:, 2],'b',label='Multi Segment')
-ax1.plot(r_PO_CRTBP[:, 0], r_PO_CRTBP[:, 1], r_PO_CRTBP[:, 2],'r',label='CRTBP')
+ax1.plot(posH[:, 0], posH[:, 1], posH[:, 2], 'b', label='Multi Segment')
+ax1.plot(r_PO_CRTBP[:, 0], r_PO_CRTBP[:, 1], r_PO_CRTBP[:, 2], 'r', label='CRTBP')
 ax1.scatter(posH[0, 0], posH[0, 1], posH[0, 2])
 ax1.scatter(r_PO_CRTBP[0, 0], r_PO_CRTBP[0, 1], r_PO_CRTBP[0, 2])
 ax1.set_title('FF vs CRTBP in H frame (ICRS)')
@@ -275,8 +275,8 @@ plt.legend()
 #ax3[1,1].set_ylabel('Z [AU]')
 
 ax2 = plt.figure().add_subplot(projection='3d')
-ax2.plot(pos_msG[:, 0], pos_msG[:, 1], pos_msG[:, 2],'b',label='Multi Segment')
-ax2.plot(r_CRTBP_G[:, 0], r_CRTBP_G[:, 1], r_CRTBP_G[:, 2],'r',label='CRTBP')
+ax2.plot(pos_msG[:, 0], pos_msG[:, 1], pos_msG[:, 2], 'b', label='Multi Segment')
+ax2.plot(r_CRTBP_G[:, 0], r_CRTBP_G[:, 1], r_CRTBP_G[:, 2], 'r', label='CRTBP')
 #ax2.plot(posTMP[:, 0], posTMP[:, 1], posTMP[:, 2],'g',label='CRTBP w/ MS process')
 ax2.scatter(pos_msG[0, 0], pos_msG[0, 1], pos_msG[0, 2])
 ax2.scatter(r_CRTBP_G[0, 0], r_CRTBP_G[0, 1], r_CRTBP_G[0, 2])
@@ -304,9 +304,9 @@ plt.legend()
 #ax3[1,1].set_ylabel('Z [AU]')
 
 ax3 = plt.figure().add_subplot(projection='3d')
-ax3.plot(pos_msI[:, 0], pos_msI[:, 1], pos_msI[:, 2],'b',label='Multi Segment')
-ax3.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2],'r',label='CRTBP')
-ax3.plot(r_CRTBP2_I[:, 0], r_CRTBP2_I[:, 1], r_CRTBP2_I[:, 2],'g-.',label='CRTBP w/ MS process')
+ax3.plot(pos_msI[:, 0], pos_msI[:, 1], pos_msI[:, 2], 'b', label='Multi Segment')
+ax3.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r', label='CRTBP')
+ax3.plot(r_CRTBP2_I[:, 0], r_CRTBP2_I[:, 1], r_CRTBP2_I[:, 2], 'g-.', label='CRTBP w/ MS process')
 ax3.scatter(pos_msI[0, 0], pos_msI[0, 1], pos_msI[0, 2])
 ax3.scatter(r_CRTBP_I[0, 0], r_CRTBP_I[0, 1], r_CRTBP_I[0, 2])
 ax3.set_title('FF vs CRTBP in I frame (Inertial EM)')
@@ -333,9 +333,9 @@ plt.legend()
 #ax3[1,1].set_ylabel('Z [AU]')
 
 ax4 = plt.figure().add_subplot(projection='3d')
-ax4.plot(posR[:, 0], posR[:, 1], posR[:, 2],'b',label='Multi Segment')
-ax4.plot(r_CRTBP_rot[:, 0], r_CRTBP_rot[:, 1], r_CRTBP_rot[:, 2],'r',label='CRTBP')
-ax4.plot(r_CRTBP2_rot[:, 0], r_CRTBP2_rot[:, 1], r_CRTBP2_rot[:, 2],'g',label='CRTBP w/ MS process')
+ax4.plot(posR[:, 0], posR[:, 1], posR[:, 2], 'b', label='Multi Segment')
+ax4.plot(r_CRTBP_rot[:, 0], r_CRTBP_rot[:, 1], r_CRTBP_rot[:, 2], 'r',label='CRTBP')
+ax4.plot(r_CRTBP2_rot[:, 0], r_CRTBP2_rot[:, 1], r_CRTBP2_rot[:, 2], 'g', label='CRTBP w/ MS process')
 ax4.scatter(posR[0, 0], posR[0, 1], posR[0, 2])
 ax4.scatter(r_CRTBP_rot[0, 0], r_CRTBP_rot[0, 1], r_CRTBP_rot[0, 2])
 ax4.set_title('FF vs CRTBP in R frame (Rotating)')

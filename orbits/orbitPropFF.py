@@ -35,8 +35,12 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0, 0.6816
 # Convert the velocity to I frame from R frame (position is the same in both)
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
-# Convert from I frame to H frame
-pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, mu_star, Tp_can=None)
+# DCM for G frame and I frame
+C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+C_G2B = C_B2G.T
+
+# Convert ICs to H frame from I frame
+pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, Tp_can=None)
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)
@@ -46,18 +50,14 @@ statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
+# Sim time in mjd
+timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
+
 # Preallocate space
 r_PEM_r = np.zeros([len(timesFF), 3])
 r_SunEM_r = np.zeros([len(timesFF), 3])
 r_EarthEM_r = np.zeros([len(timesFF), 3])
 r_MoonEM_r = np.zeros([len(timesFF), 3])
-
-# Sim time in mjd
-timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
-
-# DCM for G frame and I frame
-C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
-C_G2B = C_B2G.T
 
 for ii in np.arange(len(timesFF)):
     time = timesFF_mjd[ii]
@@ -113,10 +113,27 @@ gmat_posrot = np.array([gmat_xrot.value, gmat_yrot.value, gmat_zrot.value]).T
 
 # Preallocate space
 gmat_posinert = np.zeros([len(gmat_time), 3])
+gmat_posrot2 = np.zeros([len(gmat_time), 3])
+dt = np.zeros(len(gmat_time))
+dt_canonical = np.zeros(len(gmat_time))
 
 # Convert to I frame from R frame
 for ii in np.arange(len(gmat_time)):
+    # dt = gmat_time[ii].value - gmat_time[0].value
+    # dt_canonical = unitConversion.convertTime_to_canonical(dt*u.d)
+    #
+    # if dt_canonical >= 2*np.pi:  # Reset time vector
+    #     for jj in np.arange(ii, len(gmat_time)):
+    #         gmat_time[jj] = gmat_time[jj] - unitConversion.convertTime_to_dim(2*np.pi)
+
     gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], gmat_time[0])
+
+# np.set_printoptions(threshold=sys.maxsize)
+# print(gmat_time)
+
+# # Convert back to R frame for testing
+# for ii in np.arange(len(gmat_time)):
+#     gmat_posrot2[ii, :] = frameConversion.inert2rotP(gmat_posinert[ii, :], gmat_time[ii], gmat_time[0])
 
 # Plot
 ax = plt.figure().add_subplot(projection='3d')
@@ -125,6 +142,8 @@ ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', 
 ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
 ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
 ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
+# ax.plot(gmat_posrot[:, 0], gmat_posrot[:, 1], gmat_posrot[:, 2], color='blue', label='GMAT Orbit, rotating frame 1 [AU]')
+# ax.plot(gmat_posrot2[:, 0], gmat_posrot2[:, 1], gmat_posrot2[:, 2], color='orange', label='GMAT Orbit, rotating frame 2 [AU]')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
@@ -134,52 +153,52 @@ plt.title('FF Model in the Inertial (I) Frame')
 plt.legend()
 
 
-# ~~~~~ANIMATION~~~~~
-
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-
-# Collect animation data for full force
-N_FF = len(r_PEM_r[:, 0])  # Number of frames in animation
-P_FF = 8  # Number of points plotted per frame
-
-data_FF = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
-data_EarthFF = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
-data_MoonFF = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
-data_SunFF = np.array([r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2]])
-
-line_FF, = ax.plot(data_FF[0, 0:1], data_FF[1, 0:1], data_FF[2, 0:1], color='blue', label='Orbit')
-line_EarthFF, = ax.plot(data_EarthFF[0, 0:1], data_EarthFF[1, 0:1], data_EarthFF[2, 0:1], color='green', label='Earth')
-line_MoonFF, = ax.plot(data_MoonFF[0, 0:1], data_MoonFF[1, 0:1], data_MoonFF[2, 0:1], color='gray', label='Moon')
-line_SunFF, = ax.plot(data_SunFF[0, 0:1], data_SunFF[1, 0:1], data_SunFF[2, 0:1], color='orange', label='Sun')
-
-
-def animate(i):
-    line_FF.set_data(data_FF[0, :i*P_FF], data_FF[1, :i*P_FF])
-    line_FF.set_3d_properties(data_FF[2, :i*P_FF])
-    line_EarthFF.set_data(data_EarthFF[0, :i*P_FF], data_EarthFF[1, :i*P_FF])
-    line_EarthFF.set_3d_properties(data_EarthFF[2, 0:i*P_FF])
-    line_MoonFF.set_data(data_MoonFF[0, :i*P_FF], data_MoonFF[1, :i*P_FF])
-    line_MoonFF.set_3d_properties(data_MoonFF[2, 0:i*P_FF])
-    line_SunFF.set_data(data_SunFF[0, :i*P_FF], data_SunFF[1, :i*P_FF])
-    line_SunFF.set_3d_properties(data_SunFF[2, 0:i*P_FF])
-
-
-ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=1, repeat=False)
-
-# Set axes limits
-ax.set_xlim3d(min(data_FF[0]), max(data_FF[0]))
-ax.set_ylim3d(min(data_FF[1]), max(data_FF[1]))
-ax.set_zlim3d(min(data_FF[2]), max(data_FF[2]))
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
-
-# Set labels
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
-plt.title('Full force model in the I frame')
+# # ~~~~~ANIMATION~~~~~
+#
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+#
+# # Collect animation data for full force
+# N_FF = len(r_PEM_r[:, 0])  # Number of frames in animation
+# P_FF = 8  # Number of points plotted per frame
+#
+# data_FF = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
+# data_EarthFF = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
+# data_MoonFF = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
+# data_SunFF = np.array([r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2]])
+#
+# line_FF, = ax.plot(data_FF[0, 0:1], data_FF[1, 0:1], data_FF[2, 0:1], color='blue', label='Orbit')
+# line_EarthFF, = ax.plot(data_EarthFF[0, 0:1], data_EarthFF[1, 0:1], data_EarthFF[2, 0:1], color='green', label='Earth')
+# line_MoonFF, = ax.plot(data_MoonFF[0, 0:1], data_MoonFF[1, 0:1], data_MoonFF[2, 0:1], color='gray', label='Moon')
+# line_SunFF, = ax.plot(data_SunFF[0, 0:1], data_SunFF[1, 0:1], data_SunFF[2, 0:1], color='orange', label='Sun')
+#
+#
+# def animate(i):
+#     line_FF.set_data(data_FF[0, :i*P_FF], data_FF[1, :i*P_FF])
+#     line_FF.set_3d_properties(data_FF[2, :i*P_FF])
+#     line_EarthFF.set_data(data_EarthFF[0, :i*P_FF], data_EarthFF[1, :i*P_FF])
+#     line_EarthFF.set_3d_properties(data_EarthFF[2, 0:i*P_FF])
+#     line_MoonFF.set_data(data_MoonFF[0, :i*P_FF], data_MoonFF[1, :i*P_FF])
+#     line_MoonFF.set_3d_properties(data_MoonFF[2, 0:i*P_FF])
+#     line_SunFF.set_data(data_SunFF[0, :i*P_FF], data_SunFF[1, :i*P_FF])
+#     line_SunFF.set_3d_properties(data_SunFF[2, 0:i*P_FF])
+#
+#
+# ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=1, repeat=False)
+#
+# # Set axes limits
+# ax.set_xlim3d(min(data_FF[0]), max(data_FF[0]))
+# ax.set_ylim3d(min(data_FF[1]), max(data_FF[1]))
+# ax.set_zlim3d(min(data_FF[2]), max(data_FF[2]))
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+#
+# # Set labels
+# ax.set_xlabel('X [AU]')
+# ax.set_ylabel('Y [AU]')
+# ax.set_zlabel('Z [AU]')
+# plt.legend()
+# plt.title('Full force model in the I frame')
 
 
 plt.show()
