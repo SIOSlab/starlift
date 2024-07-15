@@ -11,10 +11,15 @@ import astropy.units as u
 import astropy.constants as const
 from matplotlib import pyplot as plt
 from matplotlib import animation
-import tools.unitConversion as unitConversion
-import tools.frameConversion as frameConversion
-import tools.orbitEOMProp as orbitEOMProp
-import tools.plot_tools as plot_tools
+sys.path.insert(1, 'tools')
+import unitConversion
+import frameConversion
+import orbitEOMProp
+import plot_tools
+#import tools.unitConversion as unitConversion
+#import tools.frameConversion as frameConversion
+#import tools.orbitEOMProp as orbitEOMProp
+#import tools.plot_tools as plot_tools
 import pdb
 
 
@@ -73,6 +78,8 @@ for ii in np.arange(len(timesCRTBP)):
     r_MoonEM = r_MoonG - r_EMG
 
     # Convert from G frame to I frame
+    C_B2G = frameConversion.body2geo(time, t_mjd, mu_star)
+    C_G2B = C_B2G.T
     r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
     r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
 

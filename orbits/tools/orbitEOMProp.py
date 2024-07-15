@@ -500,6 +500,7 @@ def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can = None):
     
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_G = C_B2G @ v_dim
+    
     pos_H, vel_H = frameConversion.gcrs2icrsPV(pos_GCRS, vel_G, tau)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')

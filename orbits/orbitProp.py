@@ -90,6 +90,9 @@ for kk in np.arange(len(timesCRTBP)):
 #    r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
 #    r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
 
+    C_B2G = frameConversion.body2geo(time, t_mjd, mu_star)
+    C_G2B = C_B2G.T
+
     # Convert to AU
 #    r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
     r_dim = (unitConversion.convertPos_to_dim(posCRTBP[kk, :])).to('AU').value
@@ -108,7 +111,7 @@ for kk in np.arange(len(timesCRTBP)):
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, t_mjd, mu_star, C_B2G, timesCRTBP[-1])
 
-N = 8
+N = 16
 
 dt = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/N
 taus = Time(np.zeros(N), format='mjd', scale='utc')
@@ -171,9 +174,11 @@ for ii in np.arange(N):
     posFF = states[:,0:3]
 
     posH = np.block([[posH],[posFF]])
+    posH = np.block([[posH],[nanArray]])
     
     tt = tau + timesT
     timesAll = np.append(timesAll, tt)
+    timesAll = np.append(timesAll, Time(0, scale='utc',format='mjd'))
 
     ctr = ctr + 1
     
@@ -197,23 +202,29 @@ posR = np.array([np.nan,np.nan,np.nan])
 for ii in np.arange(len(timesPartial)):
     tt = timesPartial[ii]
 
-    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
-    r_EMG_icrs = state_EM[0].get_xyz().to('AU')
-    
-    r_PE_gcrs = frameConversion.icrs2gcrs(posHPartial[ii,:]*u.AU,tt)
-    r_EME_gcrs = frameConversion.icrs2gcrs(r_EMG_icrs,tt)
-    r_PEM = r_PE_gcrs - r_EME_gcrs
+    if tt.value  < 1:
+        pos_msI = np.block([[pos_msI],[nanArray]])
+        pos_msG = np.block([[pos_msG],[nanArray]])
+        posEM = np.block([[posEM],[nanArray]])
+        posR = np.block([[posR],[nanArray]])
+    else:
+        state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
+        r_EMG_icrs = state_EM[0].get_xyz().to('AU')
+        
+        r_PE_gcrs = frameConversion.icrs2gcrs(posHPartial[ii,:]*u.AU,tt)
+        r_EME_gcrs = frameConversion.icrs2gcrs(r_EMG_icrs,tt)
+        r_PEM = r_PE_gcrs - r_EME_gcrs
 
-    C_I2R3 = frameConversion.body2rot(tt,t_mjd)
-    
-    r_PEM_I = C_G2B@r_PEM
-    r_PEM_r = C_I2R3@r_PEM_I
+        C_I2R3 = frameConversion.body2rot(tt,t_mjd)
+        
+        r_PEM_I = C_G2B@r_PEM
+        r_PEM_r = C_I2R3@r_PEM_I
 
-    posR = np.block([[posR],[r_PEM_r.to('AU')]])
-    pos_msI = np.block([[pos_msI],[r_PEM_I.to('AU')]])
-#    pos_msGCRS = np.block([[pos_msGCRS],[r_PE_gcrs.to('AU')]])
-    pos_msG = np.block([[pos_msG],[r_PEM.to('AU')]])
-    posEM = np.block([[posEM],[r_EME_gcrs.to('AU')]])
+        posR = np.block([[posR],[r_PEM_r.to('AU')]])
+        pos_msI = np.block([[pos_msI],[r_PEM_I.to('AU')]])
+    #    pos_msGCRS = np.block([[pos_msGCRS],[r_PE_gcrs.to('AU')]])
+        pos_msG = np.block([[pos_msG],[r_PEM.to('AU')]])
+        posEM = np.block([[posEM],[r_EME_gcrs.to('AU')]])
     
 posTMP = np.array([np.nan,np.nan,np.nan])
 r_CRTBP_EMs = np.array([np.nan,np.nan,np.nan])

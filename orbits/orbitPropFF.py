@@ -11,10 +11,15 @@ import astropy.units as u
 import astropy.constants as const
 from matplotlib import pyplot as plt
 from matplotlib import animation
-import tools.unitConversion as unitConversion
-import tools.frameConversion as frameConversion
-import tools.orbitEOMProp as orbitEOMProp
-import tools.plot_tools as plot_tools
+sys.path.insert(1, 'tools')
+import unitConversion
+import frameConversion
+import orbitEOMProp
+import plot_tools
+#import tools.unitConversion as unitConversion
+#import tools.frameConversion as frameConversion
+#import tools.orbitEOMProp as orbitEOMProp
+#import tools.plot_tools as plot_tools
 import pdb
 
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
@@ -80,13 +85,29 @@ for ii in np.arange(len(timesFF)):
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
+    C_B2G = frameConversion.body2geo(time, t_mjd, mu_star)
+    C_G2B = C_B2G.T
+    
     # Convert from G frame to I frame
     r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
     r_SunEM_r[ii, :] = C_G2B@r_SunEM.to('AU')
     r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
     r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
 
+ax1 = plt.figure().add_subplot(projection='3d')
+ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Multi Segment')
+ax1.set_title('FF in H frame (ICRS)')
+ax1.set_xlabel('X [AU]')
+ax1.set_ylabel('Y [AU]')
+ax1.set_zlabel('Z [AU]')
 
+ax3 = plt.figure().add_subplot(projection='3d')
+ax3.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Multi Segment')
+ax3.set_title('FF in I frame (Inertial EM)')
+ax3.set_xlabel('X [AU]')
+ax3.set_ylabel('Y [AU]')
+ax3.set_zlabel('Z [AU]')
+breakpoint()
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
 # Obtain FF data from GMAT
