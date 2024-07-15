@@ -108,7 +108,7 @@ for kk in np.arange(len(timesCRTBP)):
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, t_mjd, mu_star, C_B2G, timesCRTBP[-1])
 
-N = 50
+N = 8
 
 dt = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/N
 taus = Time(np.zeros(N), format='mjd', scale='utc')

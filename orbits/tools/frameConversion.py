@@ -307,6 +307,29 @@ def gcrs2icrs(pos, currentTime):
     r_icrs = r_icrs.cartesian.get_xyz()
 
     return r_icrs
+    
+def gcrs2icrsPV(pos, vel, currentTime):
+    """Convert position vector in GCRS coordinate frame to ICRS coordinate frame
+    
+    Args:
+        pos (float n array):
+            Position vector in GCRS (geocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current mission time in MJD
+
+
+    Returns:
+        r_icrs (float n array):
+            Position vector in ICRS (heliocentric) frame in km
+    """
+    pos = pos.to('km')
+    vel = vel.to('km/s')
+    r_gcrs = coord.SkyCoord(x = pos[0], y = pos[1], z = pos[2], v_x = vel[0], v_y = vel[1], v_z = vel[2], representation_type='cartesian', frame='gcrs', obstime=currentTime)
+    s_icrs = r_gcrs.transform_to(ICRS())    # this throws an EFRA warning re: leap seconds, but it's fine
+    r_icrs = s_icrs.cartesian.get_xyz()
+    v_icrs = s_icrs.velocity.get_d_xyz()
+
+    return r_icrs, v_icrs
 
 
 # velocity conversion

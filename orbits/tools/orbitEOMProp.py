@@ -497,10 +497,11 @@ def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can = None):
 
     pos_GCRS = pos_G + posEMB_E  # G frame
     
-    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, tau)).to('AU')
-    
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
-    vel_H = velEMB + v_dim
+    vel_G = C_B2G @ v_dim
+    pos_H, vel_H = frameConversion.gcrs2icrsPV(pos_GCRS, vel_G, tau)
+    pos_H = pos_H.to('AU')
+    vel_H = vel_H.to('AU/d')
     
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
