@@ -132,6 +132,11 @@ plot_tools.set_axes_equal(ax)
 plt.title('CRTBP in the Inertial (I) Frame')
 plt.legend()
 
+ax2d = plt.figure().add_subplot()
+ax2d.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], color='blue', label='Propagated CRTBP')
+ax2d.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], color='green', label='Earth')
+ax2d.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], color='gray', label='Moon')
+
 
 # # ~~~~~ANIMATION~~~~~
 #
