@@ -13,7 +13,7 @@ def extract_pos(filepath):
             [x_position, y_position, z_position, time]
 
     Returns:
-        pos (astropy Quantity array):
+        pos (float n array):
             Position array in km
         time (astropy Time array):
             Time vector in MJD
