@@ -5,8 +5,9 @@ from astropy.coordinates import GCRS, ICRS
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import sys
 # sys.path.insert(1, 'tools')
-# import unitConversion
-import starlift.orbits.tools.unitConversion as unitConversion  # temporary, for anna
+import unitConversion
+
+# import starlift.orbits.tools.unitConversion as unitConversion  # temporary, for anna
 
 # From JPL Horizons
 # TU = 27.321582 d
@@ -144,7 +145,7 @@ def icrs2rot(pos, currentTime, equinox, mu_star, C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
     Args:
-        pos (float n array):
+        pos (astropy Quantity array):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
             Current mission time in MJD
@@ -161,7 +162,7 @@ def icrs2rot(pos, currentTime, equinox, mu_star, C_G2B):
     state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
 
-    pos = pos * u.AU
+    # pos = pos * u.AU
     r_PE_gcrs = icrs2gcrs(pos, equinox)
     r_rot = r_PE_gcrs
     r_EME_gcrs = icrs2gcrs(r_EMG_icrs, equinox)
