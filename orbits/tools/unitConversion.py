@@ -48,7 +48,7 @@ def convertTime_to_dim(canonicalTime):
             Array of times in canonical units
 
     Returns:
-        dimTime (float n array):
+        dimTime (astropy Quantity array):
             Array of times in units of days
     """
     

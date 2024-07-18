@@ -61,12 +61,12 @@ def CRTBP_EOM(t, w, mu_star):
     return dw
 
 
-def FF_EOM(tt,w,t_mjd):
+def FF_EOM(tt, w, t_mjd):
     """Equations of motion for the full force model in the ICRS frame
 
     Args:
         w (~numpy.ndarray(float)):
-            State in non dimensional units [position, velocity]
+            State in non-dimensional units [position, velocity]
         t_mjd (astropy Time array):
             Mission start time in MJD
 
@@ -76,20 +76,20 @@ def FF_EOM(tt,w,t_mjd):
 
     """
     
-    [x,y,z,vx,vy,vz] = w
+    [x, y, z, vx, vy, vz] = w
     
     gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
     gmEarth = const.GM_earth.to('AU3/d2').value
     gmMoon = 0.109318945437743700E-10              # from de432s header
     
-    r_PO = np.array([x,y,z])
-    v_PO = np.array([vx,vy,vz])
+    r_PO = np.array([x, y, z])
+    v_PO = np.array([vx, vy, vz])
 
     time = tt + t_mjd
 
-    r_SunO = get_body_barycentric_posvel('Sun',time)[0].get_xyz().to('AU')
-    r_MoonO = get_body_barycentric_posvel('Moon',time)[0].get_xyz().to('AU')
-    r_EarthO = get_body_barycentric_posvel('Earth',time)[0].get_xyz().to('AU')
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
 
     r_PSun = r_PO - r_SunO.value
     r_PEarth = r_PO - r_EarthO.value
@@ -140,7 +140,7 @@ def statePropCRTBP(freeVar, mu_star):
     """
     
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    T = freeVar[-1]
+    T = unitConversion.convertTime_to_canonical(freeVar[-1] * u.d)
 
     # sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), method='LSODA', first_step=0.0001, min_step=1E-10, max_step=2700, rtol=1E-12, atol=1E-12)
     sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12)

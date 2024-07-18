@@ -41,8 +41,8 @@ earth_r_can = mu_star
 earth_r = (unitConversion.convertPos_to_dim(earth_r_can)).to('AU')
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel, T/2]
-IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2
-# IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO
+IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
+# IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO, 0.9697497-day period
 
 # Convert the velocity to inertial from R
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
@@ -61,8 +61,8 @@ r_PEM_r = np.zeros([len(timesCRTBP), 3])
 # r_MoonEM_r = np.zeros([len(timesCRTBP), 3])
 
 # Sim time in mjd
-timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
-timesCRTBP_can = unitConversion.convertTime_to_canonical(timesCRTBP_mjd.value * u.d)
+timesCRTBP_dim = unitConversion.convertTime_to_dim(timesCRTBP)
+timesCRTBP_mjd = Time(timesCRTBP_dim.value + t_mjd.value, format='mjd', scale='utc')
 #
 # # DCM for G frame and I frame
 # C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
@@ -109,8 +109,8 @@ for ii in np.arange(len(gmat_time)):
 # Plot
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated CRTBP')
-ax.plot(moon_r*np.cos(timesCRTBP_can), moon_r*np.sin(timesCRTBP_can), 0, color='gray', label='Moon')
-ax.plot(earth_r*np.cos(timesCRTBP_can), earth_r*np.sin(timesCRTBP_can), 0, color='green', label='Earth')
+ax.plot(moon_r*np.cos(timesCRTBP), moon_r*np.sin(timesCRTBP), 0, color='gray', label='Moon')
+ax.plot(earth_r*np.cos(timesCRTBP), earth_r*np.sin(timesCRTBP), 0, color='green', label='Earth')
 # ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
 
 # ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
@@ -139,8 +139,8 @@ N = len(r_PEM_r[:, 0])  # number of frames in animation
 P = 50  # number of points plotted per frame
 
 data_CRTBP = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
-data_Earth = np.array([earth_r*np.cos(timesCRTBP_can), earth_r*np.sin(timesCRTBP_can), np.zeros(len(timesCRTBP_can))])
-data_Moon = np.array([moon_r*np.cos(timesCRTBP_can), moon_r*np.sin(timesCRTBP_can), np.zeros(len(timesCRTBP_can))])
+data_Earth = np.array([earth_r*np.cos(timesCRTBP), earth_r*np.sin(timesCRTBP), np.zeros(len(timesCRTBP))])
+data_Moon = np.array([moon_r*np.cos(timesCRTBP), moon_r*np.sin(timesCRTBP), np.zeros(len(timesCRTBP))])
 
 # Initialize the first point for each body
 line_CRTBP, = ax.plot(data_CRTBP[0, 0:1], data_CRTBP[1, 0:1], data_CRTBP[2, 0:1], color='blue', label='Orbit')
@@ -176,5 +176,3 @@ plt.title('CRTBP model in the I frame')
 
 
 plt.show()
-
-breakpoint()
