@@ -16,10 +16,6 @@ import unitConversion
 import frameConversion
 import orbitEOMProp
 import plot_tools
-#import tools.unitConversion as unitConversion
-#import tools.frameConversion as frameConversion
-#import tools.orbitEOMProp as orbitEOMProp
-#import tools.plot_tools as plot_tools
 import pdb
 
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
@@ -45,7 +41,7 @@ C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
 # Convert ICs to H frame from I frame
-pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, Tp_can=None)
+pos_H, vel_H = frameConversion.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, Tp_can=None)
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)

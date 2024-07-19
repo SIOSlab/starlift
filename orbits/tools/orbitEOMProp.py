@@ -5,6 +5,8 @@ import astropy.constants as const
 import astropy.units as u
 import frameConversion
 import unitConversion
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
 
 
 def CRTBP_EOM(t, w, mu_star):
@@ -121,14 +123,13 @@ def FF_EOM(tt, w, t_mjd):
 
 
 def statePropCRTBP(freeVar, mu_star):
-    """Propagates the dynamics using the free variables
+    """Propagates the dynamics using the free variables in the CRTBP
 
     Args:
         freeVar (~numpy.ndarray(float)):
             x and z positions (DU), y velocity (DU/TU), and orbit period (DU)
         mu_star (float):
             Non-dimensional mass parameter
-
 
     Returns:
         tuple:
@@ -151,14 +152,13 @@ def statePropCRTBP(freeVar, mu_star):
 
 
 def statePropFF(state0, t_mjd):
-    """Propagates the dynamics using the free variables
+    """Propagates the dynamics using the free variables in the full force model
 
     Args:
         state0 (~numpy.ndarray(float)):
             Position and velocity in the H frame
         t_mjd (astropy Time array):
             Mission start time in MJD
-
 
     Returns:
         tuple:
@@ -171,7 +171,7 @@ def statePropFF(state0, t_mjd):
     
     T = state0[-1]
 
-#    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA',t_eval=np.arange(0,T,1E-4))
+    # sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA',t_eval=np.arange(0,T,1E-4))
     sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
 
     states = sol_int.y.T
@@ -179,7 +179,8 @@ def statePropFF(state0, t_mjd):
     
     return states, times
 
-def CRTBP_EOM_R(t,w,mu_star):
+
+def CRTBP_EOM_R(t, w, mu_star):
     """Equations of motion for the CRTBP in the rotating frame
 
     Args:
@@ -194,18 +195,18 @@ def CRTBP_EOM_R(t,w,mu_star):
 
     """
     
-    [x,y,z,vx,vy,vz] = w
+    [x, y, z, vx, vy, vz] = w
     
     m1 = 1 - mu_star
     m2 = mu_star
 
     r1 = mu_star
     r2 = 1 - mu_star
-    r_1O_H = r1*np.array([-1,0,0])
-    r_2O_H = r2*np.array([1,0,0])
+    r_1O_H = r1*np.array([-1, 0, 0])
+    r_2O_H = r2*np.array([1, 0, 0])
 
-    r_PO_H = np.array([x,y,z])
-    v_PO_H = np.array([vx,vy,vz])
+    r_PO_H = np.array([x, y, z])
+    v_PO_H = np.array([vx, vy, vz])
 
     r_P1_H = r_PO_H - r_1O_H
     r_P2_H = r_PO_H - r_2O_H
@@ -216,69 +217,112 @@ def CRTBP_EOM_R(t,w,mu_star):
     F_g2 = -m2/r2_mag**3*r_P2_H
     F_g = F_g1 + F_g2
 
-    e3_hat = np.array([0,0,1])
+    e3_hat = np.array([0, 0, 1])
 
-    a_PO_H = F_g - 2*np.cross(e3_hat,v_PO_H) - np.cross(e3_hat,np.cross(e3_hat,r_PO_H))
+    a_PO_H = F_g - 2*np.cross(e3_hat, v_PO_H) - np.cross(e3_hat,np.cross(e3_hat, r_PO_H))
     ax = a_PO_H[0]
     ay = a_PO_H[1]
     az = a_PO_H[2]
 
-    dw = [vx,vy,vz,ax,ay,az]
+    dw = [vx, vy, vz, ax, ay, az]
     
     return dw
 
-def calcMonodromyMatrix(freeVar,mu_star,m1,m2):
-    """Calculates the monodromy matrix
+
+def statePropCRTBP_R(freeVar, mu_star):
+    """Propagates the dynamics using the free variables in the rotating frame
+
+    Args:
+        freeVar (float np.array):
+            Free variable in non-dimensional units of the form [x y z dx dy dz T/2]
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        tuple:
+        states ~numpy.ndarray(float):
+            Positions and velocities in non-dimensional units
+        times ~numpy.ndarray(float):
+            Times in non-dimensional units
+
+    """
+
+    x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
+    T = freeVar[-1]
+
+    sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12, )
+    states = sol_int.y.T
+    times = sol_int.t
+    return states, times
+
+
+def calcFx(freeVar, mu_star):
+    """Applies constraints to the free variables in the CRTBP inertial frame
 
     Args:
         freeVar (~numpy.ndarray(float)):
             x and z positions, y velocity, and half the orbit period
         mu_star (float):
             Non-dimensional mass parameter
-        m1 (float):
-            Mass of the larger primary in non dimensional units
-        m2 (float):
-            Mass of the smaller primary in non dimensional units
 
     Returns:
         ~numpy.ndarray(float):
-            monodromy matrix
+            constraint array
 
     """
     
-    x = freeVar[0]
-    y = freeVar[1]
-    z = freeVar[2]
+    s_T = statePropCRTBP(freeVar, mu_star)
+    state = s_T[-1]
 
-    r_P0 = np.array([x, y, z])
-    r_m10 = -np.array([mu_star, 0, 0])
-    r_m20 = np.array([(1 - mu_star), 0, 0])
+    Fx = np.array([state[1], state[3], state[5]])
+    return Fx
+
+
+def calcFx_R(freeVar, mu_star):
+    """Applies constraints to the free variables in the CRTBP rotating frame
+
+    Args:
+        freeVar (~numpy.ndarray(float)):
+            x and z positions, y velocity, and half the orbit period
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        ~numpy.ndarray(float):
+            constraint array
+
+    """
     
-    r_Pm1 = r_P0 - r_m10
-    r_Pm2 = r_P0 - r_m20
+    s_T, times = statePropCRTBP_R(freeVar, mu_star)
+    state = s_T[-1]
 
-    rp1 = np.linalg.norm(r_Pm1)
-    rp2 = np.linalg.norm(r_Pm2)
+    Fx = np.array([state[1], state[3], state[5]])
+    return Fx
 
-    dxdx = 1 - m1/rp1**3 - m2/rp2**3 + 3*m1*(x + m2)**2/rp1**5 + 3*m2*(x - 1 + m2)**2/rp2**5
-    dxdy = 3*m1*(x + m2)*y/rp1**5 + 3*m2*(x - 1 + m2)*y/rp2**5
-    dxdz = 3*m1*(x + m2)*z/rp1**5 + 3*m2*(x - 1 + m2)*z/rp2**5
-    dydy = 1 - m1/rp1**3 - m2/rp2**3 + 3*m1*y**2/rp1**5 + 3*m2*y**2/rp2**5
-    dydz = 3*m1*y*z/rp1**5 + 3*m2*y*z/rp2**5
-    dzdz = 1 - m1/rp1**3 - m2/rp2**3 + 3*m1*z**2/rp1**5 + 3*m2*z**2/rp2**5
 
-    Z = np.zeros([3,3])
-    I = np.identity(3)
-    A = np.array([[dxdx, dxdy, dxdz],
-            [dxdy, dydy, dydz],
-            [dxdz, dydz, dzdz]])
-    Phi = np.block([[Z, I],
-           [A, Z]])
-           
-    return Phi
+def calcFx_FF(X, taus, N, t_mjd, X0, dt):
+    """Applies constraints to the free variables for a full force model
 
-def calcdFx(freeVar,mu_star,m1,m2):
-    """Calculates the jacobian of the free variables wrt the constraints
+    *Add documentation
+
+    """
+    ctr = 0
+    Fx = np.array([])
+
+    for ii in np.arange(N):
+        IC = np.append(X[ctr * 6:((ctr + 1) * 6)], dt)
+        tau = taus[ctr]
+        const = X0[ctr * 6:((ctr + 1) * 6)]
+        states, times = statePropFF(IC, tau)
+
+        Fx = np.append(Fx, states[-1, :] - const)
+
+        ctr = ctr + 1
+    return Fx
+
+
+def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
+    """Calculates the Jacobian of the free variables wrt the constraints for the CRTBP
 
     Args:
         freeVar (~numpy.ndarray(float)):
@@ -286,103 +330,70 @@ def calcdFx(freeVar,mu_star,m1,m2):
         mu_star (float):
             Non-dimensional mass parameter
         m1 (float):
-            Mass of the larger primary in non dimensional units
+            Mass of the larger primary in non-dimensional units
         m2 (float):
-            Mass of the smaller primary in non dimensional units
-            
-            
+            Mass of the smaller primary in non-dimensional units
+
     Returns:
         ~numpy.ndarray(float):
             jacobian of the free variables wrt the constraints
 
     """
-    
-    s_T = stateProp_R(freeVar,mu_star)
-    state = s_T[-1]
-    
-    Phi = calcMonodromyMatrix(state, mu_star,m1,m2)
 
-    phis = np.array([[Phi[1,0], Phi[1,2], Phi[1,4]],
-                    [Phi[3,0], Phi[3,2], Phi[3,4]],
-                    [Phi[5,0], Phi[5,2], Phi[5,4]]])
+    s_T = statePropCRTBP_R(freeVar, mu_star)
+    state = s_T[-1]
+
+    Phi = calcMonodromyMatrix(state, mu_star, m1, m2)
+
+    phis = np.array([[Phi[1, 0], Phi[1, 2], Phi[1, 4]],
+                     [Phi[3, 0], Phi[3, 2], Phi[3, 4]],
+                     [Phi[5, 0], Phi[5, 2], Phi[5, 4]]])
 
     X = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
     dw = CRTBP_EOM(freeVar[-1], X, mu_star)
     ddT = np.array([dw[1], dw[3], dw[5]])
-    dFx = np.zeros([3,4])
-    dFx[:,0:3] = phis
-    dFx[:,3] = ddT
-    
+    dFx = np.zeros([3, 4])
+    dFx[:, 0:3] = phis
+    dFx[:, 3] = ddT
+
     return dFx
 
-def calcFx(freeVar,mu_star):
-    """Applies constraints to the free variables
 
-    Args:
-        freeVar (~numpy.ndarray(float)):
-            x and z positions, y velocity, and half the orbit period
+def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
+    """Calculates the Jacobian of the free variables wrt the constraints for the full force model
 
-
-    Returns:
-        ~numpy.ndarray(float):
-            constraint array
+    *Add documentation
 
     """
-    
-    s_T = stateProp(freeVar)
-    state = s_T[-1]
+    hstep = 1E-4
 
-    Fx = np.array([state[1], state[3], state[5]])
-    return Fx
-    
-def calcFx_R(freeVar, mu_star):
-    """Applies constraints to the free variables
+    Fx_0 = calcFx_FF(X, taus, N, t_mjd, X0, dt)
 
-    Args:
-        freeVar (~numpy.ndarray(float)):
-            x and z positions, y velocity, and half the orbit period
+    dFx = np.zeros((6 * N, 6 * N))
+    indsXh = np.arange(0, N * 6, 6)
+    indsD = np.arange(0, N * 6, 6)
+    for ii in np.arange(6):
+        dh = np.zeros(N * 6)
+        dh[indsXh] = hstep
 
+        Xh = X + dh
 
-    Returns:
-        ~numpy.ndarray(float):
-            constraint array
+        Fx_ii = calcFx_FF(Xh, taus, N, t_mjd, X0, dt)
 
-    """
-    
-    s_T, times = stateProp_R(freeVar, mu_star)
-    state = s_T[-1]
+        dFx_ii = (Fx_ii - Fx_0) / hstep
 
-    Fx = np.array([state[1], state[3], state[5]])
-    return Fx
+        for jj in np.arange(len(indsD)):
+            ind1 = indsD[jj]
+            ind2 = ind1 + 6
+            dFx[jj * 6:(jj + 1) * 6, ind1] = dFx_ii[jj * 6:(jj + 1) * 6]
 
-def stateProp_R(freeVar,mu_star):
-    """Propagates the dynamics using the free variables
+        indsD = indsD + 1
+        indsXh = indsXh + 1
 
-    Args:
-        state (float):
-            Position in non dimensional units
-        mu_star (float):
-            Non-dimensional mass parameter
+    return dFx
 
 
-    Returns:
-        tuple:
-        states ~numpy.ndarray(float):
-            Positions and velocities in non dimensional units
-        times ~numpy.ndarray(float):
-            Times in non dimensional units
-
-    """
-    
-    x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    T = freeVar[-1]
-
-    sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,),rtol=1E-12,atol=1E-12,)
-    states = sol_int.y.T
-    times = sol_int.t
-    return states, times
-    
-def fsolve_eqns(w,z,solp, mu_star):
+def fsolve_eqns(w, z, solp, mu_star):
     """Finds the initial guess for a new orbit and the Jacobian for continuation
 
     Args:
@@ -392,7 +403,8 @@ def fsolve_eqns(w,z,solp, mu_star):
             tangent vector to move along to find corrected free variables
         solp (~numpy.ndarray(float)):
             next free variables prediction
-
+        mu_star (float):
+            Non-dimensional mass parameter
 
     Returns:
         ~numpy.ndarray(float):
@@ -407,150 +419,118 @@ def fsolve_eqns(w,z,solp, mu_star):
     return sys_w
 
 
-def convertIC_R2H(pos_R, vel_R, t_mjd, mu_star, Tp_can = None):
-    """Converts initial conditions from the R frame to the H frame
+def generateFamily_CRTBP(IC, mu_star, N):
+    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state
 
     Args:
-        pos_R (float n array):
-            Array of distance in canonical units
-        vel_R (float n array):
-            Array of velocities in canonical units
-        t_mjd (astropy Time array):
-            Mission start time in MJD
+        IC (float array):
+            Inital guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
         mu_star (float):
             Non-dimensional mass parameter
-        Tp_can (float n array, optional):
-            Optional array of times in canonical units
+        N (float):
+            Number of orbits in the family to be generated
 
-
-    Returns:
-        tuple:
-        pos_H (float n array):
-            Array of distance in AU
-        vel_H (float n array):
-            Array of velocities in AU/day
-        Tp_dim (float n array):
-            Array of times in units of days
+    Returns: LEFT OFF HERE
+        ~numpy.ndarray(float):
+            system of equations as a function of w
 
     """
-    
-    pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
-    
-    C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
-    pos_G = C_B2G@pos_I
-    
-    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
-    posEMB = state_EMB[0].get_xyz().to('AU')
-    velEMB = state_EMB[1].get_xyz().to('AU/day')
-    
-    posEMB_E = (frameConversion.icrs2gcrs(posEMB, t_mjd)).to('AU')
 
-    pos_GCRS = pos_G + posEMB_E  # G frame
-    
-    pos_H = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
-    
-    vel_I = frameConversion.rot2inertV(np.array(pos_R), np.array(vel_R), 0)
-    v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
-    vel_H = velEMB + v_dim
-    
-    if Tp_can is not None:
-        Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
-        return pos_H, vel_H, Tp_dim
-    else:
-        return pos_H, vel_H
-        
-def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can = None):
-    """Converts initial conditions from the I frame to the H frame
+    # Parameters
+    m1 = (1 - mu_star)
+    m2 = mu_star
 
-    Args:
-        pos_I (float n array):
-            Array of distance in canonical units
-        vel_I (float n array):
-            Array of velocities in canonical units
-        t_mjd (astropy Time array):
-            Mission start time in MJD
-        mu_star (float):
-            Non-dimensional mass parameter
-        Tp_can (float n array, optional):
-            Optional array of times in canonical units
+    # Initial guess for the free variable vector
+    X = [IC[0], IC[2], IC[4], IC[6]]
 
+    eps = 1E-6
+    solutions = np.zeros([N, 4])
+    z = np.array([0, 0, 0, 1])
+    step = 1E-2
 
-    Returns:
-        tuple:
-        pos_H (float n array):
-            Array of distance in AU
-        vel_H (float n array):
-            Array of velocities in AU/day
-        Tp_dim (float n array):
-            Array of times in units of days
-
-    """
-    
-    pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
-    
-    pos_G = C_B2G@pos_I
-    
-    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', tau)
-    posEMB = state_EMB[0].get_xyz().to('AU')
-    velEMB = state_EMB[1].get_xyz().to('AU/day')
-    
-    posEMB_E = (frameConversion.icrs2gcrs(posEMB, tau)).to('AU')
-
-    pos_GCRS = pos_G + posEMB_E  # G frame
-    
-    v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
-    vel_G = C_B2G @ v_dim
-    
-    pos_H, vel_H = frameConversion.gcrs2icrsPV(pos_GCRS, vel_G, tau)
-    pos_H = pos_H.to('AU')
-    vel_H = vel_H.to('AU/d')
-    
-    if Tp_can is not None:
-        Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
-        return pos_H, vel_H, Tp_dim
-    else:
-        return pos_H, vel_H
-    
-def calcFx_FF(X,taus,N,t_mjd,X0,dt):
-    
-    ctr = 0
-    Fx = np.array([])
-
+    max_iter = 1000
+    ax = plt.figure().add_subplot(projection='3d')
     for ii in np.arange(N):
-        IC = np.append(X[ctr*6:((ctr+1)*6)],dt)
-        tau = taus[ctr]
-        const = X0[ctr*6:((ctr+1)*6)]
-        states, times = statePropFF(IC,tau)
+        error = 10
+        ctr = 0
+        while error > eps and ctr < max_iter:
+            # Generate the free variable vector
+            Fx = calcFx_R(X, mu_star)
+            error = np.linalg.norm(Fx)
+            dFx = calcdFx_CRTBP(X, mu_star, m1, m2)
+            X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
+            ctr = ctr + 1
 
-        Fx = np.append(Fx,states[-1,:] - const)
-        
-        ctr = ctr + 1
-    return Fx
-    
-def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
-    hstep = 1E-4
-    
-    Fx_0 = calcFx_FF(X,taus,N,t_mjd,X0,dt)
-    
-    dFx = np.zeros((6*N,6*N))
-    indsXh = np.arange(0,N*6,6)
-    indsD = np.arange(0,N*6,6)
-    for ii in np.arange(6):
-        dh = np.zeros(N*6)
-        dh[indsXh] = hstep
+        # Generate an orbit from the found free variable vector
+        IV = np.array([X[0], X[1], X[2], 2 * X[3]])
+        solutions[ii] = IV
+        states, times = statePropCRTBP_R(IV, mu_star)
 
-        Xh = X + dh
-        
-        Fx_ii = calcFx_FF(Xh,taus,N,t_mjd,X0,dt)
-        
-        dFx_ii = (Fx_ii - Fx_0)/hstep
-        
-        for jj in np.arange(len(indsD)):
-            ind1 = indsD[jj]
-            ind2 = ind1 + 6
-            dFx[jj*6:(jj+1)*6,ind1] = dFx_ii[jj*6:(jj+1)*6]
-        
-        indsD = indsD + 1
-        indsXh = indsXh + 1
+        # Plot the orbit
+        ax.plot(states[:, 0], states[:, 1], states[:, 2])
 
-    return dFx
+        # Generate new z and X for another orbit
+        solp = X + z * step
+        ss = fsolve(fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
+        X = ss[0]
+        Q = ss[1]['fjac']
+        Rs = ss[1]['r']
+        R = np.zeros((4, 4))
+        idx, col = np.triu_indices(4, k=0)
+        R[idx, col] = Rs
+        J = Q.T @ R
+
+        z = np.linalg.inv(J) @ z
+        z = z / np.linalg.norm(z)
+
+    plt.show()
+
+
+def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
+    """Calculates the monodromy matrix
+
+    Args:
+        freeVar (~numpy.ndarray(float)):
+            x and z positions, y velocity, and half the orbit period
+        mu_star (float):
+            Non-dimensional mass parameter
+        m1 (float):
+            Mass of the larger primary in non-dimensional units
+        m2 (float):
+            Mass of the smaller primary in non-dimensional units
+
+    Returns:
+        ~numpy.ndarray(float):
+            monodromy matrix
+
+    """
+
+    x = freeVar[0]
+    y = freeVar[1]
+    z = freeVar[2]
+
+    r_P0 = np.array([x, y, z])
+    r_m10 = -np.array([mu_star, 0, 0])
+    r_m20 = np.array([(1 - mu_star), 0, 0])
+
+    r_Pm1 = r_P0 - r_m10
+    r_Pm2 = r_P0 - r_m20
+
+    rp1 = np.linalg.norm(r_Pm1)
+    rp2 = np.linalg.norm(r_Pm2)
+
+    dxdx = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * (x + m2) ** 2 / rp1 ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / rp2 ** 5
+    dxdy = 3 * m1 * (x + m2) * y / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * y / rp2 ** 5
+    dxdz = 3 * m1 * (x + m2) * z / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * z / rp2 ** 5
+    dydy = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * y ** 2 / rp1 ** 5 + 3 * m2 * y ** 2 / rp2 ** 5
+    dydz = 3 * m1 * y * z / rp1 ** 5 + 3 * m2 * y * z / rp2 ** 5
+    dzdz = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * z ** 2 / rp1 ** 5 + 3 * m2 * z ** 2 / rp2 ** 5
+
+    Z = np.zeros([3, 3])
+    I = np.identity(3)
+    A = np.array([[dxdx, dxdy, dxdz],
+                  [dxdy, dydy, dydz],
+                  [dxdz, dydz, dzdz]])
+    Phi = np.block([[Z, I], [A, Z]])
+
+    return Phi
