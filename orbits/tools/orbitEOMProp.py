@@ -419,12 +419,13 @@ def fsolve_eqns(w, z, solp, mu_star):
     return sys_w
 
 
-def generateFamily_CRTBP(IC, mu_star, N):
-    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state
+def generateFamily_CRTBP(guess, mu_star, N):
+    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state.
+    Each orbit is generated over 1 orbital period.
 
     Args:
         IC (float array):
-            Inital guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
+            Initial guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
         mu_star (float):
             Non-dimensional mass parameter
         N (float):
@@ -441,7 +442,7 @@ def generateFamily_CRTBP(IC, mu_star, N):
     m2 = mu_star
 
     # Initial guess for the free variable vector
-    X = [IC[0], IC[2], IC[4], IC[6]]
+    X = [guess[0], guess[2], guess[4], guess[6]]
 
     eps = 1E-6
     solutions = np.zeros([N, 4])
@@ -450,6 +451,7 @@ def generateFamily_CRTBP(IC, mu_star, N):
 
     max_iter = 1000
     ax = plt.figure().add_subplot(projection='3d')
+    ICs = np.zeros([N, 7])
     for ii in np.arange(N):
         error = 10
         ctr = 0
@@ -462,12 +464,14 @@ def generateFamily_CRTBP(IC, mu_star, N):
             ctr = ctr + 1
 
         # Generate an orbit from the found free variable vector
-        IV = np.array([X[0], X[1], X[2], 2 * X[3]])
-        solutions[ii] = IV
-        states, times = statePropCRTBP_R(IV, mu_star)
+        freeVar = np.array([X[0], X[1], X[2], 2*X[3]])
+        # solutions[ii] = freeVar
+        # states, times = statePropCRTBP_R(freeVar, mu_star)
 
-        # Plot the orbit
-        ax.plot(states[:, 0], states[:, 1], states[:, 2])
+        ICs[ii] = [X[0], 0, X[1], 0, X[2], 0, X[3]]
+
+        # # Plot the orbit
+        # ax.plot(states[:, 0], states[:, 1], states[:, 2])
 
         # Generate new z and X for another orbit
         solp = X + z * step
@@ -483,7 +487,8 @@ def generateFamily_CRTBP(IC, mu_star, N):
         z = np.linalg.inv(J) @ z
         z = z / np.linalg.norm(z)
 
-    plt.show()
+    # plt.show()
+    return ICs
 
 
 def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
