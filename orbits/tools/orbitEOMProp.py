@@ -103,9 +103,10 @@ def FF_EOM(tt,w,t_mjd):
     rSE_mag = np.linalg.norm(r_SunEarth)
     rME_mag = np.linalg.norm(r_MoonEarth)
         
-    F_gSun_p = -gmSun*(r_SunEarth/rSE_mag**3 + r_PSun/rSun_mag**3)
+    F_gSun_p = 0 #-gmSun*(r_SunEarth/rSE_mag**3 + r_PSun/rSun_mag**3)
     F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
-    F_gMoon_p = -gmMoon*(r_MoonEarth/rME_mag**3 + r_PMoon/rMoon_mag**3)
+#    F_gMoon_p = -gmMoon*(r_MoonEarth/rME_mag**3 + r_PMoon/rMoon_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
 
     F_g = F_gSun_p + F_gEarth + F_gMoon_p
     
@@ -487,21 +488,24 @@ def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can = None):
     """
     
     pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
-    
+    C_B2G = frameConversion.body2geo(tau, t_mjd, mu_star)
     pos_G = C_B2G@pos_I
     
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', tau)
     posEMB = state_EMB[0].get_xyz().to('AU')
     velEMB = state_EMB[1].get_xyz().to('AU/day')
     
-    posEMB_E = (frameConversion.icrs2gcrs(posEMB, tau)).to('AU')
+    posEMB_E, velEMB_E = (frameConversion.icrs2gcrsPV(posEMB, velEMB, tau))
+    posEMB_E = posEMB_E.to('AU')
+    velEMB_E = velEMB_E.to('AU/d')
 
     pos_GCRS = pos_G + posEMB_E  # G frame
     
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_G = C_B2G @ v_dim
+    vel_GCRS = vel_G + velEMB_E
     
-    pos_H, vel_H = frameConversion.gcrs2icrsPV(pos_GCRS, vel_G, tau)
+    pos_H, vel_H = frameConversion.gcrs2icrsPV(pos_GCRS, vel_GCRS, tau)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
     
@@ -528,7 +532,7 @@ def calcFx_FF(X,taus,N,t_mjd,X0,dt):
     return Fx
     
 def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
-    hstep = 1E-4
+    hstep = 1E-3
     
     Fx_0 = calcFx_FF(X,taus,N,t_mjd,X0,dt)
     

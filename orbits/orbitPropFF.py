@@ -45,10 +45,10 @@ C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
 C_G2B = C_B2G.T
 
 # Convert ICs to H frame from I frame
-pos_H, vel_H = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, Tp_can=None)
+pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, IC[-1]*2)
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), days)
+state0 = np.append(np.append(pos_H.value, vel_H.value), Tp_dim.value)
 
 # Propagate the dynamics
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
@@ -85,9 +85,6 @@ for ii in np.arange(len(timesFF)):
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
-    C_B2G = frameConversion.body2geo(time, t_mjd, mu_star)
-    C_G2B = C_B2G.T
-    
     # Convert from G frame to I frame
     r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
     r_SunEM_r[ii, :] = C_G2B@r_SunEM.to('AU')
@@ -107,6 +104,7 @@ ax3.set_title('FF in I frame (Inertial EM)')
 ax3.set_xlabel('X [AU]')
 ax3.set_ylabel('Y [AU]')
 ax3.set_zlabel('Z [AU]')
+plt.show()
 breakpoint()
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
