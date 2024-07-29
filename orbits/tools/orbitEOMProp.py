@@ -68,13 +68,13 @@ def FF_EOM(tt, w, t_mjd):
 
     Args:
         w (~numpy.ndarray(float)):
-            State in non-dimensional units [position, velocity]
+            State [position in AU, velocity in AU/d]
         t_mjd (astropy Time array):
             Mission start time in MJD
 
     Returns:
         ~numpy.ndarray(float):
-            Time derivative of the state [velocity, acceleration]
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
 
     """
     
@@ -84,10 +84,10 @@ def FF_EOM(tt, w, t_mjd):
     gmEarth = const.GM_earth.to('AU3/d2').value
     gmMoon = 0.109318945437743700E-10              # from de432s header
     
-    r_PO = np.array([x, y, z])
-    v_PO = np.array([vx, vy, vz])
+    r_PO = np.array([x, y, z])  # AU
+    v_PO = np.array([vx, vy, vz])  # AU/d
 
-    time = tt + t_mjd
+    time = unitConversion.convertTime_to_dim(tt) + t_mjd  # Current mission time in mjd
 
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
@@ -141,7 +141,7 @@ def statePropCRTBP(freeVar, mu_star):
     """
     
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    T = unitConversion.convertTime_to_canonical(freeVar[-1] * u.d)
+    T = freeVar[-1]
 
     # sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), method='LSODA', first_step=0.0001, min_step=1E-10, max_step=2700, rtol=1E-12, atol=1E-12)
     sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12)
@@ -156,7 +156,7 @@ def statePropFF(state0, t_mjd):
 
     Args:
         state0 (~numpy.ndarray(float)):
-            Position and velocity in the H frame
+            Position [AU], velocity [AU/d], and propagation time [DU] in the H frame
         t_mjd (astropy Time array):
             Mission start time in MJD
 
@@ -165,7 +165,7 @@ def statePropFF(state0, t_mjd):
         states ~numpy.ndarray(float):
             Positions and velocities in AU and AU/d
         times ~numpy.ndarray(float):
-            Times in d
+            Canonical times
 
     """
     

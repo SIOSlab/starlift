@@ -80,8 +80,8 @@ def body2geo(currentTime, equinox, mu_star):
     """
     
     # Define vector in G
-    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()
-    tmp_rG = -icrs2gcrs(tmp, currentTime)
+    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()  # km
+    tmp_rG = -icrs2gcrs(tmp, currentTime)  # km
     tmp_x = unitConversion.convertPos_to_canonical(tmp_rG[0])
     tmp_y = unitConversion.convertPos_to_canonical(tmp_rG[1])
     tmp_z = unitConversion.convertPos_to_canonical(tmp_rG[2])
@@ -91,11 +91,12 @@ def body2geo(currentTime, equinox, mu_star):
     # Define vector in B
     r_earth_bary_R = mu_star*np.array([-1, 0, 0])
     
-    dt = currentTime.value - equinox.value
+    dt = currentTime.value - equinox.value  # days
     theta = unitConversion.convertTime_to_canonical(dt*u.d)
     C_B2R = rot(theta, 3)
     C_R2B = C_B2R.T
-    
+
+    # Vector from EM to Earth in I frame
     r_earth_bary_B = C_R2B @ r_earth_bary_R
     
     # Find the DCM to rotate vec 1 to vec 2
@@ -267,7 +268,7 @@ def rot2inertP(pos,currentTime,equinox):
     return r_inert
 
 
-def icrs2gcrs(pos,currentTime):
+def icrs2gcrs(pos, currentTime):
     """Convert position vector in ICRS coordinate frame to GCRS coordinate frame
     
     Args:
@@ -450,6 +451,8 @@ def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can=None):
             Array of distance in canonical units
         vel_I (float n array):
             Array of velocities in canonical units
+        tau (float)
+            Current mission time
         t_mjd (astropy Time array):
             Mission start time in MJD
         mu_star (float):

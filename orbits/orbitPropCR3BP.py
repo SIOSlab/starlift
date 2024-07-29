@@ -22,6 +22,7 @@ coord.solar_system.solar_system_ephemeris.set('de440')
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
 days = 30
+days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -38,12 +39,14 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.363
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar = np.array([IC[0], IC[2], vI[1], days])
+freeVar = np.array([IC[0], IC[2], vI[1], days_can])
 
 # Propagate the dynamics in the CRTBP model
 states, times = orbitEOMProp.statePropCRTBP(freeVar, mu_star)
 pos = states[:, 0:3]
 vel = states[:, 3:6]
+
+breakpoint()
 
 # Convert to AU
 pos_au = unitConversion.convertPos_to_dim(pos).to('AU')
