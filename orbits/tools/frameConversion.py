@@ -162,17 +162,18 @@ def body2geo(currentTime, equinox, mu_star):
     """
     
     # Define vector in G
-    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()  # km
-    tmp_rG = -icrs2gcrs(tmp, currentTime)  # km
+    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)[0].get_xyz()  # km
+    tmp_rG = -icrs2gcrs(tmp, equinox)  # km
     tmp_x = unitConversion.convertPos_to_canonical(tmp_rG[0])
     tmp_y = unitConversion.convertPos_to_canonical(tmp_rG[1])
     tmp_z = unitConversion.convertPos_to_canonical(tmp_rG[2])
     r_earth_bary_G = np.array([tmp_x, tmp_y, tmp_z])
     mu_star = np.linalg.norm(r_earth_bary_G)
     
-    # Define vector in B
-    r_moon_bary_R = np.array([m_norm, 0, 0])
-    
+    # Define vector in R
+    r_earth_bary_R = mu_star*np.array([-1, 0, 0])  # constant
+
+    # Get DCM to go from R to I
     dt = currentTime.value - equinox.value  # days
     theta = unitConversion.convertTime_to_canonical(dt*u.d)
     C_B2R = rot(theta, 3)
@@ -378,7 +379,7 @@ def rotMatAxisAng(n_hat, theta):
 
 def body2rot(currentTime, equinox):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
-    perifocal frame to the Earth-Moon CR3BP rotating frame
+    perifocal frame (I) to the Earth-Moon CR3BP rotating frame (R)
     
     Args:
         currentTime (astropy Time array):
@@ -399,7 +400,6 @@ def body2rot(currentTime, equinox):
     return C_I2R
 
 
-# position conversions
 def icrs2rot(pos, currentTime, equinox, mu_star, C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     

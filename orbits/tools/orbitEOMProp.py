@@ -419,75 +419,77 @@ def fsolve_eqns(w, z, solp, mu_star):
     return sys_w
 
 
-#def generateFamily_CRTBP(guess, mu_star, N):
-#    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state.
-#    Each orbit is generated over 1 orbital period.
-#
-#    Args:
-#        IC (float array):
-#            Initial guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
-#        mu_star (float):
-#            Non-dimensional mass parameter
-#        N (float):
-#            Number of orbits in the family to be generated
-#
-#    Returns: LEFT OFF HERE
-#        ~numpy.ndarray(float):
-#            system of equations as a function of w
-#
-#    """
-#
-#    # Parameters
-#    m1 = (1 - mu_star)
-#    m2 = mu_star
-#
-#    # Initial guess for the free variable vector
-#    X = [guess[0], guess[2], guess[4], guess[6]]
-#
-#    eps = 1E-6
-#    solutions = np.zeros([N, 4])
-#    z = np.array([0, 0, 0, 1])
-#    step = 1E-2
-#
-#<<<<<<< HEAD
-#    Returns:
-#        tuple:
-#        pos_H (float n array):
-#            Array of distance in AU
-#        vel_H (float n array):
-#            Array of velocities in AU/day
-#        Tp_dim (float n array):
-#            Array of times in units of days
-#
-#    """
-#    
-#    pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
-#    C_B2G = frameConversion.body2geo(tau, t_mjd, mu_star)
-#    pos_G = C_B2G@pos_I
-#    
-#    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', tau)
-#    posEMB = state_EMB[0].get_xyz().to('AU')
-#    velEMB = state_EMB[1].get_xyz().to('AU/day')
-#    
-#    posEMB_E, velEMB_E = (frameConversion.icrs2gcrsPV(posEMB, velEMB, tau))
-#    posEMB_E = posEMB_E.to('AU')
-#    velEMB_E = velEMB_E.to('AU/d')
-#
-#    pos_GCRS = pos_G + posEMB_E  # G frame
-#    
-#    v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
-#    vel_G = C_B2G @ v_dim
-#    vel_GCRS = vel_G + velEMB_E
-#    
-#    pos_H, vel_H = frameConversion.gcrs2icrsPV(pos_GCRS, vel_GCRS, tau)
-#    pos_H = pos_H.to('AU')
-#    vel_H = vel_H.to('AU/d')
-#    
-#    if Tp_can is not None:
-#        Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
-#        return pos_H, vel_H, Tp_dim
-#    else:
-#        return pos_H, vel_H
+def generateFamily_CRTBP(guess, mu_star, N):
+    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state.
+    Each orbit is generated over 1 orbital period.
+
+    Args:
+        IC (float array):
+            Initial guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
+        mu_star (float):
+            Non-dimensional mass parameter
+        N (float):
+            Number of orbits in the family to be generated
+
+    Returns: LEFT OFF HERE
+        ~numpy.ndarray(float):
+            system of equations as a function of w
+
+    """
+
+    # Parameters
+    m1 = (1 - mu_star)
+    m2 = mu_star
+
+    # Initial guess for the free variable vector
+    X = [guess[0], guess[2], guess[4], guess[6]]
+
+    eps = 1E-6
+    solutions = np.zeros([N, 4])
+    z = np.array([0, 0, 0, 1])
+    step = 1E-2
+
+    max_iter = 1000
+    ax = plt.figure().add_subplot(projection='3d')
+    ICs = np.zeros([N, 7])
+    for ii in np.arange(N):
+        error = 10
+        ctr = 0
+        while error > eps and ctr < max_iter:
+            # Generate the free variable vector
+            Fx = calcFx_R(X, mu_star)
+            error = np.linalg.norm(Fx)
+            dFx = calcdFx_CRTBP(X, mu_star, m1, m2)
+            X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
+            ctr = ctr + 1
+
+        # Generate an orbit from the found free variable vector
+        freeVar = np.array([X[0], X[1], X[2], 2*X[3]])
+        # solutions[ii] = freeVar
+        # states, times = statePropCRTBP_R(freeVar, mu_star)
+
+        ICs[ii] = [X[0], 0, X[1], 0, X[2], 0, X[3]]
+
+        # # Plot the orbit
+        # ax.plot(states[:, 0], states[:, 1], states[:, 2])
+
+        # Generate new z and X for another orbit
+        solp = X + z * step
+        ss = fsolve(fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
+        X = ss[0]
+        Q = ss[1]['fjac']
+        Rs = ss[1]['r']
+        R = np.zeros((4, 4))
+        idx, col = np.triu_indices(4, k=0)
+        R[idx, col] = Rs
+        J = Q.T @ R
+
+        z = np.linalg.inv(J) @ z
+        z = z / np.linalg.norm(z)
+
+    # plt.show()
+    return ICs
+
     
 def calcFx_FF(X,taus,N,t_mjd,X0,dt):
     
@@ -509,6 +511,7 @@ def calcFx_FF(X,taus,N,t_mjd,X0,dt):
         
         ctr = ctr + 1
     return Fx
+    
     
 def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
     hstep = 1E-3

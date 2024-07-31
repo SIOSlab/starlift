@@ -63,13 +63,15 @@ r_SunEM_r = np.zeros([len(times), 3])
 r_EarthEM_r = np.zeros([len(times), 3])
 r_MoonEM_r = np.zeros([len(times), 3])
 
-# DEBUGGING WITH THE SUN
+# DEBUGGING VECTORS
 r_SunO = np.zeros([len(times), 3])
 r_SunG = np.zeros([len(times), 3])
 r_SunEM = np.zeros([len(times), 3])
 r_SunEM_r_up = np.zeros([len(times), 3])
 r_Sun_G2_up = np.zeros([len(times), 3])
 r_Sun_G2 = np.zeros([len(times), 3])
+r_EarthEM_r_up = np.zeros([len(times), 3])
+r_MoonEM_r_up = np.zeros([len(times), 3])
 
 for ii in np.arange(len(times)):
     time = times_mjd[ii]
@@ -99,8 +101,10 @@ for ii in np.arange(len(times)):
     r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
     r_SunEM_r_up[ii, :] = (C_G2B_up@(r_SunEM[ii, :] * u.km)).to('AU')
     r_SunEM_r[ii, :] = (C_G2B@(r_SunEM[ii, :] * u.km)).to('AU')
-    r_EarthEM_r[ii, :] = C_G2B_up@r_EarthEM.to('AU')
-    r_MoonEM_r[ii, :] = C_G2B_up@r_MoonEM.to('AU')
+    r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
+    r_EarthEM_r_up[ii, :] = C_G2B_up @ r_EarthEM.to('AU')
+    r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
+    r_MoonEM_r_up[ii, :] = C_G2B_up @ r_MoonEM.to('AU')
 
     # Debugging: Convert Sun back to G frame (THIS DOES NOTHING)
     r_Sun_G2_up[ii, :] = C_B2G_up@(r_SunEM_r_up[ii, :] * u.AU).to('km')
@@ -110,42 +114,38 @@ for ii in np.arange(len(times)):
 
 # PLOT DEBUGGING
 
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunO[:, 0], r_SunO[:, 1], r_SunO[:, 2])
-# plt.title('Sun in H frame [AU]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunG[:, 0], r_SunG[:, 1], r_SunG[:, 2])
-# plt.title('Sun in GCRS frame [km]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunEM[:, 0], r_SunEM[:, 1], r_SunEM[:, 2])
-# plt.title('Sun in G frame [km]')
-
 ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_SunEM_r_up[:, 0], r_SunEM_r_up[:, 1], r_SunEM_r_up[:, 2])
-plt.title('Sun in I frame, updated DCM [AU]')
-
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_Sun_G2_up[:, 0], r_Sun_G2_up[:, 1], r_Sun_G2_up[:, 2])
-# plt.title('Sun BACK in G frame, updated DCM [km]')
+ax.plot(r_SunEM[:, 0], r_SunEM[:, 1], r_SunEM[:, 2])
+plt.title('Sun in G frame [km]')
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2])
 plt.title('Sun in I frame, constant DCM [AU]')
 
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_Sun_G2[:, 0], r_Sun_G2[:, 1], r_Sun_G2[:, 2])
-# plt.title('Sun BACK in G frame, constant DCM [km]')
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_SunEM_r_up[:, 0], r_SunEM_r_up[:, 1], r_SunEM_r_up[:, 2])
+plt.title('Sun in I frame, updated DCM [AU]')
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2])
+ax.set_box_aspect([1.0, 1.0, 1.0])
+plot_tools.set_axes_equal(ax)
+plt.title('Earth in I frame, constant DCM [AU]')
+
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_EarthEM_r_up[:, 0], r_EarthEM_r_up[:, 1], r_EarthEM_r_up[:, 2])
 ax.set_box_aspect([1.0, 1.0, 1.0])
 plot_tools.set_axes_equal(ax)
 plt.title('Earth in I frame, updated DCM [AU]')
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2])
+ax.set_box_aspect([1.0, 1.0, 1.0])
+plot_tools.set_axes_equal(ax)
+plt.title('Moon in I frame, constant DCM [AU]')
+
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_MoonEM_r_up[:, 0], r_MoonEM_r_up[:, 1], r_MoonEM_r_up[:, 2])
 ax.set_box_aspect([1.0, 1.0, 1.0])
 plot_tools.set_axes_equal(ax)
 plt.title('Moon in I frame, updated DCM [AU]')
