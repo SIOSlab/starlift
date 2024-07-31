@@ -527,9 +527,6 @@ def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
 
         ICs[ii] = [X[0], 0, X[1], 0, X[2], 0, X[3]]
 
-        # # Plot the orbit
-        # ax.plot(states[:, 0], states[:, 1], states[:, 2])
-
         # Generate new z and X for another orbit
         solp = X + z * step
         ss = fsolve(fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
@@ -544,7 +541,6 @@ def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
         z = np.linalg.inv(J) @ z
         z = z / np.linalg.norm(z)
 
-    # plt.show()
     return ICs
 
 

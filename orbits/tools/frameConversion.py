@@ -162,16 +162,16 @@ def body2geo(currentTime, equinox, mu_star):
     """
     
     # Define vector in G
-    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)[0].get_xyz()  # km
-    tmp_rG = -icrs2gcrs(tmp, equinox)  # km
-    tmp_x = unitConversion.convertPos_to_canonical(tmp_rG[0])
-    tmp_y = unitConversion.convertPos_to_canonical(tmp_rG[1])
-    tmp_z = unitConversion.convertPos_to_canonical(tmp_rG[2])
-    r_earth_bary_G = np.array([tmp_x, tmp_y, tmp_z])
-    mu_star = np.linalg.norm(r_earth_bary_G)
+    tmp = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()  # km
+    tmp_EMB = icrs2gcrs(tmp, currentTime)  # km
+    tmp = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()  # km
+    tmp_M = icrs2gcrs(tmp, currentTime)  # km
+
+    r_moon_bary_G = (tmp_M - tmp_EMB).to('AU')
+    mu_star = np.linalg.norm(r_moon_bary_G)
     
     # Define vector in R
-    r_earth_bary_R = mu_star*np.array([-1, 0, 0])  # constant
+    r_moon_bary_R = mu_star*np.array([1, 0, 0])  # constant
 
     # Get DCM to go from R to I
     dt = currentTime.value - equinox.value  # days
@@ -180,7 +180,7 @@ def body2geo(currentTime, equinox, mu_star):
     C_R2B = C_B2R.T
 
     # Vector from EM to Earth in I frame
-    r_earth_bary_B = C_R2B @ r_earth_bary_R
+    r_moon_bary_B = C_R2B @ r_moon_bary_R
     
     # Find the DCM to rotate vec 1 to vec 2
     n_vec = np.cross(r_moon_bary_B, r_moon_bary_G.T)
@@ -195,10 +195,6 @@ def body2geo(currentTime, equinox, mu_star):
                        [-n_hat[1], n_hat[0], 0]])
                         
     C_B2G = np.identity(3) + r_skew*np.sin(theta_GB) + r_skew@r_skew*(1 - np.cos(theta_GB))
-    
-#    theta_I = rotAngle(currentTime,equinox).value
-#    C_I2B = rot(theta_I, 3)
-#    C_B2G = C_I2B @ C_B2G
     
     return C_B2G
     
@@ -228,11 +224,11 @@ def rotAngle(currentTime,equinox):
     
 
 def body2geo2(currentTime,equinox):
+    # find LAAN DCM
     tarray = equinox + np.arange(28)*u.d
     r_moon = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
     r_bary = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
 
-    r_moons = r_moon - r_bary
     ctr = 0
     r_m = np.zeros([len(tarray), 3])
     for ii in tarray:
@@ -282,6 +278,10 @@ def body2geo2(currentTime,equinox):
             dt = (t2 - t1)/2
             t3 = t3 + dt
             
+            if sign1 == sign2:
+                # if here something went wrong
+                breakpoint()
+            
         elif sign3 == sign2:
             t2 = t3
             r_m2 = r_m3
@@ -289,7 +289,12 @@ def body2geo2(currentTime,equinox):
             dt = (t2 - t1)/2
             t3 = t1 + dt
             
+            if sign1 == sign2:
+                # if here something went wrong
+                breakpoint()
+            
         else:
+            # if here something went wrong
             breakpoint()
             
         r_m = (get_body_barycentric_posvel('Moon', t3)[0].get_xyz()).to('AU')
@@ -323,7 +328,7 @@ def body2geo2(currentTime,equinox):
     
     C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
     
-    
+    # find INC DCM
     tarray = equinox + np.arange(2800)/100*u.d
     r_moons = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
     r_barys = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
@@ -341,12 +346,13 @@ def body2geo2(currentTime,equinox):
     YY = max(r_m[:,1]) - min(r_m[:,1])
     ZZ = max(r_m[:,2]) - min(r_m[:,2])
     
-    theta_INC = -np.deg2rad(5.145) #-np.arctan2(ZZ,YY)
+    theta_INC = -np.arctan2(ZZ,YY) #np.deg2rad(5.145)
 
     n_INC = r_LAAN1/np.linalg.norm(r_LAAN1)
 
     C_INC = rotMatAxisAng(n_INC, theta_INC)
 
+    # find AOP DCM
     r_norm = np.linalg.norm(r_m,axis=1)
     r_min = min(r_norm)
     
@@ -544,11 +550,12 @@ def icrs2gcrs(pos, currentTime):
     """
     
     pos = pos.to('km')
+
     r_icrs = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km', representation_type='cartesian', frame='icrs')
 #    r_gcrs = r_icrs.transform_to(GCRS(obstime=currentTime))    # this throws an EFRA warning re: leap seconds, but it's fine
     r_gcrs = r_icrs.transform_to(GeocentricMeanEcliptic(obstime=currentTime))
     r_gcrs = r_gcrs.cartesian.get_xyz()
-    
+
     return r_gcrs
 
     
@@ -567,7 +574,7 @@ def gcrs2icrs(pos, currentTime):
             Position vector in ICRS (heliocentric) frame in km
     """
     pos = pos.to('km')
-    r_gcrs = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km', representation_type='cartesian', frame='GeocentricMeanEcliptic', obstime=currentTime)
+    r_gcrs = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km', representation_type='cartesian', frame='geocentricmeanecliptic', obstime=currentTime)
     r_icrs = r_gcrs.transform_to(ICRS())    # this throws an EFRA warning re: leap seconds, but it's fine
     r_icrs = r_icrs.cartesian.get_xyz()
 
@@ -613,7 +620,7 @@ def gcrs2icrsPV(pos, vel, currentTime):
     """
     pos = pos.to('km')
     vel = vel.to('km/s')
-    r_gcrs = coord.SkyCoord(x = pos[0], y = pos[1], z = pos[2], v_x = vel[0], v_y = vel[1], v_z = vel[2], representation_type='cartesian', frame='gcrs', obstime=currentTime)
+    r_gcrs = coord.SkyCoord(x = pos[0], y = pos[1], z = pos[2], v_x = vel[0], v_y = vel[1], v_z = vel[2], representation_type='cartesian', frame='geocentricmeanecliptic', obstime=currentTime)
     s_icrs = r_gcrs.transform_to(ICRS())    # this throws an EFRA warning re: leap seconds, but it's fine
     r_icrs = s_icrs.cartesian.get_xyz()
     v_icrs = s_icrs.velocity.get_d_xyz()
@@ -758,20 +765,24 @@ def convertIC_I2H(pos_I, vel_I, tau, t_mjd, mu_star, C_B2G, Tp_can=None):
 
     pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
 
+#    C_B2G = body2geo(tau, t_mjd, mu_star)
     pos_G = C_B2G @ pos_I
 
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', tau)
     posEMB = state_EMB[0].get_xyz().to('AU')
     velEMB = state_EMB[1].get_xyz().to('AU/day')
 
-    posEMB_E = (icrs2gcrs(posEMB, tau)).to('AU')
+    stateEMB_E = icrs2gcrsPV(posEMB, velEMB,tau)
+    posEMB_E = stateEMB_E[0].to('AU')
+    velEMB_E = stateEMB_E[1].to('AU/d')
 
     pos_GCRS = pos_G + posEMB_E  # G frame
 
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_G = C_B2G @ v_dim
+    vel_GMECL = vel_G + velEMB_E
 
-    pos_H, vel_H = gcrs2icrsPV(pos_GCRS, vel_G, tau)
+    pos_H, vel_H = gcrs2icrsPV(pos_GCRS, vel_GMECL, tau)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
 
