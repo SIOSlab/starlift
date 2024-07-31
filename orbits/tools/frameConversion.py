@@ -196,7 +196,6 @@ def inert2geo(currentTime, equinox):
     error = r_m3[2]
 
     while np.abs(error.value) > 6E-12:
-        print(np.abs(error.value))
         sign1 = np.sign(r_m1[2])
         sign2 = np.sign(r_m2[2])
         sign3 = np.sign(r_m3[2])
@@ -261,24 +260,22 @@ def inert2geo(currentTime, equinox):
     C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
     
     # find INC DCM
-    tarray = equinox + np.arange(280)/10*u.d
-    r_moons = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
-    r_barys = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
+    tarray_r = equinox + np.arange(28)/1*u.d
+    r_moons_r = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
+    r_barys_r = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
 
     ctr = 0
-    r_m = np.zeros([len(tarray), 3])
+    r_m_r = np.zeros([len(tarray_r), 3])
 
-    for ii in tarray:
-        tmp1 = C_LAAN @ icrs2gcrs(r_moons[:,ctr],ii).to('AU').value
-        tmp2 = C_LAAN @ icrs2gcrs(r_barys[:,ctr],ii).to('AU').value
-        r_m[ctr,:] = tmp1 - tmp2
+    for ii in tarray_r:
+        tmp1 = C_LAAN @ icrs2gcrs(r_moons_r[:,ctr],ii).to('AU').value
+        tmp2 = C_LAAN @ icrs2gcrs(r_barys_r[:,ctr],ii).to('AU').value
+        r_m_r[ctr,:] = tmp1 - tmp2
         ctr = ctr + 1
-        
-        print('there')
 
-    XX = max(r_m[:,0]) - min(r_m[:, 0])
-    YY = max(r_m[:,1]) - min(r_m[:, 1])
-    ZZ = max(r_m[:,2]) - min(r_m[:, 2])
+    XX = max(r_m_r[:,0]) - min(r_m_r[:, 0])
+    YY = max(r_m_r[:,1]) - min(r_m_r[:, 1])
+    ZZ = max(r_m_r[:,2]) - min(r_m_r[:, 2])
     
     theta_INC = -np.arctan2(ZZ,YY) #np.deg2rad(5.145)
 
@@ -287,12 +284,33 @@ def inert2geo(currentTime, equinox):
     C_INC = rotMatAxisAng(n_INC, theta_INC)
 
     # find AOP DCM
-    r_norm = np.linalg.norm(r_m,axis=1)
-    r_min = min(r_norm)
+    # rough search
+    r_norm_r = np.linalg.norm(r_m_r,axis=1)
+    r_min_r = min(r_norm_r)
     
-    r_ind = np.argwhere(r_min == r_norm)[0][0]
+    r_ind_r = np.argwhere(r_min_r == r_norm_r)[0][0]
 
-    t_AOP = tarray[r_ind]
+    # fine search
+    t_AOP_r = tarray_r[r_ind_r-1]
+    tarray_f = t_AOP_r + 0.5*u.d + np.arange(1600)/800*u.d
+    
+    r_moons_f = get_body_barycentric_posvel('Moon', tarray_f)[0].get_xyz()
+    r_barys_f = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray_f)[0].get_xyz()
+
+    ctr = 0
+    r_m_f = np.zeros([len(tarray_f), 3])
+
+    for ii in tarray_f:
+        tmp1 = C_LAAN @ icrs2gcrs(r_moons_f[:,ctr],ii).to('AU').value
+        tmp2 = C_LAAN @ icrs2gcrs(r_barys_f[:,ctr],ii).to('AU').value
+        r_m_f[ctr,:] = tmp1 - tmp2
+        ctr = ctr + 1
+        
+    r_norm_f = np.linalg.norm(r_m_f,axis=1)
+    r_min_f = min(r_norm_f)
+    
+    r_ind_f = np.argwhere(r_min_f == r_norm_f)[0][0]
+    t_AOP = tarray_f[r_ind_f]
     
     theta_AOP = rotAngle(t_AOP, t_LAAN).value
     
