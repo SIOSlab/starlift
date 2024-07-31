@@ -39,7 +39,7 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.363
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # DCM for G frame and I frame
-C_B2G = frameConversion.body2geo(t_mjd, t_mjd, mu_star)
+C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(t_mjd, t_mjd)
 C_G2B = C_B2G.T
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
@@ -94,7 +94,7 @@ for ii in np.arange(len(times)):
     r_MoonEM = r_MoonG - r_EMG
     
     # Convert from G frame to I frame
-    C_B2G_up = frameConversion.body2geo(time, t_mjd, mu_star)
+    C_B2G_up, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time, t_mjd)
     C_G2B_up = C_B2G_up.T
     
     # Convert from G frame (in km) to I frame (in AU)
@@ -122,9 +122,9 @@ ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2])
 plt.title('Sun in I frame, constant DCM [AU]')
 
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_SunEM_r_up[:, 0], r_SunEM_r_up[:, 1], r_SunEM_r_up[:, 2])
-plt.title('Sun in I frame, updated DCM [AU]')
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_SunEM_r_up[:, 0], r_SunEM_r_up[:, 1], r_SunEM_r_up[:, 2])
+# plt.title('Sun in I frame, updated DCM [AU]')
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2])
@@ -132,11 +132,11 @@ ax.set_box_aspect([1.0, 1.0, 1.0])
 plot_tools.set_axes_equal(ax)
 plt.title('Earth in I frame, constant DCM [AU]')
 
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_EarthEM_r_up[:, 0], r_EarthEM_r_up[:, 1], r_EarthEM_r_up[:, 2])
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
-plt.title('Earth in I frame, updated DCM [AU]')
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_EarthEM_r_up[:, 0], r_EarthEM_r_up[:, 1], r_EarthEM_r_up[:, 2])
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+# plt.title('Earth in I frame, updated DCM [AU]')
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2])
@@ -144,11 +144,11 @@ ax.set_box_aspect([1.0, 1.0, 1.0])
 plot_tools.set_axes_equal(ax)
 plt.title('Moon in I frame, constant DCM [AU]')
 
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_MoonEM_r_up[:, 0], r_MoonEM_r_up[:, 1], r_MoonEM_r_up[:, 2])
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
-plt.title('Moon in I frame, updated DCM [AU]')
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_MoonEM_r_up[:, 0], r_MoonEM_r_up[:, 1], r_MoonEM_r_up[:, 2])
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+# plt.title('Moon in I frame, updated DCM [AU]')
 
 
 # # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
