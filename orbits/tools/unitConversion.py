@@ -23,7 +23,7 @@ def convertTime_to_canonical(dimTime):
     where TU are the canonical time units.
     
     Args:
-        dimTime (float n array):
+        dimTime (astropy Quantity array):
             Array of times in some time unit
 
     Returns:
@@ -48,7 +48,7 @@ def convertTime_to_dim(canonicalTime):
             Array of times in canonical units
 
     Returns:
-        dimTime (float n array):
+        dimTime (astropy Quantity array):
             Array of times in units of days
     """
     

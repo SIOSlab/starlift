@@ -15,7 +15,7 @@ sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
 import orbitEOMProp
-import plot_tools
+#import plot_tools
 
 #import tools.unitConversion as unitConversion
 #import tools.frameConversion as frameConversion
@@ -30,47 +30,21 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
-#t_mjd = Time(60408, format='mjd', scale='utc')
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-##tj2000 = Time(51544.500000, format='mjd', scale='utc')
-##tmpE = get_body_barycentric_posvel('Earth', tj2000)[0].get_xyz()
-##tmpEM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tj2000)[0].get_xyz()
-##tmpS = get_body_barycentric_posvel('Sun', tj2000)[0].get_xyz()
-##
-##
-##breakpoint()
-tarray = t_mjd + np.arange(28)*u.d
+#tarray = t_mjd + np.arange((1*u.yr).to('d').value)
 
-#r_moon = (get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()).to('AU')
-#r_m = np.zeros([len(tarray), 3])
-#ctr = 0
-#for ii in tarray:
-#    r_m[ctr,:] = frameConversion.icrs2gcrs(r_moon[:,ctr],ii).to('AU').value
-##
-#    ctr = ctr + 1
-# 
-#ax1 = plt.figure().add_subplot(projection='3d')
-#ax1.plot(r_m[:,0], r_m[:,1], r_m[:,2], 'g')
-#ax1.set_xlabel('X [AU]')
-#ax1.set_ylabel('Y [AU]')
-#ax1.set_zlabel('Z [AU]')
-#ax1.set_title('GCRS frame')
-#plt.legend()
-#plt.show()
-#breakpoint()
-
-moon_G1 = np.zeros([len(tarray), 3])
-moon_G2 = np.zeros([len(tarray), 3])
-r_MB_I2s = np.zeros([len(tarray), 3])
-r_MB_LAAN = np.zeros([len(tarray), 3])
-r_MB_INC = np.zeros([len(tarray), 3])
+#moon_G1 = np.zeros([len(tarray), 3])
+#moon_G2 = np.zeros([len(tarray), 3])
+#r_MB_I2s = np.zeros([len(tarray), 3])
+#r_MB_LAAN = np.zeros([len(tarray), 3])
+#r_MB_INC = np.zeros([len(tarray), 3])
 ctr = 0
 #C_G2B = frameConversion.body2geo(t_mjd,t_mjd,mu_star)
 C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.body2geo2(t_mjd,t_mjd)
-print('here')
+
 C_G2B = C_B2G.T
 #for ii in tarray:
 ##    C_B2G = frameConversion.body2geo(ii,t_mjd,mu_star)
@@ -183,7 +157,7 @@ C_G2B = C_B2G.T
 #ax1 = plt.figure().add_subplot(projection='3d')
 #ax1.plot(r_MB_INC[:, 0], r_MB_INC[:, 1], r_MB_INC[:, 2], 'g', label='LAAN + INC')
 #ax1.plot(r_MB_I2s[:, 0], r_MB_I2s[:, 1], r_MB_I2s[:, 2], 'k', label='LAAN + INC + AOP')
-##ax1.plot(np.array([0, n_AOP[0]]), np.array([0, n_AOP[1]]), np.array([0, n_AOP[2]]),'y')
+#ax1.plot(np.array([0, n_AOP[0]]), np.array([0, n_AOP[1]]), np.array([0, n_AOP[2]]),'y')
 #ax1.set_xlabel('X [AU]')
 #ax1.set_ylabel('Y [AU]')
 #ax1.set_zlabel('Z [AU]')
@@ -200,56 +174,7 @@ C_G2B = C_B2G.T
 #
 #plt.show()
 #breakpoint()
-#
 
-#
-#sun_G = np.zeros([len(tarray), 3])
-#sun_HG = np.zeros([len(tarray), 3])
-#ctr = 0
-#for ii in tarray:
-#    sun1_G = coord.get_sun(ii).cartesian.get_xyz().value
-#    sun1_H = get_body_barycentric_posvel('Sun', ii)[0].get_xyz()
-#    sun1_HG = frameConversion.icrs2gcrs(sun1_H,ii).to('AU').value
-#
-#    sun_G[ctr,:] = sun1_G
-#    sun_HG[ctr,:] = sun1_HG
-#    ctr = ctr + 1
-#    
-#ax1 = plt.figure().add_subplot(projection='3d')
-#ax1.plot(sun_G[:, 0], sun_G[:, 1], sun_G[:, 2], 'b', label='Get Sun')
-#ax1.plot(sun_HG[:,0], sun_HG[:,1], sun_HG[:,2], 'r-.', label='Get Body')
-#ax1.set_xlabel('X [AU]')
-#ax1.set_ylabel('Y [AU]')
-#ax1.set_zlabel('Z [AU]')
-#plt.legend()
-#plt.show()
-#breakpoint()
-#
-#posM1 = get_body_barycentric_posvel('Moon', tarray[0])[0].get_xyz()
-#posEM1 = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray[0])[0].get_xyz()
-#tmp_M1 = frameConversion.icrs2gcrs(posM1, tarray[0])
-#tmp_EM1 = frameConversion.icrs2gcrs(posEM1, tarray[0])
-#r_moon_bary_G1 = (tmp_M1 - tmp_EM1).to('AU')
-#r_mb_G1 = r_moon_bary_G1/np.linalg.norm(r_moon_bary_G1)
-#
-#posM2 = get_body_barycentric_posvel('Moon', tarray[1])[0].get_xyz()
-#posEM2 = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray[1])[0].get_xyz()
-#tmp_M2 = frameConversion.icrs2gcrs(posM2, tarray[1])
-#tmp_EM2 = frameConversion.icrs2gcrs(posEM2, tarray[1])
-#r_moon_bary_G2 = (tmp_M2 - tmp_EM2).to('AU')
-#r_mb_G2 = r_moon_bary_G2/np.linalg.norm(r_moon_bary_G2)
-#
-#posM3 = get_body_barycentric_posvel('Moon', tarray[2])[0].get_xyz()
-#posEM3 = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray[2])[0].get_xyz()
-#tmp_M3 = frameConversion.icrs2gcrs(posM3, tarray[2])
-#tmp_EM3 = frameConversion.icrs2gcrs(posEM3, tarray[2])
-#r_moon_bary_G3 = (tmp_M3 - tmp_EM3).to('AU')
-#r_mb_G3 = r_moon_bary_G3/np.linalg.norm(r_moon_bary_G3)
-#
-#breakpoint()
-#for ii in tarray:
-#    C_B2G = frameConversion.body2geo(ii,t_mjd,mu_star)
-#breakpoint()
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
 IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]
 X = [IC[0], IC[2], IC[4], IC[6]]
@@ -263,7 +188,7 @@ while error > eps and ctr < max_iter:
 
     error = np.linalg.norm(Fx)
     print(error)
-    dFx = orbitEOMProp.calcdFx(X,mu_star,m1,m2)
+    dFx = orbitEOMProp.calcdFx_CRTBP(X,mu_star,m1,m2)
 
     X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
     
@@ -335,7 +260,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_EM = C_B2G @ r_dim
     r_GCRS = r_EM +  r_EMG.value
     
-    r_PO_H, _ = orbitEOMProp.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, t_mjd, mu_star, C_B2G)
+    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, t_mjd, mu_star, C_B2G)
     r_PO_CRTBP[kk, :] = r_PO_H
     
     C_I2R = frameConversion.body2rot(time,t_mjd)
@@ -348,10 +273,10 @@ for kk in np.arange(len(timesCRTBP)):
     r_diff[kk,:] = C_G2B @ r_EM - r_dim
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, t_mjd, mu_star, C_B2G, timesCRTBP[-1])
+pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, t_mjd, mu_star, C_B2G, timesCRTBP[-1])
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), 15*Tp_dim.value)   # Change to Tp_dim.value for one orbit
+state0 = np.append(np.append(pos_H.value, vel_H.value), 1*Tp_dim.value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
