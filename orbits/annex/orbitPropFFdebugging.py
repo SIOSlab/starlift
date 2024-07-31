@@ -418,7 +418,7 @@ for ii in np.arange(len(times)):
     r_MoonEM = r_MoonG - r_EMG
     
 
-    C_B2G = frameConversion.body2geo(time,t_mjd,mu_star)
+    C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time, t_mjd)
     C_G2B = C_B2G.T
     C_I2R = frameConversion.body2rot(time,t_mjd)
 #    
@@ -467,7 +467,7 @@ for ii in np.arange(len(times)):
 #
 #    C_I2R = frameConversion.body2rot(time,t_mjd)
 #    C_R2I = C_I2R.T
-#    C_B2G = frameConversion.body2geo(time,t_mjd,mu_star)
+#    C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time,t_mjd)
 #    
 #    r_EarthEM_r[ii,:] = r_EarthEM
 #    r_MoonEM_r[ii,:] = r_MoonEM
