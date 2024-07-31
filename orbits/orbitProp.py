@@ -34,7 +34,7 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(t_mjd,t_mjd)
+C_B2G = frameConversion.inert2geo(t_mjd,t_mjd)
 C_G2B = C_B2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]

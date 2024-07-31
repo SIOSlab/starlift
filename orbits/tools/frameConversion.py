@@ -139,18 +139,6 @@ def inert2geo(currentTime, equinox):
     Returns:
         C_B2G (float n array):
             3x3 Array for the directional cosine matrix
-        C_LAAN
-            ???
-        C_INC
-            ???
-        C_AOP
-            ???
-        n_LAAN
-            ???
-        n_INC
-            ???
-        n_AOP
-            ???
 
     """
 
@@ -321,7 +309,7 @@ def inert2geo(currentTime, equinox):
     C_G2B = C_AOP @ C_INC @ C_LAAN
     C_B2G = C_G2B.T
 
-    return C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP
+    return C_B2G
 
 
 def body2rot(currentTime, equinox):
