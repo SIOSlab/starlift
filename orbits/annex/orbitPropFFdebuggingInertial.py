@@ -83,7 +83,7 @@ def CRTBP_EOM(t,w,mu_star):
     dw = [vx,vy,vz,ax,ay,az]
     return dw
     
-def FF_EOM(tt,w,t_mjd,mu_star,C_G2B):
+def FF_EOM(tt,w,t_mjd,mu_star,C_G2I):
     """Equations of motion for the full force model in the inertial frame
 
     Args:
@@ -159,7 +159,7 @@ def statePropCRTBP(freeVar,mu_star):
     
     return states
     
-def statePropFF(freeVar,t_mjd,mu_star,C_G2B):
+def statePropFF(freeVar,t_mjd,mu_star,C_G2I):
     """Propagates the dynamics using the free variables
 
     Args:
@@ -177,7 +177,7 @@ def statePropFF(freeVar,t_mjd,mu_star,C_G2B):
 #    x0 = [freeVar[0].value, 0, freeVar[1].value, 0, freeVar[2].value, 0]
     T = freeVar[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star,C_G2B), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], freeVar[0:6], args=(t_mjd,mu_star,C_G2I), method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -376,17 +376,17 @@ Tp_dim = unitConversion.convertTime_to_dim(X[3]).to('day').value
 
 pos_dim = np.array([x_dim, 0, z_dim])*u.AU
 
-C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(t_mjd,t_mjd)
+C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
 
-pos_GCRS = C_B2G@pos_dim
-pos_ICRS = (frameConversion.gcrs2icrs(pos_GCRS,t_mjd)).to('AU').value
+pos_GCRS = C_I2G@pos_dim
+pos_ICRS = (frameConversion.gmec2icrs(pos_GCRS,t_mjd)).to('AU').value
 
 vel_ICRS = (v_EMO + v_dim).value
 
 state0 = np.array([pos_ICRS[0], pos_ICRS[1], pos_ICRS[2], vel_ICRS[0], vel_ICRS[1], vel_ICRS[2], 6])#124*Tp_dim
 
-statesFF, timesFF = statePropFF(state0,t_mjd,mu_star,C_G2B)
-posFF = statesFF[:,0:3]
+statesFF, timesFF = statePropFF(state0, t_mjd, mu_star, C_G2I)
+posFF = statesFF[:, 0:3]
 
 times = np.linspace(0,366,366*2)+t_mjd
 #times = np.linspace(0,6,66)+t_mjd
@@ -395,22 +395,22 @@ r_orbit1 = np.zeros([len(timesFF),3])
 r_orbit2 = np.zeros([len(timesFF),3])
 r_orbit3 = np.zeros([len(timesFF),3])
 
-C_G2B = C_B2G.T
+C_G2I = C_I2G.T
 for ii in np.arange(len(timesFF)):
     time = timesFF[ii] + t_mjd
 #    breakpoint()
-    pos_GCRS = (frameConversion.icrs2gcrs(posFF[ii]*u.AU,time)).to('AU')
+    pos_GCRS = (frameConversion.icrs2gmec(posFF[ii]*u.AU,time)).to('AU')
         
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',time)
     r_EMO = EMO[0].get_xyz().to('AU')
 
     r_PG = pos_GCRS - r_EMO
     
-    C_I2R = frameConversion.body2rot(time,t_mjd)
+    C_I2R = frameConversion.inert2rot(time,t_mjd)
 
     r_orbit1[ii,:] = r_PG.to('AU')
-    r_orbit2[ii,:] = C_G2B@r_PG.to('AU')
-    r_orbit3[ii,:] = C_G2B@C_I2R@r_PG.to('AU')
+    r_orbit2[ii,:] = C_G2I@r_PG.to('AU')
+    r_orbit3[ii,:] = C_G2I@C_I2R@r_PG.to('AU')
 #
 
 
@@ -431,34 +431,34 @@ for ii in np.arange(len(times)):
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter',time)
     r_EMO = EMO[0].get_xyz().to('AU').value
 
-    r_SunG = frameConversion.icrs2gcrs(r_SunO*u.AU,time)
-    r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU,time)
-    r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU,time)
+    r_SunG = frameConversion.icrs2gmec(r_SunO*u.AU,time)
+    r_MoonG = frameConversion.icrs2gmec(r_MoonO*u.AU,time)
+    r_EMG = frameConversion.icrs2gmec(r_EMO*u.AU,time)
 
 #    breakpoint()
     r_SunEM = r_SunG - r_EMG
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
-    C_B2G2, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time,t_mjd)
-    C_G2B2 = C_B2G2.T
+    C_I2G2 = frameConversion.inert2geo(time,t_mjd)
+    C_G2I2 = C_I2G2.T
     
-    C_I2R = frameConversion.body2rot(time,t_mjd)
+    C_I2R = frameConversion.inert2rot(time,t_mjd)
 #    
 ##    print(C_I2R)
 ##    breakpoint()
 #    
-#    r_SunEM_r[ii,:] = C_G2B@r_SunEM.to('AU')
-#    r_SunEM_r2[ii,:] = C_G2B2@r_SunEM.to('AU')
-#    r_EarthEM_r[ii,:] = C_G2B@r_EarthEM.to('AU')
-#    r_MoonEM_r[ii,:] = C_G2B@r_MoonEM.to('AU')
+#    r_SunEM_r[ii,:] = C_G2I@r_SunEM.to('AU')
+#    r_SunEM_r2[ii,:] = C_G2I2@r_SunEM.to('AU')
+#    r_EarthEM_r[ii,:] = C_G2I@r_EarthEM.to('AU')
+#    r_MoonEM_r[ii,:] = C_G2I@r_MoonEM.to('AU')
 #    
 ##    breakpoint()
 #
-    r_SunEM_r[ii,:] = C_G2B@C_I2R@r_SunEM.to('AU')
-    r_SunEM_r2[ii,:] = C_G2B2@C_I2R@r_SunEM.to('AU')
-    r_EarthEM_r[ii,:] = C_G2B@C_I2R@r_EarthEM.to('AU')
-    r_MoonEM_r[ii,:] = C_G2B@C_I2R@r_MoonEM.to('AU')
+    r_SunEM_r[ii,:] = C_G2I@C_I2R@r_SunEM.to('AU')
+    r_SunEM_r2[ii,:] = C_G2I2@C_I2R@r_SunEM.to('AU')
+    r_EarthEM_r[ii,:] = C_G2I@C_I2R@r_EarthEM.to('AU')
+    r_MoonEM_r[ii,:] = C_G2I@C_I2R@r_MoonEM.to('AU')
 #    
 #
 ##    breakpoint()
@@ -490,9 +490,9 @@ for ii in np.arange(len(times)):
 #for ii in np.arange(len(times)):
 #    time = times[ii]
 #
-#    C_I2R = frameConversion.body2rot(time,t_mjd)
+#    C_I2R = frameConversion.inert2rot(time,t_mjd)
 #    C_R2I = C_I2R.T
-#    C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time,t_mjd)
+#    C_I2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time,t_mjd)
 #    
 #    r_EarthEM_r[ii,:] = r_EarthEM
 #    r_MoonEM_r[ii,:] = r_MoonEM
@@ -500,8 +500,8 @@ for ii in np.arange(len(times)):
 ##    r_EarthEM_r[ii,:] = C_R2I@r_EarthEM
 ##    r_MoonEM_r[ii,:] = C_R2I@r_MoonEM
 ##
-#    r_EarthEM_r[ii,:] = C_R2I@C_B2G@r_EarthEM
-#    r_MoonEM_r[ii,:] = C_R2I@C_B2G@r_MoonEM
+#    r_EarthEM_r[ii,:] = C_R2I@C_I2G@r_EarthEM
+#    r_MoonEM_r[ii,:] = C_R2I@C_I2G@r_MoonEM
 
 
 ax = plt.figure().add_subplot(projection='3d')

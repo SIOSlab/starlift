@@ -63,6 +63,55 @@ def CRTBP_EOM(t, w, mu_star):
     return dw
 
 
+def CRTBP_EOM_R(t, w, mu_star):
+    """Equations of motion for the CRTBP in the rotating frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State in non dimensional units [position, velocity]
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity, acceleration]
+
+    """
+
+    [x, y, z, vx, vy, vz] = w
+
+    m1 = 1 - mu_star
+    m2 = mu_star
+
+    r1 = mu_star
+    r2 = 1 - mu_star
+    r_1O_H = r1 * np.array([-1, 0, 0])
+    r_2O_H = r2 * np.array([1, 0, 0])
+
+    r_PO_H = np.array([x, y, z])
+    v_PO_H = np.array([vx, vy, vz])
+
+    r_P1_H = r_PO_H - r_1O_H
+    r_P2_H = r_PO_H - r_2O_H
+    r1_mag = np.linalg.norm(r_P1_H)
+    r2_mag = np.linalg.norm(r_P2_H)
+
+    F_g1 = -m1 / r1_mag ** 3 * r_P1_H
+    F_g2 = -m2 / r2_mag ** 3 * r_P2_H
+    F_g = F_g1 + F_g2
+
+    e3_hat = np.array([0, 0, 1])
+
+    a_PO_H = F_g - 2 * np.cross(e3_hat, v_PO_H) - np.cross(e3_hat, np.cross(e3_hat, r_PO_H))
+    ax = a_PO_H[0]
+    ay = a_PO_H[1]
+    az = a_PO_H[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+
+    return dw
+
+
 def FF_EOM(tt, w, t_mjd):
     """Equations of motion for the full force model in the ICRS frame
 
@@ -151,6 +200,33 @@ def statePropCRTBP(freeVar, mu_star):
     return states, times
 
 
+def statePropCRTBP_R(freeVar, mu_star):
+    """Propagates the dynamics using the free variables in the rotating frame
+
+    Args:
+        freeVar (float np.array):
+            Free variable in non-dimensional units of the form [x y z dx dy dz T/2]
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        tuple:
+        states ~numpy.ndarray(float):
+            Positions and velocities in non-dimensional units
+        times ~numpy.ndarray(float):
+            Times in non-dimensional units
+
+    """
+
+    x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
+    T = freeVar[-1]
+
+    sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12, )
+    states = sol_int.y.T
+    times = sol_int.t
+    return states, times
+
+
 def statePropFF(state0, t_mjd):
     """Propagates the dynamics using the free variables in the full force model
 
@@ -180,83 +256,7 @@ def statePropFF(state0, t_mjd):
     return states, times
 
 
-def CRTBP_EOM_R(t, w, mu_star):
-    """Equations of motion for the CRTBP in the rotating frame
-
-    Args:
-        w (~numpy.ndarray(float)):
-            State in non dimensional units [position, velocity]
-        mu_star (float):
-            Non-dimensional mass parameter
-
-    Returns:
-        ~numpy.ndarray(float):
-            Time derivative of the state [velocity, acceleration]
-
-    """
-    
-    [x, y, z, vx, vy, vz] = w
-    
-    m1 = 1 - mu_star
-    m2 = mu_star
-
-    r1 = mu_star
-    r2 = 1 - mu_star
-    r_1O_H = r1*np.array([-1, 0, 0])
-    r_2O_H = r2*np.array([1, 0, 0])
-
-    r_PO_H = np.array([x, y, z])
-    v_PO_H = np.array([vx, vy, vz])
-
-    r_P1_H = r_PO_H - r_1O_H
-    r_P2_H = r_PO_H - r_2O_H
-    r1_mag = np.linalg.norm(r_P1_H)
-    r2_mag = np.linalg.norm(r_P2_H)
-
-    F_g1 = -m1/r1_mag**3*r_P1_H
-    F_g2 = -m2/r2_mag**3*r_P2_H
-    F_g = F_g1 + F_g2
-
-    e3_hat = np.array([0, 0, 1])
-
-    a_PO_H = F_g - 2*np.cross(e3_hat, v_PO_H) - np.cross(e3_hat,np.cross(e3_hat, r_PO_H))
-    ax = a_PO_H[0]
-    ay = a_PO_H[1]
-    az = a_PO_H[2]
-
-    dw = [vx, vy, vz, ax, ay, az]
-    
-    return dw
-
-
-def statePropCRTBP_R(freeVar, mu_star):
-    """Propagates the dynamics using the free variables in the rotating frame
-
-    Args:
-        freeVar (float np.array):
-            Free variable in non-dimensional units of the form [x y z dx dy dz T/2]
-        mu_star (float):
-            Non-dimensional mass parameter
-
-    Returns:
-        tuple:
-        states ~numpy.ndarray(float):
-            Positions and velocities in non-dimensional units
-        times ~numpy.ndarray(float):
-            Times in non-dimensional units
-
-    """
-
-    x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    T = freeVar[-1]
-
-    sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12, )
-    states = sol_int.y.T
-    times = sol_int.t
-    return states, times
-
-
-def calcFx(freeVar, mu_star):
+def calcFx_CRTBP(freeVar, mu_star):
     """Applies constraints to the free variables in the CRTBP inertial frame
 
     Args:
@@ -414,7 +414,7 @@ def fsolve_eqns(w, z, solp, mu_star):
     
     Fx = calcFx_R(w, mu_star)
     zeq = z.T@(w-solp)
-    sys_w = np.append(Fx,zeq)
+    sys_w = np.append(Fx, zeq)
 
     return sys_w
 
@@ -424,16 +424,16 @@ def generateFamily_CRTBP(guess, mu_star, N):
     Each orbit is generated over 1 orbital period.
 
     Args:
-        IC (float array):
+        guess (float array):
             Initial guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
         mu_star (float):
             Non-dimensional mass parameter
         N (float):
             Number of orbits in the family to be generated
 
-    Returns: LEFT OFF HERE
-        ~numpy.ndarray(float):
-            system of equations as a function of w
+    Returns:
+        ICs (float n array):
+            A matrix consisting of the initial states of for all the orbits in the family
 
     """
 
@@ -488,59 +488,6 @@ def generateFamily_CRTBP(guess, mu_star, N):
         z = z / np.linalg.norm(z)
 
     # plt.show()
-    return ICs
-
-    
-def calcFx_FF(X,taus,N,t_mjd,X0,dt):
-    
-    ctr = 0
-    Fx = np.array([])
-
-    for ii in np.arange(N):
-        error = 10
-        ctr = 0
-        while error > eps and ctr < max_iter:
-            # Generate the free variable vector
-            Fx = calcFx_R(X, mu_star)
-            error = np.linalg.norm(Fx)
-            dFx = calcdFx_CRTBP(X, mu_star, m1, m2)
-            X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
-            ctr = ctr + 1
-
-        Fx = np.append(Fx,states[-1,:] - const)
-        
-        ctr = ctr + 1
-    return Fx
-    
-    
-def calcdFx_FF(X,taus,N,t_mjd,X0,dt):
-    hstep = 1E-3
-    
-    Fx_0 = calcFx_FF(X,taus,N,t_mjd,X0,dt)
-    
-    dFx = np.zeros((6*N,6*N))
-    indsXh = np.arange(0,N*6,6)
-    indsD = np.arange(0,N*6,6)
-    for ii in np.arange(6):
-        dh = np.zeros(N*6)
-        dh[indsXh] = hstep
-
-        ICs[ii] = [X[0], 0, X[1], 0, X[2], 0, X[3]]
-
-        # Generate new z and X for another orbit
-        solp = X + z * step
-        ss = fsolve(fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
-        X = ss[0]
-        Q = ss[1]['fjac']
-        Rs = ss[1]['r']
-        R = np.zeros((4, 4))
-        idx, col = np.triu_indices(4, k=0)
-        R[idx, col] = Rs
-        J = Q.T @ R
-
-        z = np.linalg.inv(J) @ z
-        z = z / np.linalg.norm(z)
-
     return ICs
 
 
