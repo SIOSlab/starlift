@@ -29,12 +29,13 @@ import pdb
 coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
-t_mjd = Time(57727, format='mjd', scale='utc')
+t_equinox = Time(51544.5, format='mjd', scale='utc')
+t_start = Time(57727, format='mjd', scale='utc')
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_B2G = frameConversion.inert2geo(t_mjd,t_mjd)
+C_B2G = frameConversion.inert2geo(t_start,t_equinox)
 C_G2B = C_B2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
@@ -85,7 +86,7 @@ r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
 times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
-timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')
+timesCRTBP_mjd = Time(timesCRTBP + t_start.value, format='mjd', scale='utc')
 
 # Rotate CRTBP to different frames
 for kk in np.arange(len(timesCRTBP)):
@@ -115,10 +116,10 @@ for kk in np.arange(len(timesCRTBP)):
     r_EM = C_B2G @ r_dim
     r_GCRS = r_EM +  r_EMG.value
     
-    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, t_mjd, mu_star, C_B2G)
+    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, t_start, mu_star, C_B2G)
     r_PO_CRTBP[kk, :] = r_PO_H
     
-    C_I2R = frameConversion.body2rot(time,t_mjd)
+    C_I2R = frameConversion.body2rot(time,t_start)
     r_CRTBP_rot[kk,:] = C_I2R @ r_dim
     r_CRTBP_I[kk,:] = r_dim
 #    r_CRTBP_G[kk,:] = r_GCRS
@@ -128,13 +129,13 @@ for kk in np.arange(len(timesCRTBP)):
     r_diff[kk,:] = C_G2B @ r_EM - r_dim
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, t_mjd, mu_star, C_B2G, timesCRTBP[-1])
+pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, t_start, mu_star, C_B2G, timesCRTBP[-1])
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), 1*Tp_dim.value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
-statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_mjd)
+statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
@@ -153,7 +154,7 @@ r_EarthO_h = np.zeros([len(timesFF), 3])
 r_MoonO_h = np.zeros([len(timesFF), 3])
 
 # sim time in mjd
-timesFF_mjd = Time(timesFF + t_mjd.value, format='mjd', scale='utc')
+timesFF_mjd = Time(timesFF + t_start.value, format='mjd', scale='utc')
 
 # Obtain Moon, Earth, and Sun positions for FF
 for ii in np.arange(len(timesFF_mjd)):

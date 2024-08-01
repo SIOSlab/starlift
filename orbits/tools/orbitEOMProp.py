@@ -105,7 +105,7 @@ def FF_EOM(tt, w, t_mjd):
     rSE_mag = np.linalg.norm(r_SunEarth)
     rME_mag = np.linalg.norm(r_MoonEarth)
         
-    F_gSun_p = 0 #-gmSun*(r_PSun/rSun_mag**3)
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
     F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
 
