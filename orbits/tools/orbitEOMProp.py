@@ -300,7 +300,7 @@ def calcFx_R(freeVar, mu_star):
     return Fx
 
 
-def calcFx_FF(X, taus, N, t_mjd, X0, dt):
+def calcFx_FF(X, taus, N, X0, dt):
     """Applies constraints to the free variables for a full force model
 
     *Add documentation
@@ -359,7 +359,7 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
     return dFx
 
 
-def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
+def calcdFx_FF(X, taus, N, X0, dt):
     """Calculates the Jacobian of the free variables wrt the constraints for the full force model
 
     *Add documentation
@@ -367,7 +367,7 @@ def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
     """
     hstep = 1E-4
 
-    Fx_0 = calcFx_FF(X, taus, N, t_mjd, X0, dt)
+    Fx_0 = calcFx_FF(X, taus, N, X0, dt)
 
     dFx = np.zeros((6 * N, 6 * N))
     indsXh = np.arange(0, N * 6, 6)
@@ -378,7 +378,7 @@ def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
 
         Xh = X + dh
 
-        Fx_ii = calcFx_FF(Xh, taus, N, t_mjd, X0, dt)
+        Fx_ii = calcFx_FF(Xh, taus, N, X0, dt)
 
         dFx_ii = (Fx_ii - Fx_0) / hstep
 

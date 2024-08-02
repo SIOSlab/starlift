@@ -418,7 +418,7 @@ for ii in np.arange(len(times)):
     r_MoonEM = r_MoonG - r_EMG
     
 
-    C_I2G = frameConversion.inert2geo(time, t_mjd)
+    C_I2G = frameConversion.inert2geo(time)
     C_G2I = C_I2G.T
     C_I2R = frameConversion.inert2rot(time, t_mjd)
 #    

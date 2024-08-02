@@ -39,7 +39,7 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.363
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # DCM for G frame and I frame
-C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
+C_I2G = frameConversion.inert2geo(t_mjd)
 C_G2I = C_I2G.T
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)

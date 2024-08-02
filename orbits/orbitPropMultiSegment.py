@@ -66,7 +66,7 @@ timesCRTBP_mjd = times_dim + t_mjd      # works in Grace's code
 #timesCRTBP_mjd = Time(timesCRTBP + t_mjd.value, format='mjd', scale='utc')     # works in Anna's code
 
 # DCM for G frame and I frame
-C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
+C_I2G = frameConversion.inert2geo(t_mjd)
 C_G2I = C_I2G.T
 
 # Obtain Moon and Earth positions for CRTBP
@@ -153,28 +153,28 @@ eps = 1E-8
 error = 10
 
 while error > eps:
-    Fx = orbitEOMProp.calcFx_FF(X,taus,N,t_mjd,X0,dt)
+    Fx = orbitEOMProp.calcFx_FF(X, taus, N, X0, dt)
     
     error = np.linalg.norm(Fx)
     print('Error is')
     print(error)
-    dFx = orbitEOMProp.calcdFx_FF(X,taus,N,t_mjd,X0,dt)
+    dFx = orbitEOMProp.calcdFx_FF(X, taus, N, X0, dt)
 
     X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
 
 ctr = 0
-posH = np.array([np.nan,np.nan,np.nan])
-pos_msI = np.array([np.nan,np.nan,np.nan])
-pos_msG = np.array([np.nan,np.nan,np.nan])
-posR = np.array([np.nan,np.nan,np.nan])
-posEM = np.array([np.nan,np.nan,np.nan])
-nanArray = np.array([np.nan,np.nan,np.nan])
+posH = np.array([np.nan, np.nan, np.nan])
+pos_msI = np.array([np.nan, np.nan, np.nan])
+pos_msG = np.array([np.nan, np.nan, np.nan])
+posR = np.array([np.nan, np.nan, np.nan])
+posEM = np.array([np.nan, np.nan, np.nan])
+nanArray = np.array([np.nan, np.nan, np.nan])
 timesAll = np.array([])
 for ii in np.arange(N):
     IC = np.append(X[ctr*6:((ctr+1)*6)], dt)
     tau = taus[ctr]
     states, timesT = orbitEOMProp.statePropFF(IC, tau)
-    posFF = states[:,0:3]
+    posFF = states[:, 0:3]
 
     posH = np.block([[posH],[posFF]])
     posH = np.block([[posH],[nanArray]])
@@ -185,7 +185,7 @@ for ii in np.arange(N):
 
     ctr = ctr + 1
     
-posH = posH[1:,:]
+posH = posH[1:, :]
 
 ## Define the initial state array
 #state0 = np.append(np.append(pos_H.value, vel_H.value), Tp_dim.value)   # Change to Tp_dim.value for one orbit
