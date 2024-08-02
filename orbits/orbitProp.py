@@ -193,7 +193,6 @@ for ii in np.arange(len(timesFF_mjd)):
     r_SunEM_i[ii, :] = C_G2I@r_SunEM
     r_EarthEM_i[ii, :] = C_G2I@r_EarthEM
     r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
-    
 
 #ax1 = plt.figure().add_subplot(projection='3d')
 #ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')

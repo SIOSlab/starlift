@@ -57,7 +57,7 @@ def rot(th, axis):
     return rot_th
 
     
-def equinoxAngle(r_LAAN, equinox):
+def equinoxAngle(r_LAAN, t_LAAN, equinox):
     """Finds the angle between the GMECL equinox and the moon's ascending node
 
     Args:
@@ -81,11 +81,30 @@ def equinoxAngle(r_LAAN, equinox):
     r_SB_et = r_Sun_et - r_Bary_et
     n_SB_et = r_SB_et/np.linalg.norm(r_SB_et)
     n_LAAN = r_LAAN/np.linalg.norm(r_LAAN)
+    
+    dt = (t_LAAN - equinox).value
+    t_mod = np.mod(dt, 27.321582)
+    if t_mod < 27.321582/2:
+        sign2 = 1
+    elif t_mod > 27.321582/2 and t_mod < 27.321582:
+        sign2 = -1
+        
+#    import matplotlib.pyplot as plt
+#    ax2 = plt.figure().add_subplot(projection='3d')
+#    ax2.plot(np.array([0, n_LAAN[0]]), np.array([0, n_LAAN[1]]), np.array([0, n_LAAN[2]]), 'b', label='LAAN')
+#    ax2.plot(np.array([0, n_SB_et[0]]), np.array([0,n_SB_et[1]]), np.array([0,n_SB_et[2]]), 'r-.', label='Equinox')
+#    ax2.set_title('G frame (Inertial EM)')
+#    ax2.set_xlabel('X [AU]')
+#    ax2.set_ylabel('Y [AU]')
+#    ax2.set_zlabel('Z [AU]')
+#    plt.legend()
+#    plt.show()
+#    breakpoint()
 
     r_sin = np.linalg.norm(np.cross(n_LAAN, n_SB_et))
     r_cos = np.dot(n_LAAN, n_SB_et)
-    theta = np.arctan2(r_sin, r_cos)
-
+    theta = np.arctan2(sign2*r_sin, r_cos)
+    breakpoint()
     return theta
 
 
@@ -268,7 +287,7 @@ def inert2geo(startTime):
     r_LAAN3 = np.cross(r_LAAN1, r_LAAN2)
     n_LAAN = r_LAAN3/np.linalg.norm(r_LAAN3)
     
-    theta_LAAN = equinoxAngle(r_LAAN1, equinox)
+    theta_LAAN = equinoxAngle(r_LAAN1, t_LAAN, equinox)
     
     C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
     
@@ -335,8 +354,8 @@ def inert2geo(startTime):
     C_I2G = C_G2I.T
 
     return C_I2G
-
-
+    
+    
 def inert2rot(currentTime, startTime):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame (I) to the Earth-Moon CR3BP rotating frame (R)
@@ -616,6 +635,17 @@ def convertIC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
     pos_H, vel_H = gmec2icrs(pos_GMEC, currentTime, vel_GMECL)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
+    
+    tmp_G = icrs2gmec(pos_H, currentTime)
+    tmp_GMECL = tmp_G - posEMB_E
+    tmp_I = C_I2G.T @ tmp_GMECL
+    
+    tmpM_H = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
+    tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
+    tmpM_GMECL = tmpM_G - posEMB_E
+    tmpM_I = C_I2G.T @ tmpM_GMECL
+    
+#    breakpoint()
 
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
