@@ -119,11 +119,11 @@ for kk in np.arange(len(timesCRTBP)):
     r_PO_CRTBP[kk, :] = r_PO_H
     
     C_I2R = frameConversion.inert2rot(time, t_mjd)
-    r_CRTBP_rot[kk,:] = C_I2R @ r_dim
-    r_CRTBP_I[kk,:] = r_dim
+    r_CRTBP_rot[kk, :] = C_I2R @ r_dim
+    r_CRTBP_I[kk, :] = r_dim
 #    r_CRTBP_G[kk,:] = r_GCRS
-    r_CRTBP_G[kk,:] = r_EM
-    r_CRTBP_I2[kk,:] = C_G2I @ r_EM
+    r_CRTBP_G[kk, :] = r_EM
+    r_CRTBP_I2[kk, :] = C_G2I @ r_EM
     
     r_diff[kk,:] = C_G2I @ r_EM - r_dim
 
