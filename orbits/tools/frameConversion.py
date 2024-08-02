@@ -62,7 +62,7 @@ def rot(th, axis):
     return rot_th
 
     
-def equinoxAngle(r_LAAN, equinox):
+def equinoxAngle(r_LAAN, t_LAAN, equinox):
     """Finds the angle between the GMECL equinox and the moon's ascending node
 
     Args:
@@ -86,11 +86,30 @@ def equinoxAngle(r_LAAN, equinox):
     r_SB_et = r_Sun_et - r_Bary_et
     n_SB_et = r_SB_et/np.linalg.norm(r_SB_et)
     n_LAAN = r_LAAN/np.linalg.norm(r_LAAN)
+    
+    dt = (t_LAAN - equinox).value
+    t_mod = np.mod(dt, 27.321582)
+    if t_mod < 27.321582/2:
+        sign2 = 1
+    elif t_mod > 27.321582/2 and t_mod < 27.321582:
+        sign2 = -1
+        
+#    import matplotlib.pyplot as plt
+#    ax2 = plt.figure().add_subplot(projection='3d')
+#    ax2.plot(np.array([0, n_LAAN[0]]), np.array([0, n_LAAN[1]]), np.array([0, n_LAAN[2]]), 'b', label='LAAN')
+#    ax2.plot(np.array([0, n_SB_et[0]]), np.array([0,n_SB_et[1]]), np.array([0,n_SB_et[2]]), 'r-.', label='Equinox')
+#    ax2.set_title('G frame (Inertial EM)')
+#    ax2.set_xlabel('X [AU]')
+#    ax2.set_ylabel('Y [AU]')
+#    ax2.set_zlabel('Z [AU]')
+#    plt.legend()
+#    plt.show()
+#    breakpoint()
 
     r_sin = np.linalg.norm(np.cross(n_LAAN, n_SB_et))
     r_cos = np.dot(n_LAAN, n_SB_et)
-    theta = np.arctan2(r_sin, r_cos)
-
+    theta = np.arctan2(sign2*r_sin, r_cos)
+    breakpoint()
     return theta
     
 def rotAngle(currentTime, startTime):
@@ -275,7 +294,7 @@ def inert2geo(startTime, equinox):
     r_LAAN3 = np.cross(r_LAAN1, r_LAAN2)
     n_LAAN = r_LAAN3/np.linalg.norm(r_LAAN3)
     
-    theta_LAAN = equinoxAngle(r_LAAN1, equinox)
+    theta_LAAN = equinoxAngle(r_LAAN1, t_LAAN, equinox)
     
     C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
     
@@ -340,7 +359,7 @@ def inert2geo(startTime, equinox):
 
     C_G2B = C_AOP @ C_INC @ C_LAAN
     C_B2G = C_G2B.T
-
+    breakpoint()
     return C_B2G
 
 
@@ -701,7 +720,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, mu_star, Tp_can=None):
         return pos_H, vel_H
 
 
-def convertIC_I2H(pos_I, vel_I, currentTime, startTime, mu_star, C_B2G, Tp_can=None):
+def convertIC_I2H(pos_I, vel_I, currentTime, mu_star, C_B2G, Tp_can=None):
     """Converts initial conditions from the I frame to the H frame
 
     Args:
@@ -711,8 +730,6 @@ def convertIC_I2H(pos_I, vel_I, currentTime, startTime, mu_star, C_B2G, Tp_can=N
             Array of velocities in canonical units
         currentTime (float)
             Current mission time
-        startTime (astropy Time array):
-            Mission start time in MJD
         mu_star (float):
             Non-dimensional mass parameter
         Tp_can (float n array, optional):
@@ -732,7 +749,6 @@ def convertIC_I2H(pos_I, vel_I, currentTime, startTime, mu_star, C_B2G, Tp_can=N
 
     pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
 
-#    C_B2G = body2geo(tau, t_mjd, mu_star)
     pos_G = C_B2G @ pos_I
 
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
@@ -743,15 +759,26 @@ def convertIC_I2H(pos_I, vel_I, currentTime, startTime, mu_star, C_B2G, Tp_can=N
     posEMB_E = stateEMB_E[0].to('AU')
     velEMB_E = stateEMB_E[1].to('AU/d')
 
-    pos_GCRS = pos_G + posEMB_E  # G frame
+    pos_GMECL = pos_G + posEMB_E  # G frame
 
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_G = C_B2G @ v_dim
     vel_GMECL = vel_G + velEMB_E
 
-    pos_H, vel_H = gcrs2icrsPV(pos_GCRS, vel_GMECL, currentTime)
+    pos_H, vel_H = gcrs2icrsPV(pos_GMECL, vel_GMECL, currentTime)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
+    
+    tmp_G = icrs2gcrs(pos_H, currentTime)
+    tmp_GMECL = tmp_G - posEMB_E
+    tmp_I = C_B2G.T @ tmp_GMECL
+    
+    tmpM_H = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
+    tmpM_G = icrs2gcrs(tmpM_H, currentTime).to('AU')
+    tmpM_GMECL = tmpM_G - posEMB_E
+    tmpM_I = C_B2G.T @ tmpM_GMECL
+    
+#    breakpoint()
 
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')

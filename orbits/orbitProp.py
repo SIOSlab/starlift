@@ -35,7 +35,7 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_B2G = frameConversion.inert2geo(t_start,t_equinox)
+C_B2G = frameConversion.inert2geo(t_equinox,t_equinox)
 C_G2B = C_B2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
@@ -116,7 +116,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_EM = C_B2G @ r_dim
     r_GCRS = r_EM +  r_EMG.value
     
-    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, t_start, mu_star, C_B2G)
+    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, mu_star, C_B2G)
     r_PO_CRTBP[kk, :] = r_PO_H
     
     C_I2R = frameConversion.body2rot(time,t_start)
@@ -129,7 +129,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_diff[kk,:] = C_G2B @ r_EM - r_dim
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, t_start, mu_star, C_B2G, timesCRTBP[-1])
+pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, mu_star, C_B2G, timesCRTBP[-1])
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), 1*Tp_dim.value)   # Change to Tp_dim.value for one orbit
@@ -193,7 +193,7 @@ for ii in np.arange(len(timesFF_mjd)):
     r_SunEM_i[ii, :] = C_G2B@r_SunEM
     r_EarthEM_i[ii, :] = C_G2B@r_EarthEM
     r_MoonEM_i[ii, :] = C_G2B@r_MoonEM
-    
+#    breakpoint()
 
 #ax1 = plt.figure().add_subplot(projection='3d')
 #ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
