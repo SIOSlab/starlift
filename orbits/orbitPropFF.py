@@ -26,7 +26,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
-days = 200
+days = 100
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -39,11 +39,11 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.363
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # DCM for G frame and I frame
-C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(t_mjd, t_mjd)
-C_G2B = C_B2G.T
+C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
+C_G2I = C_I2G.T
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
-pos_H, vel_H = frameConversion.convertIC_I2H(IC[0:3], vI, t_mjd, t_mjd, mu_star, C_B2G, Tp_can=None)
+pos_H, vel_H = frameConversion.convertIC_I2H(IC[0:3], vI, t_mjd, C_I2G, Tp_can=None)
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days_can)
@@ -67,11 +67,9 @@ r_MoonEM_r = np.zeros([len(times), 3])
 r_SunO = np.zeros([len(times), 3])
 r_SunG = np.zeros([len(times), 3])
 r_SunEM = np.zeros([len(times), 3])
-r_SunEM_r_up = np.zeros([len(times), 3])
-r_Sun_G2_up = np.zeros([len(times), 3])
 r_Sun_G2 = np.zeros([len(times), 3])
-r_EarthEM_r_up = np.zeros([len(times), 3])
-r_MoonEM_r_up = np.zeros([len(times), 3])
+r_EMO = np.zeros([len(times), 3])
+r_EMG = np.zeros([len(times), 3])
 
 for ii in np.arange(len(times)):
     time = times_mjd[ii]
@@ -79,104 +77,92 @@ for ii in np.arange(len(times)):
     # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
     r_SunO[ii, :] = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU').value
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
-    r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz().to('AU').value
+    r_EMO[ii, :] = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz().to('AU').value
     
-    # Convert from H frame (AU) to GCRS frame (km)
-    r_PG = frameConversion.icrs2gcrs(pos[ii]*u.AU, time)
-    r_EMG = frameConversion.icrs2gcrs(r_EMO*u.AU, time)
-    r_SunG[ii, :] = frameConversion.icrs2gcrs(r_SunO[ii, :]*u.AU, time)
-    r_MoonG = frameConversion.icrs2gcrs(r_MoonO*u.AU, time)
-    
-    # Change the origin to the EM barycenter, G frame (all km)
-    r_PEM = r_PG - r_EMG
-    r_SunEM[ii, :] = r_SunG[ii, :] - r_EMG.value
-    r_EarthEM = -r_EMG
-    r_MoonEM = r_MoonG - r_EMG
-    
-    # Convert from G frame to I frame
-    C_B2G_up, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(time, t_mjd)
-    C_G2B_up = C_B2G_up.T
-    
-    # Convert from G frame (in km) to I frame (in AU)
-    r_PEM_r[ii, :] = C_G2B@r_PEM.to('AU')
-    r_SunEM_r_up[ii, :] = (C_G2B_up@(r_SunEM[ii, :] * u.km)).to('AU')
-    r_SunEM_r[ii, :] = (C_G2B@(r_SunEM[ii, :] * u.km)).to('AU')
-    r_EarthEM_r[ii, :] = C_G2B@r_EarthEM.to('AU')
-    r_EarthEM_r_up[ii, :] = C_G2B_up @ r_EarthEM.to('AU')
-    r_MoonEM_r[ii, :] = C_G2B@r_MoonEM.to('AU')
-    r_MoonEM_r_up[ii, :] = C_G2B_up @ r_MoonEM.to('AU')
+    # Convert from H frame (AU) to GMEc frame (km)
+    r_PG = frameConversion.icrs2gmec(pos[ii]*u.AU, time)
+    r_EMG[ii, :] = frameConversion.icrs2gmec(r_EMO[ii, :]*u.AU, time)
+    r_SunG[ii, :] = frameConversion.icrs2gmec(r_SunO[ii, :]*u.AU, time)
+    r_MoonG = frameConversion.icrs2gmec(r_MoonO*u.AU, time)
 
-    # Debugging: Convert Sun back to G frame (THIS DOES NOTHING)
-    r_Sun_G2_up[ii, :] = C_B2G_up@(r_SunEM_r_up[ii, :] * u.AU).to('km')
-    r_Sun_G2[ii, :] = C_B2G@(r_SunEM_r[ii, :] * u.AU).to('km')
+    # Change the origin to the EM barycenter, G frame (all km)
+    r_PEM = r_PG.value - r_EMG[ii, :]
+    r_SunEM[ii, :] = r_SunG[ii, :] - r_EMG[ii, :]
+    r_EarthEM = -r_EMG[ii, :]
+    r_MoonEM = r_MoonG.value - r_EMG[ii, :]
+
+    # Convert from G frame (in km) to I frame (in AU)
+    r_PEM_r[ii, :] = C_G2I@(r_PEM * u.km).to('AU')
+    r_SunEM_r[ii, :] = (C_G2I@(r_SunEM[ii, :] * u.km)).to('AU')
+    r_EarthEM_r[ii, :] = C_G2I@(r_EarthEM * u.km).to('AU')
+    r_MoonEM_r[ii, :] = C_G2I@(r_MoonEM * u.km).to('AU')
+
 
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
-# PLOT DEBUGGING
-
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_SunEM[:, 0], r_SunEM[:, 1], r_SunEM[:, 2])
-plt.title('Sun in G frame [km]')
-
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2])
-plt.title('Sun in I frame, constant DCM [AU]')
+# # PLOT DEBUGGING
+#
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_SunO[:, 0], r_SunO[:, 1], r_SunO[:, 2])
+# plt.title('Sun in H (ICRS) frame [AU]')
+#
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_SunG[:, 0], r_SunG[:, 1], r_SunG[:, 2])
+# plt.title('Sun in Geocentric Mean Ecliptic frame [km]')
+#
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_SunEM[:, 0], r_SunEM[:, 1], r_SunEM[:, 2])
+# plt.title('Sun in G frame [km]')
+#
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_EMG[:, 0], r_EMG[:, 1], r_EMG[:, 2])
+# plt.title('EM Bary in GMEc [km]')
+#
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2])
+# plt.title('Sun in I frame [AU]')
 
 # ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunEM_r_up[:, 0], r_SunEM_r_up[:, 1], r_SunEM_r_up[:, 2])
-# plt.title('Sun in I frame, updated DCM [AU]')
+# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2])
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+# plt.title('Earth in I frame, constant DCM [AU]')
+#
+# ax = plt.figure().add_subplot(projection='3d')
+# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2])
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+# plt.title('Moon in I frame, constant DCM [AU]')
 
+
+# ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
+
+# Obtain CRTBP data from GMAT
+file_name = "gmatFiles/FF_rot.txt"
+gmat_km, gmat_time = gmatTools.extract_pos(file_name)
+gmat_posrot = np.array((gmat_km * u.km).to('AU'))
+
+# Convert to I frame from R frame
+gmat_posinert = np.zeros([len(gmat_time), 3])
+for ii in np.arange(len(gmat_time)):
+    C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
+    C_R2I = C_I2R.T
+    gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
+
+# Plot
 ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2])
+ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
+ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
+ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
+ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
+ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
 ax.set_box_aspect([1.0, 1.0, 1.0])
 plot_tools.set_axes_equal(ax)
-plt.title('Earth in I frame, constant DCM [AU]')
-
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_EarthEM_r_up[:, 0], r_EarthEM_r_up[:, 1], r_EarthEM_r_up[:, 2])
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-# plt.title('Earth in I frame, updated DCM [AU]')
-
-ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2])
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
-plt.title('Moon in I frame, constant DCM [AU]')
-
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_MoonEM_r_up[:, 0], r_MoonEM_r_up[:, 1], r_MoonEM_r_up[:, 2])
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-# plt.title('Moon in I frame, updated DCM [AU]')
-
-
-# # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
-#
-# # Obtain CRTBP data from GMAT
-# file_name = "gmatFiles/FF_rot.txt"
-# gmat_km, gmat_time = gmatTools.extract_pos(file_name)
-# gmat_posrot = np.array((gmat_km * u.km).to('AU'))
-#
-# # Convert to I frame from R frame
-# gmat_posinert = np.zeros([len(gmat_time), 3])
-# for ii in np.arange(len(gmat_time)):
-#     gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], gmat_time[0])
-#
-# # Plot
-# ax = plt.figure().add_subplot(projection='3d')
-# # ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
-# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
-# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
-# # ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
-# # ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
-# ax.set_xlabel('X [AU]')
-# ax.set_ylabel('Y [AU]')
-# ax.set_zlabel('Z [AU]')
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-# plt.title('FF Model in the Inertial (I) Frame')
-# plt.legend()
+plt.title('FF Model in the Inertial (I) Frame')
+plt.legend()
 
 
 # # ~~~~~ANIMATION~~~~~ needs fixing, eventually

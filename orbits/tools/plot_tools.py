@@ -99,7 +99,7 @@ def PlotManifold(solvec, time, mu, ax, title,eigval, eigvec):
     # plt.colorbar(traj)
 
 
-def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B):
+def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2I):
     # ** Add documentation
 
 
@@ -122,10 +122,10 @@ def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B):
             r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time).get_xyz().to('AU')
         
             # convert from H frame to GCRS frame
-            r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
-            r_EMG = frameConversion.icrs2gcrs(r_EMO, time)
-            r_SunG = frameConversion.icrs2gcrs(r_SunO, time)
-            r_MoonG = frameConversion.icrs2gcrs(r_MoonO, time)
+            r_PG = frameConversion.icrs2gmec(posFF[ii]*u.AU, time)
+            r_EMG = frameConversion.icrs2gmec(r_EMO, time)
+            r_SunG = frameConversion.icrs2gmec(r_SunO, time)
+            r_MoonG = frameConversion.icrs2gmec(r_MoonO, time)
             
             # change the origin to the EM barycenter, G frame
             r_PEM = r_PG - r_EMG
@@ -144,9 +144,9 @@ def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B):
             r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz().to('AU')
             
             # convert from H frame to GCRS frame
-            r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
-            r_EMG = frameConversion.icrs2gcrs(r_EMO, time)
-            r_MoonG = frameConversion.icrs2gcrs(r_MoonO, time)
+            r_PG = frameConversion.icrs2gmec(posFF[ii]*u.AU, time)
+            r_EMG = frameConversion.icrs2gmec(r_EMO, time)
+            r_MoonG = frameConversion.icrs2gmec(r_MoonO, time)
             
             # change the origin to the EM barycenter, G frame
             r_PEM = r_PG - r_EMG
@@ -154,12 +154,12 @@ def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B):
             r_MoonEM = r_MoonG - r_EMG
             
             # convert from G frame to I frame
-            r_PEM = C_G2B@r_PEM.to('AU')
-            r_EarthEM = C_G2B@r_EarthEM.to('AU')
-            r_MoonEM = C_G2B@r_MoonEM.to('AU')
+            r_PEM = C_G2I@r_PEM.to('AU')
+            r_EarthEM = C_G2I@r_EarthEM.to('AU')
+            r_MoonEM = C_G2I@r_MoonEM.to('AU')
             
             if frame == 2:
-                C_I2R = frameConversion.body2rot(time, t_mjd)
+                C_I2R = frameConversion.inert2rot(time, t_mjd)
                 r_PEM = C_I2R@r_PEM.to('AU')
                 r_EarthEM = C_I2R@r_EarthEM.to('AU')
                 r_MoonEM = C_I2R@r_MoonEM.to('AU')
@@ -190,10 +190,10 @@ def plotBodiesFF(timesFF,posFF,t_mjd,frame):
     # ** Add lines to resize figure and automatically save png and svg
     return
     
-def plotCompare_rot(timesFF, posFF, t_mjd, frame, timesCRTBP, posCRTBP, C_G2B):
+def plotCompare_rot(timesFF, posFF, t_mjd, frame, timesCRTBP, posCRTBP, C_G2I):
     # ** Add documentation
     
-    r_PEM, _, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2B)
+    r_PEM, _, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2I)
 
     posCRTBP = (unitConversion.convertPos_to_dim(posCRTBP).to('AU')).value
     ax = plt.figure().add_subplot(projection='3d')
@@ -210,21 +210,22 @@ def plotCompare_rot(timesFF, posFF, t_mjd, frame, timesCRTBP, posCRTBP, C_G2B):
     return
 
 
-def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF,mu_star):
+def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF, mu_star):
     # Fix this. Determine which inertial frame this should be
     # ** Add documentation
     
     times = timesCRTBP + t_mjd
     pos_dim = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
     
-    C_B2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(t_mjd, t_mjd)
+    C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
     
-    pos_H = np.zeros([len(times),3])
+    pos_H = np.zeros([len(times), 3])
     for ii in np.arange(len(timesCRTBP)):
         currentTime = times[ii]
-        pos_I = frameConversion.inert2rotP(pos_dim[ii],currentTime,t_mjd)
+        C_I2R = frameConversion.inert2rot(currentTime, t_mjd)
+        pos_I = C_I2R @ pos_dim[ii]
         
-        pos_G = C_B2G@pos_I
+        pos_G = C_I2G @ pos_I
         
         state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
         posEMB = state_EMB[0].get_xyz().to('AU')
@@ -234,7 +235,7 @@ def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF,mu_star):
 
         pos_GCRS = pos_G - posE_EMB
         
-        pos_H[ii,:] = (frameConversion.gcrs2icrs(pos_GCRS, t_mjd)).to('AU')
+        pos_H[ii, :] = (frameConversion.gmec2icrs(pos_GCRS, t_mjd)).to('AU')
 
     r_EarthO = get_body_barycentric_posvel('Earth', times)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', times)[0].get_xyz().to('AU')

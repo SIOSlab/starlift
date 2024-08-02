@@ -46,8 +46,6 @@ states, times = orbitEOMProp.statePropCRTBP(freeVar, mu_star)
 pos = states[:, 0:3]
 vel = states[:, 3:6]
 
-breakpoint()
-
 # Convert to AU
 pos_au = unitConversion.convertPos_to_dim(pos).to('AU')
 
@@ -62,7 +60,9 @@ gmat_posrot = np.array((gmat_km * u.km).to('AU'))
 # Convert to I frame from R frame
 gmat_posinert = np.zeros([len(gmat_time), 3])
 for ii in np.arange(len(gmat_time)):
-    gmat_posinert[ii, :] = frameConversion.rot2inertP(gmat_posrot[ii, :], gmat_time[ii], gmat_time[0])
+    C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
+    C_R2I = C_I2R.T
+    gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
 
 # Plot
 ax = plt.figure().add_subplot(projection='3d')

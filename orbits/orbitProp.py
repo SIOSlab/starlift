@@ -35,8 +35,8 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_B2G = frameConversion.inert2geo(t_equinox,t_equinox)
-C_G2B = C_B2G.T
+C_I2G = frameConversion.inert2geo(t_equinox,t_equinox)
+C_G2I = C_I2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
 IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]
@@ -98,38 +98,39 @@ for kk in np.arange(len(timesCRTBP)):
     r_EMO = EMO[0].get_xyz().to('AU').value
 #
 #    # Convert from H frame to GCRS frame
-    r_EMG = (frameConversion.icrs2gcrs(r_EMO * u.AU, time)).to('AU')
-#    r_MoonG = frameConversion.icrs2gcrs(r_MoonO * u.AU, time)
+    r_EMG = (frameConversion.icrs2gmec(r_EMO * u.AU, time)).to('AU')
+#    r_MoonG = frameConversion.icrs2gmec(r_MoonO * u.AU, time)
 #
 #    # Change the origin to the EM barycenter, G frame
 #    r_EarthEM = -r_EMG
 #    r_MoonEM = r_MoonG - r_EMG
 #
 #    # Convert from G frame to I frame
-#    r_EarthEM_CRTBP[ii, :] = C_G2B @ r_EarthEM.to('AU')
-#    r_MoonEM_CRTBP[ii, :] = C_G2B @ r_MoonEM.to('AU')
+#    r_EarthEM_CRTBP[ii, :] = C_G2I @ r_EarthEM.to('AU')
+#    r_MoonEM_CRTBP[ii, :] = C_G2I @ r_MoonEM.to('AU')
 
 
     # Convert to AU
 #    r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
     r_dim = (unitConversion.convertPos_to_dim(posCRTBP[kk, :])).to('AU').value
-    r_EM = C_B2G @ r_dim
+    r_EM = C_I2G @ r_dim
     r_GCRS = r_EM +  r_EMG.value
-    
-    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, mu_star, C_B2G)
+
+    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, mu_star, C_I2G)
+
     r_PO_CRTBP[kk, :] = r_PO_H
     
-    C_I2R = frameConversion.body2rot(time,t_start)
+    C_I2R = frameConversion.inert2rot(time,t_start)
     r_CRTBP_rot[kk,:] = C_I2R @ r_dim
     r_CRTBP_I[kk,:] = r_dim
 #    r_CRTBP_G[kk,:] = r_GCRS
-    r_CRTBP_G[kk,:] = r_EM
-    r_CRTBP_I2[kk,:] = C_G2B @ r_EM
+    r_CRTBP_G[kk, :] = r_EM
+    r_CRTBP_I2[kk, :] = C_G2I @ r_EM
     
-    r_diff[kk,:] = C_G2B @ r_EM - r_dim
+    r_diff[kk,:] = C_G2I @ r_EM - r_dim
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, mu_star, C_B2G, timesCRTBP[-1])
+pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, mu_star, C_I2G, timesCRTBP[-1])
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), 1*Tp_dim.value)   # Change to Tp_dim.value for one orbit
@@ -172,10 +173,10 @@ for ii in np.arange(len(timesFF_mjd)):
     r_EMO_h[ii, :] = r_EMO.value
 
     # Convert from H frame to GCRS frame
-    r_PG = frameConversion.icrs2gcrs(posFF[ii]*u.AU, time)
-    r_EMG = frameConversion.icrs2gcrs(r_EMO, time)
-    r_SunG = frameConversion.icrs2gcrs(r_SunO, time)
-    r_MoonG = frameConversion.icrs2gcrs(r_MoonO, time)
+    r_PG = frameConversion.icrs2gmec(posFF[ii]*u.AU, time)
+    r_EMG = frameConversion.icrs2gmec(r_EMO, time)
+    r_SunG = frameConversion.icrs2gmec(r_SunO, time)
+    r_MoonG = frameConversion.icrs2gmec(r_MoonO, time)
 
     # Change the origin to the EM barycenter, G frame
     r_PEM = (r_PG - r_EMG).to('AU')
@@ -189,11 +190,10 @@ for ii in np.arange(len(timesFF_mjd)):
     r_MoonEM_g[ii, :] = r_MoonEM
 
     # Convert from G frame to I frame
-    r_PEM_i[ii, :] = C_G2B@r_PEM
-    r_SunEM_i[ii, :] = C_G2B@r_SunEM
-    r_EarthEM_i[ii, :] = C_G2B@r_EarthEM
-    r_MoonEM_i[ii, :] = C_G2B@r_MoonEM
-#    breakpoint()
+    r_PEM_i[ii, :] = C_G2I@r_PEM
+    r_SunEM_i[ii, :] = C_G2I@r_SunEM
+    r_EarthEM_i[ii, :] = C_G2I@r_EarthEM
+    r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
 
 #ax1 = plt.figure().add_subplot(projection='3d')
 #ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
@@ -206,9 +206,9 @@ for ii in np.arange(len(timesFF_mjd)):
 
 ax2 = plt.figure().add_subplot(projection='3d')
 ax2.plot(r_PEM_i[:, 0], r_PEM_i[:, 1], r_PEM_i[:, 2], 'b', label='Full Force')
-ax2.plot(r_CRTBP_I[:,0], r_CRTBP_I[:,1], r_CRTBP_I[:,2], 'r-.', label='CRTBP')
-ax2.plot(r_EarthEM_i[:,0], r_EarthEM_i[:,1], r_EarthEM_i[:,2], 'g', label='Earth')
-ax2.plot(r_MoonEM_i[:,0], r_MoonEM_i[:,1], r_MoonEM_i[:,2], 'k', label='Moon')
+ax2.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r-.', label='CRTBP')
+ax2.plot(r_EarthEM_i[:, 0], r_EarthEM_i[:, 1], r_EarthEM_i[:, 2], 'g', label='Earth')
+ax2.plot(r_MoonEM_i[:, 0], r_MoonEM_i[:, 1], r_MoonEM_i[:, 2], 'k', label='Moon')
 ax2.set_title('FF vs CRTBP in I frame (Inertial EM)')
 ax2.set_xlabel('X [AU]')
 ax2.set_ylabel('Y [AU]')
