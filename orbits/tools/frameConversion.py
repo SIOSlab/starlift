@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.units as u
 import astropy.coordinates as coord
-from astropy.coordinates import GCRS, ICRS, GeocentricMeanEcliptic
+from astropy.coordinates import GCRS, ICRS, GeocentricMeanEcliptic, GeocentricTrueEcliptic
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import sys
 sys.path.insert(1, 'tools')
@@ -62,13 +62,44 @@ def rot(th, axis):
     return rot_th
 
     
-def rotAngle(currentTime, equinox):
-    """Finds the angle of rotation between two vectors in any frame
+def equinoxAngle(r_LAAN, equinox):
+    """Finds the angle between the GMECL equinox and the moon's ascending node
+
+    Args:
+        startTime (astropy Time array):
+            Mission start time in MJD
+        equinox (astropy Time array):
+            Equinox time in MJD
+
+    Returns:
+        theta (float):
+            Angle between the two vectors in rad
+
+    """
+    
+    r_S_et = get_body_barycentric_posvel('Sun', equinox)[0].get_xyz()
+    r_EM_et = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)[0].get_xyz()
+    
+    r_Sun_et = icrs2gmec(r_S_et, equinox)
+    r_Bary_et = icrs2gmec(r_EM_et, equinox)
+    
+    r_SB_et = r_Sun_et - r_Bary_et
+    n_SB_et = r_SB_et/np.linalg.norm(r_SB_et)
+    n_LAAN = r_LAAN/np.linalg.norm(r_LAAN)
+
+    r_sin = np.linalg.norm(np.cross(n_LAAN, n_SB_et))
+    r_cos = np.dot(n_LAAN, n_SB_et)
+    theta = np.arctan2(r_sin, r_cos)
+
+    return theta
+    
+def rotAngle(currentTime, startTime):
+    """Finds the angle of rotation between two vectors in any Earth-Moon-Barycenter centered frame
 
     Args:
         currentTime (astropy Time array):
             Current mission time in MJD
-        equinox (astropy Time array):
+        startTime (astropy Time array):
             Mission start time in MJD
 
     Returns:
@@ -79,24 +110,24 @@ def rotAngle(currentTime, equinox):
     
     
     r_EM_ct = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()
-    r_EM_et = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)[0].get_xyz()
-    
+    r_EM_st = get_body_barycentric_posvel('Earth-Moon-Barycenter', startTime)[0].get_xyz()
+
     r_EarthEM_ct = -icrs2gmec(r_EM_ct, currentTime)
-    r_EarthEM_et = -icrs2gmec(r_EM_et, equinox)
+    r_EarthEM_st = -icrs2gmec(r_EM_st, startTime)
 
     norm_ct = np.linalg.norm(r_EarthEM_ct)
-    norm_et = np.linalg.norm(r_EarthEM_et)
+    norm_st = np.linalg.norm(r_EarthEM_st)
 
-    n_vec = np.cross(r_EarthEM_ct, r_EarthEM_et.T)
+    n_vec = np.cross(r_EarthEM_ct, r_EarthEM_st.T)
     
-    dt = (currentTime - equinox).value
+    dt = (currentTime - startTime).value
     t_mod = np.mod(dt, 27.321582)
     if t_mod < 27.321582/2:
         sign2 = 1
     elif t_mod > 27.321582/2 and t_mod < 27.321582:
         sign2 = -1
-    r_sin = (np.linalg.norm(n_vec)/(norm_ct*norm_et))
-    r_cos = (np.dot(r_EarthEM_ct/norm_ct, r_EarthEM_et.T/norm_et))
+    r_sin = (np.linalg.norm(n_vec)/(norm_ct*norm_st))
+    r_cos = (np.dot(r_EarthEM_ct/norm_ct, r_EarthEM_st.T/norm_st))
     theta = np.arctan2(sign2*r_sin, r_cos)
 
     return theta
@@ -126,15 +157,15 @@ def rotMatAxisAng(n_hat, theta):
     return R
     
 
-def inert2geo(currentTime, equinox):
+def inert2geo(startTime, equinox):
     """Computes the DCM to go from the inertial Earth-Moon CRTBP perifocal frame (I frame) to the GeocentricMeanEcliptic
      frame centered at the Earth-Moon barycenter (G frame)
 
     Args:
-        currentTime (astropy Time array):
-            Current mission time in MJD
-        equinox (astropy Time array):
+        startTime (astropy Time array):
             Mission start time in MJD
+        equinox (astropy Time array):
+            Reference frame equinox time in MJD
 
     Returns:
         C_I2G (float n array):
@@ -142,7 +173,7 @@ def inert2geo(currentTime, equinox):
 
     """
 
-    tarray = equinox + np.arange(28)*u.d
+    tarray = startTime + np.arange(28)*u.d
     r_moon = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
     r_bary = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
 
@@ -183,7 +214,8 @@ def inert2geo(currentTime, equinox):
 
     error = r_m3[2]
 
-    while np.abs(error.value) > 6E-12:
+    while np.abs(error.value) > 1E-8:
+        print(np.abs(error.value))
         sign1 = np.sign(r_m1[2])
         sign2 = np.sign(r_m2[2])
         sign3 = np.sign(r_m3[2])
@@ -227,8 +259,6 @@ def inert2geo(currentTime, equinox):
     t_LAAN = t3
     t_LAAN2 = t_LAAN + 27.321582/4*u.d
     
-    theta_LAAN = rotAngle(t_LAAN,equinox).value
-    
     moon_LAAN1 = get_body_barycentric_posvel('Moon', t_LAAN)[0].get_xyz()
     moon_LAAN2 = get_body_barycentric_posvel('Moon', t_LAAN2)[0].get_xyz()
     bary_LAAN1 = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_LAAN)[0].get_xyz()
@@ -245,10 +275,12 @@ def inert2geo(currentTime, equinox):
     r_LAAN3 = np.cross(r_LAAN1, r_LAAN2)
     n_LAAN = r_LAAN3/np.linalg.norm(r_LAAN3)
     
+    theta_LAAN = equinoxAngle(r_LAAN1, equinox)
+    
     C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
     
     # find INC DCM
-    tarray_r = equinox + np.arange(28)/1*u.d
+    tarray_r = startTime + np.arange(28)/1*u.d
     r_moons_r = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
     r_barys_r = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
 
@@ -264,8 +296,8 @@ def inert2geo(currentTime, equinox):
     XX = max(r_m_r[:,0]) - min(r_m_r[:, 0])
     YY = max(r_m_r[:,1]) - min(r_m_r[:, 1])
     ZZ = max(r_m_r[:,2]) - min(r_m_r[:, 2])
-    
-    theta_INC = -np.arctan2(ZZ, YY) #np.deg2rad(5.145)
+
+    theta_INC = -np.deg2rad(5.145) #np.arctan2(ZZ,YY)
 
     n_INC = r_LAAN1/np.linalg.norm(r_LAAN1)
 
@@ -306,20 +338,20 @@ def inert2geo(currentTime, equinox):
     
     C_AOP = rotMatAxisAng(n_AOP, theta_AOP)
 
-    C_G2B = C_AOP @ C_INC @ C_LAAN
-    C_I2G = C_G2B.T
+    C_G2I = C_AOP @ C_INC @ C_LAAN
+    C_I2G = C_G2I.T
 
     return C_I2G
 
 
-def inert2rot(currentTime, equinox):
+def inert2rot(currentTime, startTime):
     """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
     perifocal frame (I) to the Earth-Moon CR3BP rotating frame (R)
     
     Args:
         currentTime (astropy Time array):
             Current mission time in MJD
-        equinox (astropy Time array):
+                startTime (astropy Time array):
             Mission start time in MJD
 
     Returns:
@@ -327,7 +359,7 @@ def inert2rot(currentTime, equinox):
             3x3 Array for the directional cosine matrix
     """
 
-    dt = currentTime.value - equinox.value
+    dt = currentTime.value - startTime.value
     theta = unitConversion.convertTime_to_canonical(dt*u.d)
     
     C_I2R = rot(theta, 3)
@@ -335,7 +367,7 @@ def inert2rot(currentTime, equinox):
     return C_I2R
 
 
-def icrs2rot(pos, currentTime, equinox, mu_star, C_G2B):
+def icrs2rot(pos, currentTime, startTime, mu_star, C_G2B):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
     Args:
@@ -343,7 +375,7 @@ def icrs2rot(pos, currentTime, equinox, mu_star, C_G2B):
             Position vector in ICRS (heliocentric) frame in arbitrary distance units
         currentTime (astropy Time array):
             Current mission time in MJD
-        equinox (astropy Time array):
+        startTime (astropy Time array):
             Mission start time in MJD
         mu_star (float):
             Non-dimensional mass parameter
@@ -353,16 +385,16 @@ def icrs2rot(pos, currentTime, equinox, mu_star, C_G2B):
             Position vector in rotating frame in km
     """
     
-    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)
+    state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', startTime)
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
 
     # pos = pos * u.AU
-    r_PE_gcrs = icrs2gmec(pos, equinox)
-    r_rot = r_PE_gcrs
-    r_EME_gcrs = icrs2gmec(r_EMG_icrs, equinox)
-    r_PEM = r_PE_gcrs - r_EME_gcrs
+    r_PE_gmec = icrs2gmec(pos, startTime)
+    r_rot = r_PE_gmec
+    r_EME_gmec = icrs2gmec(r_EMG_icrs, startTime)
+    r_PEM = r_PE_gmec - r_EME_gmec
 
-    C_I2R = inert2rot(currentTime, equinox)
+    C_I2R = inert2rot(currentTime, startTime)
     
     r_rot = C_G2B@C_I2R@r_PEM
 
@@ -492,7 +524,7 @@ def inert2rotV(rR, vI, t_norm):
     return vR
 
 
-def convertIC_R2H(pos_R, vel_R, t_mjd, C_I2G, Tp_can=None):
+def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
     """Converts initial conditions from the R frame to the H frame
 
     Args:
@@ -502,9 +534,8 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, C_I2G, Tp_can=None):
             Array of velocities in canonical units
         t_mjd (astropy Time array):
             Mission start time in MJD
-        C_I2G (float n array):
-            3x3 Array for the directional cosine matrix going from the inertial frame to the
-            Geocentric Mean Ecliptic frame
+        mu_star (float):
+            Non-dimensional mass parameter
         Tp_can (float n array, optional):
             Optional array of times in canonical units
 
@@ -520,6 +551,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, C_I2G, Tp_can=None):
     """
 
     pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
+    C_I2G = inert2geo(t_mjd, t_mjd)
     pos_G = C_I2G @ pos_I
 
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
@@ -543,7 +575,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, C_I2G, Tp_can=None):
         return pos_H, vel_H
 
 
-def convertIC_I2H(pos_I, vel_I, tau, C_I2G, Tp_can=None):
+def convertIC_I2H(pos_I, vel_I, currentTime, startTime, mu_star, C_I2G, Tp_can=None):
     """Converts initial conditions from the I frame to the H frame
 
     Args:
@@ -551,11 +583,12 @@ def convertIC_I2H(pos_I, vel_I, tau, C_I2G, Tp_can=None):
             Array of distance in canonical units
         vel_I (float n array):
             Array of velocities in canonical units
-        tau (float)
+        currentTime (float)
             Current mission time
-        C_I2G (float n array):
-            3x3 Array for the directional cosine matrix going from the inertial frame to the
-            Geocentric Mean Ecliptic frame
+        startTime (astropy Time array):
+            Mission start time in MJD
+        mu_star (float):
+            Non-dimensional mass parameter
         Tp_can (float n array, optional):
             Optional array of times in canonical units
 
@@ -575,13 +608,13 @@ def convertIC_I2H(pos_I, vel_I, tau, C_I2G, Tp_can=None):
 
     pos_G = C_I2G @ pos_I
 
-    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', tau)
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
     posEMB = state_EMB[0].get_xyz().to('AU')
     velEMB = state_EMB[1].get_xyz().to('AU/day')
 
-    posEMB_E, velEMB_E = icrs2gmec(posEMB, tau, velEMB)
-    posEMB_E = posEMB_E.to('AU')
-    velEMB_E = velEMB_E.to('AU/d')
+    stateEMB_E = icrs2gmec(posEMB, currentTime, velEMB)
+    posEMB_E = stateEMB_E[0].to('AU')
+    velEMB_E = stateEMB_E[1].to('AU/d')
 
     pos_GCRS = pos_G + posEMB_E  # G frame
 
@@ -589,7 +622,7 @@ def convertIC_I2H(pos_I, vel_I, tau, C_I2G, Tp_can=None):
     vel_G = C_I2G @ v_dim
     vel_GMECL = vel_G + velEMB_E
 
-    pos_H, vel_H = gmec2icrs(pos_GCRS, tau, vel_GMECL)
+    pos_H, vel_H = gmec2icrs(pos_GCRS, currentTime, vel_GMECL)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
 
