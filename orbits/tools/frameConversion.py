@@ -104,7 +104,7 @@ def equinoxAngle(r_LAAN, t_LAAN, equinox):
     r_sin = np.linalg.norm(np.cross(n_LAAN, n_SB_et))
     r_cos = np.dot(n_LAAN, n_SB_et)
     theta = np.arctan2(sign2*r_sin, r_cos)
-    breakpoint()
+    # breakpoint()
     return theta
 
 
@@ -287,7 +287,7 @@ def inert2geo(startTime):
     r_LAAN3 = np.cross(r_LAAN1, r_LAAN2)
     n_LAAN = r_LAAN3/np.linalg.norm(r_LAAN3)
     
-    theta_LAAN = equinoxAngle(r_LAAN1, t_LAAN, equinox)
+    theta_LAAN = equinoxAngle(r_LAAN1, t_LAAN, startTime)
     
     C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
     
@@ -305,9 +305,9 @@ def inert2geo(startTime):
         r_m_r[ctr,:] = tmp1 - tmp2
         ctr = ctr + 1
 
-    XX = max(r_m_r[:,0]) - min(r_m_r[:, 0])
-    YY = max(r_m_r[:,1]) - min(r_m_r[:, 1])
-    ZZ = max(r_m_r[:,2]) - min(r_m_r[:, 2])
+    XX = max(r_m_r[:, 0]) - min(r_m_r[:, 0])
+    YY = max(r_m_r[:, 1]) - min(r_m_r[:, 1])
+    ZZ = max(r_m_r[:, 2]) - min(r_m_r[:, 2])
 
     theta_INC = -np.deg2rad(5.145) #np.arctan2(ZZ,YY)
 
