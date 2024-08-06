@@ -595,13 +595,12 @@ def convertIC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
             Array of distance in canonical units
         vel_I (float n array):
             Array of velocities in canonical units
-        currentTime (float)
-            Current mission time
+        currentTime (astropy Time array)
+            Current mission time in MJD
         C_I2G (float n array):
             3x3 Array for the directional cosine matrix
         Tp_can (float n array, optional):
             Optional array of times in canonical units
-
 
     Returns:
         tuple:
@@ -630,9 +629,9 @@ def convertIC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
 
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_G = C_I2G @ v_dim
-    vel_GMECL = vel_G + velEMB_E
+    vel_GMEC = vel_G + velEMB_E
 
-    pos_H, vel_H = gmec2icrs(pos_GMEC, currentTime, vel_GMECL)
+    pos_H, vel_H = gmec2icrs(pos_GMEC, currentTime, vel_GMEC)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
     
@@ -644,11 +643,61 @@ def convertIC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
     tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
     tmpM_GMECL = tmpM_G - posEMB_E
     tmpM_I = C_I2G.T @ tmpM_GMECL
-    
-#    breakpoint()
 
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
         return pos_H, vel_H, Tp_dim
     else:
         return pos_H, vel_H
+
+
+def convertIC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
+    """Converts initial conditions (or any position and velocity )from the I frame to the H frame
+
+    Args:
+        pos_H (astropy Quantity array):
+            Array of distance in canonical units
+        vel_I (astropy Quantity array):
+            Array of velocities in canonical units
+        currentTime (astropy Time array)
+            Current mission time in MJD
+        C_I2G (float n array):
+            3x3 Array for the directional cosine matrix
+        Tp_can (float n array, optional):
+            Optional array of times in canonical units
+
+    Returns:
+        tuple:
+        pos_I (float n array):
+            Array of distance in AU
+        vel_I (float n array):
+            Array of velocities in AU/day
+        Tp_dim (float n array):
+            Array of times in units of days
+
+    """
+
+    pos_H = unitConversion.convertPos_to_dim(pos_H).to('AU')
+    vel_H = unitConversion.convertVel_to_dim(vel_H).to('AU/day')
+
+    C_G2I = C_I2G.T
+
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
+    posEMB = state_EMB[0].get_xyz().to('AU')
+    velEMB = state_EMB[1].get_xyz().to('AU/d')
+
+    stateEMB_E = icrs2gmec(posEMB, currentTime, velEMB)
+    posEMB_E = stateEMB_E[0].to('AU')
+    velEMB_E = stateEMB_E[1].to('AU/d')
+
+    pos_GMEC, vel_GMEC = icrs2gmec(pos_H, currentTime, vel_H)  # Gives km and km/s
+    pos_GMEC = pos_GMEC.to('AU')
+    vel_GMEC = vel_GMEC.to('AU/d')
+
+    pos_G = pos_GMEC - posEMB_E
+    pos_I = C_G2I @ pos_G
+
+    vel_G = vel_GMEC - velEMB_E
+    vel_I = C_G2I @ vel_G
+
+    return pos_I, vel_I

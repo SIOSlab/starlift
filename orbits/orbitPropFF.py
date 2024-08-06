@@ -42,16 +42,44 @@ vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 C_I2G = frameConversion.inert2geo(t_mjd)
 C_G2I = C_I2G.T
 
+# Get position of the moon at the epoch in the inertial frame
+moon_SS = get_body_barycentric_posvel('Moon', t_mjd)[0].get_xyz().to('AU').value  # H frame, [AU]
+EM_SS = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)[0].get_xyz().to('AU').value
+moon_Earth = frameConversion.icrs2gmec(moon_SS*u.AU, t_mjd)
+EM_Earth = frameConversion.icrs2gmec(EM_SS*u.AU, t_mjd)
+moon_EM = moon_Earth - EM_Earth
+moon_I = C_G2I @ moon_EM.to('AU')
+moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+
+# Transform position ICs to the epoch moon
+ideal_moon = [1-mu_star, 0, 0]
+IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
+IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
+IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
+IC[0:3] = [IC_x, IC_y, IC_z]
+
+# Rotate velocity vector to match the epoch moon (I frame)
+theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
+rot_matrix = frameConversion.rot(theta, 3)
+vI = rot_matrix @ vI
+
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
 pos_H, vel_H = frameConversion.convertIC_I2H(IC[0:3], vI, t_mjd, C_I2G, Tp_can=None)
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days_can)
 
-# Propagate the dynamics (states in AU, times in DU)
+# Propagate the dynamics (states in AU or AU/day, times in DU)
 states, times = orbitEOMProp.statePropFF(state0, t_mjd)  # State is in the H frame
 pos = states[:, 0:3]
 vel = states[:, 3:6]
+
+# # DEBUGGING INITIAL VELOCITY Convert initial state to I frame
+# pos_can = unitConversion.convertPos_to_canonical(pos)
+# vel_can = unitConversion.convertVel_to_canonical(vel)
+# breakpoint()
+# pos_I, vel_I = frameConversion.convertIC_H2I(pos[0], vel[0], t_mjd, C_I2G)
+# breakpoint()
 
 # Sim time in mjd
 times_dim = unitConversion.convertTime_to_dim(times)  # days
@@ -89,37 +117,39 @@ for ii in np.arange(len(times)):
     r_EarthEM_r[ii, :] = C_G2I@r_EarthEM.to('AU')
     r_MoonEM_r[ii, :] = C_G2I@r_MoonEM.to('AU')
 
-breakpoint()
 
+# ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
-# # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
-#
-# # Obtain CRTBP data from GMAT
-# file_name = "gmatFiles/FF_rot.txt"
-# gmat_km, gmat_time = gmatTools.extract_pos(file_name)
-# gmat_posrot = np.array((gmat_km * u.km).to('AU'))
-#
-# # Convert to I frame from R frame
-# gmat_posinert = np.zeros([len(gmat_time), 3])
-# for ii in np.arange(len(gmat_time)):
-#     C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
-#     C_R2I = C_I2R.T
-#     gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
-#
-# # Plot
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
-# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
-# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
+# Obtain CRTBP data from GMAT
+file_name = "gmatFiles/FF_rot.txt"
+gmat_km, gmat_time = gmatTools.extract_pos(file_name)
+gmat_posrot = np.array((gmat_km * u.km).to('AU'))
+
+# Convert to I frame from R frame
+gmat_posinert = np.zeros([len(gmat_time), 3])
+for ii in np.arange(len(gmat_time)):
+    C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
+    C_R2I = C_I2R.T
+    gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
+
+# Plot
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
+ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
+ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
 # ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
 # ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
-# ax.set_xlabel('X [AU]')
-# ax.set_ylabel('Y [AU]')
-# ax.set_zlabel('Z [AU]')
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
 # ax.set_box_aspect([1.0, 1.0, 1.0])
 # plot_tools.set_axes_equal(ax)
-# plt.title('FF Model in the Inertial (I) Frame')
-# plt.legend()
+limit = 0.003
+ax.set_xlim([-limit, limit])
+ax.set_ylim([-limit, limit])
+ax.set_zlim([-limit, limit])
+plt.title('FF Model in the Inertial (I) Frame')
+plt.legend()
 
 
 # ~~~~~ANIMATION~~~~~
@@ -172,7 +202,7 @@ def animate(i):
 frame_indices = next_frame(times, interval)
 ani = animation.FuncAnimation(fig, animate, frames=len(frame_indices), interval=1, repeat=True)
 
-limit = 0.003
+# limit = 0.003
 ax.set_xlim([-limit, limit])
 ax.set_ylim([-limit, limit])
 ax.set_zlim([-limit, limit])

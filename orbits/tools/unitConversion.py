@@ -101,7 +101,7 @@ def convertPos_to_dim(canonicalPos):
     
     return dimPos
 
-# converting velocity
+
 def convertVel_to_canonical(dimVel):
     """Convert array of velocities from dimensional units to canonical units
     
