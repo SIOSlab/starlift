@@ -116,7 +116,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_EM = C_I2G @ r_dim
     r_GCRS = r_EM +  r_EMG.value
 
-    r_PO_H, _ = frameConversion.convertIC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, C_I2G)
+    r_PO_H, _ = frameConversion.convertSC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, C_I2G)
     r_PO_CRTBP[kk, :] = r_PO_H
     
     C_I2R = frameConversion.inert2rot(time,t_start)
@@ -129,7 +129,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_diff[kk,:] = C_G2I @ r_EM - r_dim
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G, timesCRTBP[-1])
+pos_H, vel_H, Tp_dim = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G, timesCRTBP[-1])
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), 1*Tp_dim.value)   # Change to Tp_dim.value for one orbit

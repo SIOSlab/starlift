@@ -99,7 +99,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_EM = C_I2G @ r_dim
     r_GCRS = r_EM +  r_EMG.value
     
-    r_PO_H, _ = orbitEOMProp.convertIC_I2H(posCRTBP[kk, :], velCRTBP[kk, :], time, C_I2G)
+    r_PO_H, _ = orbitEOMProp.convertSC_I2H(posCRTBP[kk, :], velCRTBP[kk, :], time, C_I2G)
     r_PO_CRTBP[kk, :] = r_PO_H
     
     C_I2R = frameConversion.inert2rot(time,t_mjd)
@@ -109,7 +109,7 @@ for kk in np.arange(len(timesCRTBP)):
     r_CRTBP_G[kk,:] = r_EM
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = orbitEOMProp.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, C_I2G, timesCRTBP[-1])
+pos_H, vel_H, Tp_dim = orbitEOMProp.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_mjd, C_I2G, timesCRTBP[-1])
 
 N = 16
 
@@ -132,7 +132,7 @@ for ii in np.arange(N):
     
 #    C_I2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(taus[ii], t_mjd)
 
-    pos_Hi, vel_Hi = orbitEOMProp.convertIC_I2H(pos_i, vel_i, taus[ii], C_I2G)
+    pos_Hi, vel_Hi = orbitEOMProp.convertSC_I2H(pos_i, vel_i, taus[ii], C_I2G)
     X = np.append(X,np.append(pos_Hi.value, vel_Hi.value))
 
     time_f = (ii+1)*dt
@@ -145,7 +145,7 @@ for ii in np.arange(N):
     vel_f = velCRTBP[index_f]
 #    C_I2G, C_LAAN, C_INC, C_AOP, n_LAAN, n_INC, n_AOP = frameConversion.inert2geo(tau_f, t_mjd)
 
-    pos_Hf, vel_Hf = orbitEOMProp.convertIC_I2H(pos_f, vel_f, tau_f, C_I2G)
+    pos_Hf, vel_Hf = orbitEOMProp.convertSC_I2H(pos_f, vel_f, tau_f, C_I2G)
     
     X0 = np.append(X0, np.append(pos_Hf.value,vel_Hf.value))
 
