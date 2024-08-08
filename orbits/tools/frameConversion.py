@@ -81,18 +81,6 @@ def equinoxAngle(r_LAAN, r_veq, t_LAAN, t_veq):
         sign = 1
     elif t_mod > 27.321582/2 and t_mod < 27.321582:
         sign = -1
-        
-#    import matplotlib.pyplot as plt
-#    ax2 = plt.figure().add_subplot(projection='3d')
-#    ax2.plot(np.array([0, n_LAAN[0]]), np.array([0, n_LAAN[1]]), np.array([0, n_LAAN[2]]), 'b', label='LAAN')
-#    ax2.plot(np.array([0, n_SB_et[0]]), np.array([0,n_SB_et[1]]), np.array([0,n_SB_et[2]]), 'r-.', label='Equinox')
-#    ax2.set_title('G frame (Inertial EM)')
-#    ax2.set_xlabel('X [AU]')
-#    ax2.set_ylabel('Y [AU]')
-#    ax2.set_zlabel('Z [AU]')
-#    plt.legend()
-#    plt.show()
-#    breakpoint()
 
     r_sin = np.linalg.norm(np.cross(n_LAAN, n_veq))
     r_cos = np.dot(n_LAAN, n_veq)
@@ -166,8 +154,9 @@ def rotMatAxisAng(n_vec, theta):
     
 
 def inert2geo(startTime, equinox, t_veq):
-    """Computes the DCM to go from the inertial Earth-Moon CRTBP perifocal frame (P frame) to the GeocentricMeanEcliptic
-     frame centered at the Earth-Moon barycenter (G frame)
+    """Computes the DCM to go from the inertial Earth-Moon CRTBP frame
+    (I frame) to the GeocentricMeanEcliptic frame centered at the Earth-Moon barycenter
+    (G frame)
 
     Args:
         startTime (astropy Time array):
@@ -279,12 +268,6 @@ def inert2geo(startTime, equinox, t_veq):
 
     n_INC = b1_g/np.linalg.norm(b1_g)
     
-#    rise = max(r_m_r[:,2]) - min(r_m_r[:,2])
-#    if np.abs(n_INC[0]) > np.abs(n_INC[1]):
-#        run = max(r_m_r[:,1]) - min(r_m_r[:,1])
-#    else:
-#        run = max(r_m_r[:,0]) - min(r_m_r[:,0])
-#    theta_INC = -np.arctan2(rise, run)
     theta_INC = -np.deg2rad(5.145)
     C_INC = rotMatAxisAng(n_INC, theta_INC)
     
@@ -293,22 +276,6 @@ def inert2geo(startTime, equinox, t_veq):
     for ii in tarray_r:
         r_m_c[ctr,:] = C_INC @ r_m_r[ctr,:]
         ctr = ctr + 1
-#    
-#    r_LAAN = r_LAAN.to('AU')
-#    b1_g = b1_g.to('AU')*.002
-#    import matplotlib.pyplot as plt
-#    ax2 = plt.figure().add_subplot(projection='3d')
-##    ax2.plot(r_m_g[:, 0], r_m_g[:, 1], r_m_g[:, 2], 'k', label='start')
-##    ax2.plot(r_m_r[:, 0], r_m_r[:, 1], r_m_r[:, 2], 'b', label='LAAN')
-##    ax2.plot([0, r_LAAN[0].value], [0, r_LAAN[1].value], [0, r_LAAN[2].value], 'r', label='node vector')
-##    ax2.plot([0, b1_g[0].value], [0, b1_g[1].value], [0, b1_g[2].value], 'g', label='vernal equinox vector')
-#    ax2.plot(r_m_c[:, 0], r_m_c[:, 1], r_m_c[:, 2], 'g', label='LAAN + INC')
-#    ax2.set_xlabel('X [AU]')
-#    ax2.set_ylabel('Y [AU]')
-#    ax2.set_zlabel('Z [AU]')
-#    plt.legend()
-#    plt.show()
-#    breakpoint()
 
     # find AOP DCM
     # rough search
@@ -319,7 +286,6 @@ def inert2geo(startTime, equinox, t_veq):
 
     # fine search
     t_AOP_r = tarray_r[r_ind_r-1]
-#    tarray_f = startTime + np.arange(28)/1*u.d
     tarray_f = t_AOP_r + 0.5*u.d + np.arange(1600)/800*u.d
     
     r_moons_f = get_body_barycentric_posvel('Moon', tarray_f)[0].get_xyz()
@@ -331,11 +297,6 @@ def inert2geo(startTime, equinox, t_veq):
         r_m_f[ctr,:] = C_INC @ C_LAAN @ icrs2gmec(r_moons_f[:, ctr], ii).to('AU').value
         ctr = ctr + 1
         
-#    ZZ = max(r_m_f[:,2]) - min(r_m_f[:,2])
-#    YY = max(r_m_f[:,1]) - min(r_m_f[:,1])
-#    XX = max(r_m_f[:,0]) - min(r_m_f[:,0])
-#
-#    breakpoint()
     r_norm_f = np.linalg.norm(r_m_f, axis=1)
     r_min_f = min(r_norm_f)
     
@@ -344,12 +305,10 @@ def inert2geo(startTime, equinox, t_veq):
     
     theta_AOP = rotAngle(t_AOP, t_LAAN).value
     
-#    n_AOP = C_INC @ C_LAAN @ b3_g
     n_AOP = np.array([0, 0, 1])
     C_AOP = rotMatAxisAng(n_AOP, theta_AOP)
 
     C_G2P = C_AOP @ C_INC @ C_LAAN
-#    breakpoint()
 
     ctr = 0
     r_m_e = np.zeros([len(tarray_r), 3])
@@ -363,25 +322,23 @@ def inert2geo(startTime, equinox, t_veq):
     C_G2I = C_P2I @ C_G2P
     C_I2G = C_G2I.T
     
-#    n_AOP = n_AOP/np.linalg.norm(n_AOP)*1E-5
-#    import matplotlib.pyplot as plt
-#    ax2 = plt.figure().add_subplot(projection='3d')
-##    ax2.plot(r_m_g[:, 0], r_m_g[:, 1], r_m_g[:, 2], 'k', label='start')
-##    ax2.plot(r_m_r[:, 0], r_m_r[:, 1], r_m_r[:, 2], 'b', label='LAAN')
-#    ax2.plot(r_m_c[:, 0], r_m_c[:, 1], r_m_c[:, 2], 'r', label='LAAN + INC')
-##    ax2.plot([0, r_LAAN[0].value], [0, r_LAAN[1].value], [0, r_LAAN[2].value], 'r', label='node vector')
-##    ax2.plot([0, b1_g[0].value], [0, b1_g[1].value], [0, b1_g[2].value], 'g', label='vernal equinox vector')
-#    ax2.plot([0, n_AOP[0]], [0, n_AOP[1]], [0, n_AOP[2]], 'y', label='n AOP vector')
-#    ax2.plot(r_m_e[:, 0], r_m_e[:, 1], r_m_e[:, 2], 'g', label='LAAN + INC + AOP')
-#    ax2.set_xlabel('X [AU]')
-#    ax2.set_ylabel('Y [AU]')
-#    ax2.set_zlabel('Z [AU]')
-#    plt.legend()
-#    plt.show()
-#    breakpoint()
     return C_I2G
     
 def peri2inert(pos):
+    """Computes the DCM to go from the Earth-Moon perifocal frame
+    (P frame) to the inertialEarth-Moon CRTBP frame centered at the Earth-Moon
+    barycenter (I frame)
+
+    Args:
+        pos (astropy Quantity array):
+            Position vector in P (perifocal) frame in arbitrary distance units
+
+    Returns:
+        C_P2I (float n array):
+            3x3 Array for the directional cosine matrix
+
+    """
+
     i1 = np.array([1, 0, 0])
     p1 = np.array([pos[0], pos[1], 0])
     p1 = p1/np.linalg.norm(p1)

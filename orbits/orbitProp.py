@@ -36,38 +36,6 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-from astropy.coordinates import BarycentricMeanEcliptic, BarycentricTrueEcliptic, GeocentricMeanEcliptic, GeocentricTrueEcliptic, HeliocentricMeanEcliptic, HeliocentricTrueEcliptic
-pos_B = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_veq)[0].get_xyz()
-pos_E = get_body_barycentric_posvel('Earth',t_veq)[0].get_xyz()
-pos_S = get_body_barycentric_posvel('Sun',t_veq)[0].get_xyz()
-pos_E_ICRS = coord.SkyCoord(x=pos_E[0], y=pos_E[1], z=pos_E[2], representation_type='cartesian', frame='icrs', obstime=t_veq)
-pos_B_ICRS = coord.SkyCoord(x=pos_B[0], y=pos_B[1], z=pos_B[2], representation_type='cartesian', frame='icrs', obstime=t_veq)
-pos_S_ICRS = coord.SkyCoord(x=pos_S[0], y=pos_S[1], z=pos_S[2], representation_type='cartesian', frame='icrs', obstime=t_veq)
-
-pos_E_HME = pos_E_ICRS.transform_to(HeliocentricMeanEcliptic(equinox=t_equinox))
-pos_E_HTE = pos_E_ICRS.transform_to(HeliocentricTrueEcliptic(equinox=t_equinox))
-tmp1 = pos_E_ICRS.transform_to(HeliocentricMeanEcliptic(equinox=t_start))
-
-pos_E_BME = pos_E_ICRS.transform_to(BarycentricMeanEcliptic(equinox=t_equinox))
-pos_E_BTE = pos_E_ICRS.transform_to(BarycentricTrueEcliptic(equinox=t_equinox))
-
-pos_B_GME = pos_B_ICRS.transform_to(GeocentricMeanEcliptic(obstime=t_veq,equinox=t_equinox))
-pos_B_GTE = pos_B_ICRS.transform_to(GeocentricTrueEcliptic(obstime=t_veq,equinox=t_equinox))
-
-pos_S_GME = pos_S_ICRS.transform_to(GeocentricMeanEcliptic(obstime=t_veq,equinox=t_equinox))
-pos_S_GTE = pos_S_ICRS.transform_to(GeocentricTrueEcliptic(obstime=t_veq,equinox=t_equinox))
-
-pos_E_ICRS = pos_E_ICRS.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_ICRS.cartesian.get_xyz().to('AU'))
-pos_S_ICRS = pos_S_ICRS.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_S_ICRS.cartesian.get_xyz().to('AU'))
-pos_E_BME = pos_E_BME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_BME.cartesian.get_xyz().to('AU'))
-pos_E_BTE = pos_E_BTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_BTE.cartesian.get_xyz().to('AU'))
-pos_B_GME = pos_B_GME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_B_GME.cartesian.get_xyz().to('AU'))
-pos_B_GTE = pos_B_GTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_B_GTE.cartesian.get_xyz().to('AU'))
-pos_E_HME = pos_E_HME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_HME.cartesian.get_xyz().to('AU'))
-pos_E_HTE = pos_E_HTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_HTE.cartesian.get_xyz().to('AU'))
-pos_S_GME = pos_S_GME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_S_GME.cartesian.get_xyz().to('AU'))
-pos_S_GTE = pos_S_GTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_S_GTE.cartesian.get_xyz().to('AU'))
-
 C_I2G = frameConversion.inert2geo(t_start,t_equinox, t_veq)
 C_G2I = C_I2G.T
 
