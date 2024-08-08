@@ -376,7 +376,8 @@ Tp_dim = unitConversion.convertTime_to_dim(X[3]).to('day').value
 
 pos_dim = np.array([x_dim, 0, z_dim])*u.AU
 
-C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
+C_I2G = frameConversion.inert2geo(t_mjd)
+C_G2I = C_I2G.T
 
 pos_GCRS = C_I2G@pos_dim
 pos_ICRS = (frameConversion.gmec2icrs(pos_GCRS,t_mjd)).to('AU').value
@@ -440,7 +441,7 @@ for ii in np.arange(len(times)):
     r_EarthEM = -r_EMG
     r_MoonEM = r_MoonG - r_EMG
     
-    C_I2G2 = frameConversion.inert2geo(time,t_mjd)
+    C_I2G2 = frameConversion.inert2geo(time)
     C_G2I2 = C_I2G2.T
     
     C_I2R = frameConversion.inert2rot(time,t_mjd)

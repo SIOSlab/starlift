@@ -26,7 +26,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_mjd = Time(57727, format='mjd', scale='utc')
-days = 100
+days = 200
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -39,100 +39,55 @@ IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.363
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # DCM for G frame and I frame
-C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
+C_I2G = frameConversion.inert2geo(t_mjd)
 C_G2I = C_I2G.T
 
+# Get position of the moon at the epoch in the inertial frame
+sun_I, earth_I, moon_I = frameConversion.getSunEarthMoon(t_mjd, C_I2G)  # I frame [AU]
+moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+
+# Transform position ICs to the epoch moon
+ideal_moon = [1-mu_star, 0, 0]
+IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
+IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
+IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
+IC[0:3] = [IC_x, IC_y, IC_z]
+
+# Rotate velocity vector to match the epoch moon (I frame)
+theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
+rot_matrix = frameConversion.rot(theta, 3)
+vI = rot_matrix @ vI
+
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
-pos_H, vel_H = frameConversion.convertIC_I2H(IC[0:3], vI, t_mjd, C_I2G, Tp_can=None)
+pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], vI, t_mjd, C_I2G, Tp_can=None)
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), days_can)
 
-# Propagate the dynamics (states in AU, times in DU)
-states, times = orbitEOMProp.statePropFF(state0, t_mjd)
+# Propagate the dynamics (states in AU or AU/day, times in DU)
+states, times = orbitEOMProp.statePropFF(state0, t_mjd)  # State is in the H frame
 pos = states[:, 0:3]
 vel = states[:, 3:6]
 
+# Convert to canonical
+pos_can = unitConversion.convertPos_to_canonical(pos * u.AU)
+vel_can = unitConversion.convertVel_to_canonical(vel * u.AU/u.d)
+
 # Sim time in mjd
-times_dim = unitConversion.convertTime_to_dim(times)  # days
-times_mjd = times_dim + t_mjd
+times_dim = unitConversion.convertTime_to_dim(times)  # Days from zero
+times_mjd = times_dim + t_mjd  # Days from mission start time
 
 # Preallocate space
-r_PEM_r = np.zeros([len(times), 3])
-r_SunEM_r = np.zeros([len(times), 3])
-r_EarthEM_r = np.zeros([len(times), 3])
-r_MoonEM_r = np.zeros([len(times), 3])
+pos_SC = np.zeros([len(times_mjd), 3])
+vel_SC = np.zeros([len(times_mjd), 3])
+pos_Sun = np.zeros([len(times_mjd), 3])
+pos_Earth = np.zeros([len(times_mjd), 3])
+pos_Moon = np.zeros([len(times_mjd), 3])
 
-# DEBUGGING VECTORS
-r_SunO = np.zeros([len(times), 3])
-r_SunG = np.zeros([len(times), 3])
-r_SunEM = np.zeros([len(times), 3])
-r_Sun_G2 = np.zeros([len(times), 3])
-r_EMO = np.zeros([len(times), 3])
-r_EMG = np.zeros([len(times), 3])
-
-for ii in np.arange(len(times)):
-    time = times_mjd[ii]
-    
-    # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
-    r_SunO[ii, :] = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU').value
-    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
-    r_EMO[ii, :] = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz().to('AU').value
-    
-    # Convert from H frame (AU) to GMEc frame (km)
-    r_PG = frameConversion.icrs2gmec(pos[ii]*u.AU, time)
-    r_EMG[ii, :] = frameConversion.icrs2gmec(r_EMO[ii, :]*u.AU, time)
-    r_SunG[ii, :] = frameConversion.icrs2gmec(r_SunO[ii, :]*u.AU, time)
-    r_MoonG = frameConversion.icrs2gmec(r_MoonO*u.AU, time)
-
-    # Change the origin to the EM barycenter, G frame (all km)
-    r_PEM = r_PG.value - r_EMG[ii, :]
-    r_SunEM[ii, :] = r_SunG[ii, :] - r_EMG[ii, :]
-    r_EarthEM = -r_EMG[ii, :]
-    r_MoonEM = r_MoonG.value - r_EMG[ii, :]
-
-    # Convert from G frame (in km) to I frame (in AU)
-    r_PEM_r[ii, :] = C_G2I@(r_PEM * u.km).to('AU')
-    r_SunEM_r[ii, :] = (C_G2I@(r_SunEM[ii, :] * u.km)).to('AU')
-    r_EarthEM_r[ii, :] = C_G2I@(r_EarthEM * u.km).to('AU')
-    r_MoonEM_r[ii, :] = C_G2I@(r_MoonEM * u.km).to('AU')
-
-
-# ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
-
-# # PLOT DEBUGGING
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunO[:, 0], r_SunO[:, 1], r_SunO[:, 2])
-# plt.title('Sun in H (ICRS) frame [AU]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunG[:, 0], r_SunG[:, 1], r_SunG[:, 2])
-# plt.title('Sun in Geocentric Mean Ecliptic frame [km]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunEM[:, 0], r_SunEM[:, 1], r_SunEM[:, 2])
-# plt.title('Sun in G frame [km]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_EMG[:, 0], r_EMG[:, 1], r_EMG[:, 2])
-# plt.title('EM Bary in GMEc [km]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2])
-# plt.title('Sun in I frame [AU]')
-
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2])
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-# plt.title('Earth in I frame, constant DCM [AU]')
-#
-# ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2])
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-# plt.title('Moon in I frame, constant DCM [AU]')
+# Obtain celestial body positions in the I frame [AU]
+for ii in np.arange(len(times_mjd)):
+    pos_SC[ii, :], vel_SC[ii, :] = frameConversion.convertSC_H2I(pos_can[ii, :], vel_can[ii, :], times_mjd[ii], C_I2G)
+    pos_Sun[ii, :], pos_Earth[ii, :], pos_Moon[ii, :] = frameConversion.getSunEarthMoon(times_mjd[ii], C_I2G)
 
 
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
@@ -151,66 +106,86 @@ for ii in np.arange(len(gmat_time)):
 
 # Plot
 ax = plt.figure().add_subplot(projection='3d')
-ax.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], color='blue', label='Propagated FF')
-ax.plot(r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2], color='green', label='Earth')
-ax.plot(r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2], color='gray', label='Moon')
-ax.plot(r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2], color='orange', label='Sun')
-ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
+ax.plot(pos_SC[:, 0], pos_SC[:, 1], pos_SC[:, 2], color='blue', label='Propagated FF')
+ax.plot(pos_Earth[:, 0], pos_Earth[:, 1], pos_Earth[:, 2], color='green', label='Earth')
+ax.plot(pos_Moon[:, 0], pos_Moon[:, 1], pos_Moon[:, 2], color='gray', label='Moon')
+# ax.plot(pos_Sun[:, 0], pos_Sun[:, 1], pos_Sun[:, 2], color='orange', label='Sun')
+# ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
 ax.set_xlabel('X [AU]')
 ax.set_ylabel('Y [AU]')
 ax.set_zlabel('Z [AU]')
-ax.set_box_aspect([1.0, 1.0, 1.0])
-plot_tools.set_axes_equal(ax)
+# ax.set_box_aspect([1.0, 1.0, 1.0])
+# plot_tools.set_axes_equal(ax)
+limit = 0.002
+ax.set_xlim([-limit, limit])
+ax.set_ylim([-limit, limit])
+ax.set_zlim([-limit, limit])
 plt.title('FF Model in the Inertial (I) Frame')
 plt.legend()
 
 
-# # ~~~~~ANIMATION~~~~~ needs fixing, eventually
-#
-# fig = plt.figure()
-# ax = fig.add_subplot(projection='3d')
-#
-# # Collect animation data for full force
-# N_FF = len(r_PEM_r[:, 0])  # Number of frames in animation
-# P_FF = 8  # Number of points plotted per frame
-#
-# data_FF = np.array([r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2]])
-# data_EarthFF = np.array([r_EarthEM_r[:, 0], r_EarthEM_r[:, 1], r_EarthEM_r[:, 2]])
-# data_MoonFF = np.array([r_MoonEM_r[:, 0], r_MoonEM_r[:, 1], r_MoonEM_r[:, 2]])
-# data_SunFF = np.array([r_SunEM_r[:, 0], r_SunEM_r[:, 1], r_SunEM_r[:, 2]])
-#
-# line_FF, = ax.plot(data_FF[0, 0:1], data_FF[1, 0:1], data_FF[2, 0:1], color='blue', label='Orbit')
-# line_EarthFF, = ax.plot(data_EarthFF[0, 0:1], data_EarthFF[1, 0:1], data_EarthFF[2, 0:1], color='green', label='Earth')
-# line_MoonFF, = ax.plot(data_MoonFF[0, 0:1], data_MoonFF[1, 0:1], data_MoonFF[2, 0:1], color='gray', label='Moon')
-# line_SunFF, = ax.plot(data_SunFF[0, 0:1], data_SunFF[1, 0:1], data_SunFF[2, 0:1], color='orange', label='Sun')
-#
-#
-# def animate(i):
-#     # line_FF.set_data(data_FF[0, :i*P_FF], data_FF[1, :i*P_FF])
-#     # line_FF.set_3d_properties(data_FF[2, :i*P_FF])
-#     line_EarthFF.set_data(data_EarthFF[0, :i*P_FF], data_EarthFF[1, :i*P_FF])
-#     line_EarthFF.set_3d_properties(data_EarthFF[2, 0:i*P_FF])
-#     line_MoonFF.set_data(data_MoonFF[0, :i*P_FF], data_MoonFF[1, :i*P_FF])
-#     line_MoonFF.set_3d_properties(data_MoonFF[2, 0:i*P_FF])
-#     # line_SunFF.set_data(data_SunFF[0, :i*P_FF], data_SunFF[1, :i*P_FF])
-#     # line_SunFF.set_3d_properties(data_SunFF[2, 0:i*P_FF])
-#
-#
-# ani_FF = animation.FuncAnimation(fig, animate, frames=N_FF//P_FF, interval=1, repeat=True)
-#
-# # # Set axes limits
-# # ax.set_xlim3d(min(data_FF[0]), max(data_FF[0]))
-# # ax.set_ylim3d(min(data_FF[1]), max(data_FF[1]))
-# # ax.set_zlim3d(min(data_FF[2]), max(data_FF[2]))
-# # ax.set_box_aspect([1.0, 1.0, 1.0])
-# # plot_tools.set_axes_equal(ax)
-#
-# # Set labels
-# ax.set_xlabel('X [AU]')
-# ax.set_ylabel('Y [AU]')
-# ax.set_zlabel('Z [AU]')
-# plt.legend()
-# plt.title('Full force model in the I frame')
+# ~~~~~ANIMATION~~~~~
 
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+
+# Collect animation data
+data_sc = np.array([pos_SC[:, 0], pos_SC[:, 1], pos_SC[:, 2]])
+data_Earth = np.array([pos_Earth[:, 0], pos_Earth[:, 1], pos_Earth[:, 2]])
+data_Moon = np.array([pos_Moon[:, 0], pos_Moon[:, 1], pos_Moon[:, 2]])
+data_Sun = np.array([pos_Sun[:, 0], pos_Sun[:, 1], pos_Sun[:, 2]])
+
+# Initialize the first point for each body
+line_sc, = ax.plot(data_sc[0, 0:1], data_sc[1, 0:1], data_sc[2, 0:1], color='blue', label='Orbit')
+line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1], color='green', label='Earth')
+line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
+line_Sun, = ax.plot(data_Sun[0, 0:1], data_Sun[1, 0:1], data_Sun[2, 0:1], color='orange', label='Sun')
+
+interval = unitConversion.convertTime_to_canonical(days * u.d) / 100  # Fixed time interval for each frame
+
+
+def next_frame(times, interval):
+    t0 = 0
+    idx = 1
+    frame_indices = []
+    while idx < len(times):
+        diff = times[idx] - t0
+        if diff >= interval:
+            frame_indices.append(idx)
+            t0 = times[idx]
+        idx += 1
+    return frame_indices
+
+
+def animate(i):
+    idx = frame_indices[i]
+    if idx == 0:
+        return
+    line_sc.set_data(data_sc[0, :idx], data_sc[1, :idx])  # Set the x and y positions
+    line_sc.set_3d_properties(data_sc[2, :idx])  # Set the z position
+    line_Earth.set_data(data_Earth[0, :idx], data_Earth[1, :idx])
+    line_Earth.set_3d_properties(data_Earth[2, :idx])
+    line_Moon.set_data(data_Moon[0, :idx], data_Moon[1, :idx])
+    line_Moon.set_3d_properties(data_Moon[2, :idx])
+    line_Sun.set_data(data_Sun[0, :idx], data_Sun[1, :idx])
+    line_Sun.set_3d_properties(data_Sun[2, :idx])
+
+
+frame_indices = next_frame(times, interval)
+ani = animation.FuncAnimation(fig, animate, frames=len(frame_indices), interval=1, repeat=True)
+
+limit_ani = 0.002
+ax.set_xlim([-limit_ani, limit_ani])
+ax.set_ylim([-limit_ani, limit_ani])
+ax.set_zlim([-limit_ani, limit_ani])
+ax.set_xlabel('X [AU]')
+ax.set_ylabel('Y [AU]')
+ax.set_zlabel('Z [AU]')
+plt.legend()
+plt.title('Full Force model in the I frame')
+
+# # Save
+# writergif = animation.PillowWriter(fps=30)
+# ani.save('CRTBP L2.gif', writer=writergif)
 
 plt.show()

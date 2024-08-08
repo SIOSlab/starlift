@@ -126,7 +126,8 @@ def FF_EOM(tt, w, t_mjd):
             Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
 
     """
-    
+
+    # H frame
     [x, y, z, vx, vy, vz] = w
     
     gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
@@ -138,27 +139,27 @@ def FF_EOM(tt, w, t_mjd):
 
     time = unitConversion.convertTime_to_dim(tt) + t_mjd  # Current mission time in mjd
 
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
     r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
 
+    # Distance vectors
     r_PSun = r_PO - r_SunO.value
     r_PEarth = r_PO - r_EarthO.value
     r_PMoon = r_PO - r_MoonO.value
+
+    # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
-    
-    r_SunEarth = (r_SunO - r_EarthO).value
-    r_MoonEarth = (r_MoonO - r_EarthO).value
-    rSE_mag = np.linalg.norm(r_SunEarth)
-    rME_mag = np.linalg.norm(r_MoonEarth)
-        
+
+    # Equations of motion
     F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
-    F_gEarth = -gmEarth/rEarth_mag**3*r_PEarth
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
 
-    F_g = F_gSun_p + F_gEarth + F_gMoon_p
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
     
     a_PO = F_g
     
@@ -176,7 +177,7 @@ def statePropCRTBP(freeVar, mu_star):
 
     Args:
         freeVar (~numpy.ndarray(float)):
-            x and z positions (DU), y velocity (DU/TU), and orbit period (DU)
+            x and z positions (DU), y velocity (DU/TU), and orbit period (DU) in the I frame
         mu_star (float):
             Non-dimensional mass parameter
 
@@ -300,7 +301,7 @@ def calcFx_R(freeVar, mu_star):
     return Fx
 
 
-def calcFx_FF(X, taus, N, t_mjd, X0, dt):
+def calcFx_FF(X, taus, N, X0, dt):
     """Applies constraints to the free variables for a full force model
 
     *Add documentation
@@ -359,7 +360,7 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
     return dFx
 
 
-def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
+def calcdFx_FF(X, taus, N, X0, dt):
     """Calculates the Jacobian of the free variables wrt the constraints for the full force model
 
     *Add documentation
@@ -367,7 +368,7 @@ def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
     """
     hstep = 1E-4
 
-    Fx_0 = calcFx_FF(X, taus, N, t_mjd, X0, dt)
+    Fx_0 = calcFx_FF(X, taus, N, X0, dt)
 
     dFx = np.zeros((6 * N, 6 * N))
     indsXh = np.arange(0, N * 6, 6)
@@ -378,7 +379,7 @@ def calcdFx_FF(X, taus, N, t_mjd, X0, dt):
 
         Xh = X + dh
 
-        Fx_ii = calcFx_FF(Xh, taus, N, t_mjd, X0, dt)
+        Fx_ii = calcFx_FF(Xh, taus, N, X0, dt)
 
         dFx_ii = (Fx_ii - Fx_0) / hstep
 

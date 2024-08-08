@@ -14,11 +14,6 @@ import unitConversion
 # m_earth = 5.97219x10^24 kg
 
 
-# =============================================================================
-# Frame conversions
-# =============================================================================
-
-# rotation matrices
 def rot(th, axis):
     """Finds the rotation matrix of angle th about the axis value
 
@@ -104,7 +99,8 @@ def equinoxAngle(r_LAAN, r_veq, t_LAAN, t_veq):
     theta = np.arctan2(sign*r_sin, r_cos)
 
     return theta
-    
+
+
 def rotAngle(currentTime, startTime):
     """Finds the angle of rotation between two vectors in any Earth-Moon-Barycenter centered frame
 
@@ -176,8 +172,6 @@ def inert2geo(startTime, equinox, t_veq):
     Args:
         startTime (astropy Time array):
             Mission start time in MJD
-        equinox (astropy Time array):
-            Reference frame equinox time in MJD
 
     Returns:
         C_I2G (float n array):
@@ -407,7 +401,7 @@ def inert2rot(currentTime, startTime):
     Args:
         currentTime (astropy Time array):
             Current mission time in MJD
-                startTime (astropy Time array):
+        startTime (astropy Time array):
             Mission start time in MJD
 
     Returns:
@@ -423,7 +417,7 @@ def inert2rot(currentTime, startTime):
     return C_I2R
 
 
-def icrs2rot(pos, currentTime, startTime, mu_star, C_G2B):
+def icrs2rot(pos, currentTime, startTime, C_G2I):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
     Args:
@@ -433,8 +427,8 @@ def icrs2rot(pos, currentTime, startTime, mu_star, C_G2B):
             Current mission time in MJD
         startTime (astropy Time array):
             Mission start time in MJD
-        mu_star (float):
-            Non-dimensional mass parameter
+        C_G2I (float n array):
+            3x3 Array for the directional cosine matrix to go from the G frame to the I frame
 
     Returns:
         r_rot (astropy Quantity array):
@@ -452,7 +446,7 @@ def icrs2rot(pos, currentTime, startTime, mu_star, C_G2B):
 
     C_I2R = inert2rot(currentTime, startTime)
     
-    r_rot = C_G2B@C_I2R@r_PEM
+    r_rot = C_G2I@C_I2R@r_PEM
 
     return r_rot
 
@@ -580,13 +574,13 @@ def inert2rotV(rR, vI, t_norm):
     return vR
 
 
-def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
+def convertSC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
     """Converts initial conditions from the R frame to the H frame
 
     Args:
-        pos_R (float n array):
+        pos_R (astropy Quantity array):
             Array of distance in canonical units
-        vel_R (float n array):
+        vel_R (astropy Quantity array):
             Array of velocities in canonical units
         t_mjd (astropy Time array):
             Mission start time in MJD
@@ -607,7 +601,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
     """
 
     pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
-    C_I2G = inert2geo(t_mjd, t_mjd)
+    C_I2G = inert2geo(t_mjd)
     pos_G = C_I2G @ pos_I
 
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
@@ -631,7 +625,7 @@ def convertIC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
         return pos_H, vel_H
 
 
-def convertIC_I2H(pos_I, vel_I, currentTime, mu_star, C_I2G, Tp_can=None):
+def convertSC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
     """Converts initial conditions from the I frame to the H frame
 
     Args:
@@ -639,13 +633,12 @@ def convertIC_I2H(pos_I, vel_I, currentTime, mu_star, C_I2G, Tp_can=None):
             Array of distance in canonical units
         vel_I (float n array):
             Array of velocities in canonical units
-        currentTime (float)
-            Current mission time
-        mu_star (float):
-            Non-dimensional mass parameter
+        currentTime (astropy Time array)
+            Current mission time in MJD
+        C_I2G (float n array):
+            3x3 Array for the directional cosine matrix
         Tp_can (float n array, optional):
             Optional array of times in canonical units
-
 
     Returns:
         tuple:
@@ -670,13 +663,13 @@ def convertIC_I2H(pos_I, vel_I, currentTime, mu_star, C_I2G, Tp_can=None):
     posEMB_E = stateEMB_E[0].to('AU')
     velEMB_E = stateEMB_E[1].to('AU/d')
 
-    pos_GMECL = pos_G + posEMB_E  # G frame
+    pos_GMEC = pos_G + posEMB_E  # G frame
 
     v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
     vel_G = C_I2G @ v_dim
-    vel_GMECL = vel_G + velEMB_E
+    vel_GMEC = vel_G + velEMB_E
 
-    pos_H, vel_H = gmec2icrs(pos_GMECL, currentTime, vel_GMECL)
+    pos_H, vel_H = gmec2icrs(pos_GMEC, currentTime, vel_GMEC)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
     
@@ -688,11 +681,105 @@ def convertIC_I2H(pos_I, vel_I, currentTime, mu_star, C_I2G, Tp_can=None):
     tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
     tmpM_GMECL = tmpM_G - posEMB_E
     tmpM_I = C_I2G.T @ tmpM_GMECL
-    
-#    breakpoint()
 
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
         return pos_H, vel_H, Tp_dim
     else:
         return pos_H, vel_H
+
+
+def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
+    """Converts initial conditions (or any position and velocity) from the I frame to the H frame
+
+    Args:
+        pos_H (float n array):
+            Array of distance in canonical units
+        vel_I (float n array):
+            Array of velocities in canonical units
+        currentTime (astropy Time array)
+            Current mission time in MJD
+        C_I2G (float n array):
+            3x3 Array for the directional cosine matrix
+        Tp_can (float n array, optional):
+            Optional array of times in canonical units
+
+    Returns:
+        tuple:
+        pos_I (float n array):
+            Array of distance in AU
+        vel_I (float n array):
+            Array of velocities in AU/day
+        Tp_dim (float n array):
+            Array of times in units of days
+
+    """
+
+    pos_H = unitConversion.convertPos_to_dim(pos_H).to('AU')
+    vel_H = unitConversion.convertVel_to_dim(vel_H).to('AU/day')
+
+    C_G2I = C_I2G.T
+
+    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
+    posEMB = state_EMB[0].get_xyz().to('AU')
+    velEMB = state_EMB[1].get_xyz().to('AU/d')
+
+    stateEMB_E = icrs2gmec(posEMB, currentTime, velEMB)
+    posEMB_E = stateEMB_E[0].to('AU')
+    velEMB_E = stateEMB_E[1].to('AU/d')
+
+    pos_GMEC, vel_GMEC = icrs2gmec(pos_H, currentTime, vel_H)  # Gives km and km/s
+    pos_GMEC = pos_GMEC.to('AU')
+    vel_GMEC = vel_GMEC.to('AU/d')
+
+    pos_G = pos_GMEC - posEMB_E
+    pos_I = C_G2I @ pos_G
+
+    vel_G = vel_GMEC - velEMB_E
+    vel_I = C_G2I @ vel_G
+
+    return pos_I, vel_I
+
+
+def getSunEarthMoon(currentTime, C_I2G):
+    """Retrieves the position of the Sun at a given time in AU in the I frame
+
+        Args:
+            currentTime (astropy Time array)
+                Current mission time in MJD
+            C_I2G (float n array):
+                3x3 Array for the directional cosine matrix
+
+        Returns:
+            r_SunEM_r (astropy Quantity array):
+                Position vector for the Sun in the I frame [AU]
+            r_EarthEM_r (astropy Quantity array):
+                Position vector for the Earth in the I frame [AU]
+            r_MoonEM_r (astropy Quantity array):
+                Position vector for the Moon in the I frame [AU]
+
+        """
+
+    C_G2I = C_I2G.T
+
+    # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
+    r_SunO = get_body_barycentric_posvel('Sun', currentTime)[0].get_xyz().to('AU').value
+    r_MoonO = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz().to('AU').value
+    r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz().to('AU').value
+
+    # Convert from H frame (AU) to GMEc frame (km)
+    r_EMG = icrs2gmec(r_EMO * u.AU, currentTime)
+    r_SunG = icrs2gmec(r_SunO * u.AU, currentTime)
+    r_MoonG = icrs2gmec(r_MoonO * u.AU, currentTime)
+
+    # Change the origin to the EM barycenter, G frame (all km)
+    r_SunEM = r_SunG - r_EMG
+    r_EarthEM = -r_EMG
+    r_MoonEM = r_MoonG - r_EMG
+
+    # Convert from G frame (in km) to I frame (in AU)
+    r_SunEM_r = C_G2I @ r_SunEM.to('AU')
+    r_EarthEM_r = C_G2I @ r_EarthEM.to('AU')
+    r_MoonEM_r = C_G2I @ r_MoonEM.to('AU')
+
+    return r_SunEM_r, r_EarthEM_r, r_MoonEM_r

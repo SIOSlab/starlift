@@ -217,7 +217,7 @@ def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF, mu_star):
     times = timesCRTBP + t_mjd
     pos_dim = unitConversion.convertPos_to_dim(posCRTBP).to('AU')
     
-    C_I2G = frameConversion.inert2geo(t_mjd, t_mjd)
+    C_I2G = frameConversion.inert2geo(t_mjd)
     
     pos_H = np.zeros([len(times), 3])
     for ii in np.arange(len(timesCRTBP)):
