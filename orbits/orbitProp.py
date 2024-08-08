@@ -30,12 +30,45 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
+t_veq = t_equinox + 79.3125*u.d + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_I2G = frameConversion.inert2geo(t_equinox,t_equinox)
+from astropy.coordinates import BarycentricMeanEcliptic, BarycentricTrueEcliptic, GeocentricMeanEcliptic, GeocentricTrueEcliptic, HeliocentricMeanEcliptic, HeliocentricTrueEcliptic
+pos_B = get_body_barycentric_posvel('Earth-Moon-Barycenter',t_veq)[0].get_xyz()
+pos_E = get_body_barycentric_posvel('Earth',t_veq)[0].get_xyz()
+pos_S = get_body_barycentric_posvel('Sun',t_veq)[0].get_xyz()
+pos_E_ICRS = coord.SkyCoord(x=pos_E[0], y=pos_E[1], z=pos_E[2], representation_type='cartesian', frame='icrs', obstime=t_veq)
+pos_B_ICRS = coord.SkyCoord(x=pos_B[0], y=pos_B[1], z=pos_B[2], representation_type='cartesian', frame='icrs', obstime=t_veq)
+pos_S_ICRS = coord.SkyCoord(x=pos_S[0], y=pos_S[1], z=pos_S[2], representation_type='cartesian', frame='icrs', obstime=t_veq)
+
+pos_E_HME = pos_E_ICRS.transform_to(HeliocentricMeanEcliptic(equinox=t_equinox))
+pos_E_HTE = pos_E_ICRS.transform_to(HeliocentricTrueEcliptic(equinox=t_equinox))
+tmp1 = pos_E_ICRS.transform_to(HeliocentricMeanEcliptic(equinox=t_start))
+
+pos_E_BME = pos_E_ICRS.transform_to(BarycentricMeanEcliptic(equinox=t_equinox))
+pos_E_BTE = pos_E_ICRS.transform_to(BarycentricTrueEcliptic(equinox=t_equinox))
+
+pos_B_GME = pos_B_ICRS.transform_to(GeocentricMeanEcliptic(obstime=t_veq,equinox=t_equinox))
+pos_B_GTE = pos_B_ICRS.transform_to(GeocentricTrueEcliptic(obstime=t_veq,equinox=t_equinox))
+
+pos_S_GME = pos_S_ICRS.transform_to(GeocentricMeanEcliptic(obstime=t_veq,equinox=t_equinox))
+pos_S_GTE = pos_S_ICRS.transform_to(GeocentricTrueEcliptic(obstime=t_veq,equinox=t_equinox))
+
+pos_E_ICRS = pos_E_ICRS.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_ICRS.cartesian.get_xyz().to('AU'))
+pos_S_ICRS = pos_S_ICRS.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_S_ICRS.cartesian.get_xyz().to('AU'))
+pos_E_BME = pos_E_BME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_BME.cartesian.get_xyz().to('AU'))
+pos_E_BTE = pos_E_BTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_BTE.cartesian.get_xyz().to('AU'))
+pos_B_GME = pos_B_GME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_B_GME.cartesian.get_xyz().to('AU'))
+pos_B_GTE = pos_B_GTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_B_GTE.cartesian.get_xyz().to('AU'))
+pos_E_HME = pos_E_HME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_HME.cartesian.get_xyz().to('AU'))
+pos_E_HTE = pos_E_HTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_E_HTE.cartesian.get_xyz().to('AU'))
+pos_S_GME = pos_S_GME.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_S_GME.cartesian.get_xyz().to('AU'))
+pos_S_GTE = pos_S_GTE.cartesian.get_xyz().to('AU')/np.linalg.norm(pos_S_GTE.cartesian.get_xyz().to('AU'))
+
+C_I2G = frameConversion.inert2geo(t_start,t_equinox, t_veq)
 C_G2I = C_I2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
@@ -63,7 +96,7 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], IC[-1]])   # IC[-1] for 1 period
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*IC[-1]])   # IC[-1] for 1 period
 
 # Propagate the dynamics in the CRTBP model
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
@@ -133,7 +166,7 @@ for kk in np.arange(len(timesCRTBP)):
 pos_H, vel_H, Tp_dim = frameConversion.convertIC_I2H(posCRTBP[0], velCRTBP[0], t_start, mu_star, C_I2G, timesCRTBP[-1])
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), 1*Tp_dim.value)   # Change to Tp_dim.value for one orbit
+state0 = np.append(np.append(pos_H.value, vel_H.value), 5*Tp_dim.value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start)
@@ -177,23 +210,39 @@ for ii in np.arange(len(timesFF_mjd)):
     r_EMG = frameConversion.icrs2gmec(r_EMO, time)
     r_SunG = frameConversion.icrs2gmec(r_SunO, time)
     r_MoonG = frameConversion.icrs2gmec(r_MoonO, time)
-
-    # Change the origin to the EM barycenter, G frame
-    r_PEM = (r_PG - r_EMG).to('AU')
-    r_SunEM = (r_SunG - r_EMG).to('AU')
-    r_EarthEM = -r_EMG.to('AU')
-    r_MoonEM = (r_MoonG - r_EMG).to('AU')
     
-    r_PEM_g[ii, :] = r_PEM
-    r_SunEM_g[ii, :] = r_SunEM
-    r_EarthEM_g[ii, :] = r_EarthEM
-    r_MoonEM_g[ii, :] = r_MoonEM
+    r_PI = C_G2I@r_PG
+    r_EMI = C_G2I@r_EMG
+    r_SunI = C_G2I@r_SunG
+    r_MoonI = C_G2I@r_MoonG
+    
+    r_PEM = (r_PI - r_EMI).to('AU')
+    r_SunEM = (r_SunI - r_EMI).to('AU')
+    r_EarthEM = -r_EMI.to('AU')
+    r_MoonEM = (r_MoonI - r_EMI).to('AU')
+    
+    r_PEM_i[ii, :] = r_PEM
+    r_SunEM_i[ii, :] = r_SunEM
+    r_EarthEM_i[ii, :] = r_EarthEM
+    r_MoonEM_i[ii, :] = r_MoonEM
 
-    # Convert from G frame to I frame
-    r_PEM_i[ii, :] = C_G2I@r_PEM
-    r_SunEM_i[ii, :] = C_G2I@r_SunEM
-    r_EarthEM_i[ii, :] = C_G2I@r_EarthEM
-    r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
+
+#    # Change the origin to the EM barycenter, G frame
+#    r_PEM = (r_PG - r_EMG).to('AU')
+#    r_SunEM = (r_SunG - r_EMG).to('AU')
+#    r_EarthEM = -r_EMG.to('AU')
+#    r_MoonEM = (r_MoonG - r_EMG).to('AU')
+#    
+#    r_PEM_g[ii, :] = r_PEM
+#    r_SunEM_g[ii, :] = r_SunEM
+#    r_EarthEM_g[ii, :] = r_EarthEM
+#    r_MoonEM_g[ii, :] = r_MoonEM
+#
+#    # Convert from G frame to I frame
+#    r_PEM_i[ii, :] = C_G2I@r_PEM
+#    r_SunEM_i[ii, :] = C_G2I@r_SunEM
+#    r_EarthEM_i[ii, :] = C_G2I@r_EarthEM
+#    r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
 
 #ax1 = plt.figure().add_subplot(projection='3d')
 #ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
@@ -227,16 +276,16 @@ plt.legend()
 #ax3.set_zlabel('Z [AU]')
 #plt.legend()
 
-ax4 = plt.figure().add_subplot(projection='3d')
-ax4.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')
-ax4.plot(r_CRTBP_G[:,0], r_CRTBP_G[:,1], r_CRTBP_G[:,2], 'r-.', label='CRTBP')
-ax4.plot(r_EarthEM_g[:,0], r_EarthEM_g[:,1], r_EarthEM_g[:,2], 'g', label='Earth')
-ax4.plot(r_MoonEM_g[:,0], r_MoonEM_g[:,1], r_MoonEM_g[:,2], 'k', label='Moon')
-ax4.set_title('FF vs CRTBP in G frame (GCRS centered at EM)')
-ax4.set_xlabel('X [AU]')
-ax4.set_ylabel('Y [AU]')
-ax4.set_zlabel('Z [AU]')
-plt.legend()
+#ax4 = plt.figure().add_subplot(projection='3d')
+##ax4.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')
+##ax4.plot(r_CRTBP_G[:,0], r_CRTBP_G[:,1], r_CRTBP_G[:,2], 'r-.', label='CRTBP')
+##ax4.plot(r_EarthEM_g[:,0], r_EarthEM_g[:,1], r_EarthEM_g[:,2], 'g', label='Earth')
+#ax4.plot(r_MoonEM_g[:,0], r_MoonEM_g[:,1], r_MoonEM_g[:,2], 'k', label='Moon')
+#ax4.set_title('FF vs CRTBP in G frame (GCRS centered at EM)')
+#ax4.set_xlabel('X [AU]')
+#ax4.set_ylabel('Y [AU]')
+#ax4.set_zlabel('Z [AU]')
+#plt.legend()
 
 #ax5 = plt.figure().add_subplot(projection='3d')
 #ax5.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')

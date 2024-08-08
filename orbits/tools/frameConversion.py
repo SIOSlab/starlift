@@ -62,7 +62,7 @@ def rot(th, axis):
     return rot_th
 
     
-def equinoxAngle(r_LAAN, t_LAAN, equinox):
+def equinoxAngle(r_LAAN, r_veq, t_LAAN, t_veq):
     """Finds the angle between the GMECL equinox and the moon's ascending node
 
     Args:
@@ -77,22 +77,15 @@ def equinoxAngle(r_LAAN, t_LAAN, equinox):
 
     """
     
-    r_S_et = get_body_barycentric_posvel('Sun', equinox)[0].get_xyz()
-    r_EM_et = get_body_barycentric_posvel('Earth-Moon-Barycenter', equinox)[0].get_xyz()
-    
-    r_Sun_et = icrs2gmec(r_S_et, equinox)
-    r_Bary_et = icrs2gmec(r_EM_et, equinox)
-    
-    r_SB_et = r_Sun_et - r_Bary_et
-    n_SB_et = r_SB_et/np.linalg.norm(r_SB_et)
+    n_veq = r_veq/np.linalg.norm(r_veq)
     n_LAAN = r_LAAN/np.linalg.norm(r_LAAN)
-    
-    dt = (t_LAAN - equinox).value
+
+    dt = (t_LAAN - t_veq).value
     t_mod = np.mod(dt, 27.321582)
     if t_mod < 27.321582/2:
-        sign2 = 1
+        sign = 1
     elif t_mod > 27.321582/2 and t_mod < 27.321582:
-        sign2 = -1
+        sign = -1
         
 #    import matplotlib.pyplot as plt
 #    ax2 = plt.figure().add_subplot(projection='3d')
@@ -106,10 +99,10 @@ def equinoxAngle(r_LAAN, t_LAAN, equinox):
 #    plt.show()
 #    breakpoint()
 
-    r_sin = np.linalg.norm(np.cross(n_LAAN, n_SB_et))
-    r_cos = np.dot(n_LAAN, n_SB_et)
-    theta = np.arctan2(sign2*r_sin, r_cos)
-    breakpoint()
+    r_sin = np.linalg.norm(np.cross(n_LAAN, n_veq))
+    r_cos = np.dot(n_LAAN, n_veq)
+    theta = np.arctan2(sign*r_sin, r_cos)
+
     return theta
     
 def rotAngle(currentTime, startTime):
@@ -128,31 +121,31 @@ def rotAngle(currentTime, startTime):
     """
     
     
-    r_EM_ct = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz()
-    r_EM_st = get_body_barycentric_posvel('Earth-Moon-Barycenter', startTime)[0].get_xyz()
+    r_M_ct = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
+    r_M_st = get_body_barycentric_posvel('Moon', startTime)[0].get_xyz()
 
-    r_EarthEM_ct = -icrs2gmec(r_EM_ct, currentTime)
-    r_EarthEM_st = -icrs2gmec(r_EM_st, startTime)
+    r_Moon_ct = -icrs2gmec(r_M_ct, currentTime)
+    r_Moon_st = -icrs2gmec(r_M_st, startTime)
 
-    norm_ct = np.linalg.norm(r_EarthEM_ct)
-    norm_st = np.linalg.norm(r_EarthEM_st)
+    norm_ct = np.linalg.norm(r_Moon_ct)
+    norm_st = np.linalg.norm(r_Moon_st)
 
-    n_vec = np.cross(r_EarthEM_ct, r_EarthEM_st.T)
+    n_vec = np.cross(r_Moon_ct, r_Moon_st.T)
     
     dt = (currentTime - startTime).value
     t_mod = np.mod(dt, 27.321582)
     if t_mod < 27.321582/2:
-        sign2 = 1
+        sign = 1
     elif t_mod > 27.321582/2 and t_mod < 27.321582:
-        sign2 = -1
+        sign = -1
     r_sin = (np.linalg.norm(n_vec)/(norm_ct*norm_st))
-    r_cos = (np.dot(r_EarthEM_ct/norm_ct, r_EarthEM_st.T/norm_st))
-    theta = np.arctan2(sign2*r_sin, r_cos)
+    r_cos = (np.dot(r_Moon_ct/norm_ct, r_Moon_st.T/norm_st))
+    theta = np.arctan2(sign*r_sin, r_cos)
 
     return theta
 
 
-def rotMatAxisAng(n_hat, theta):
+def rotMatAxisAng(n_vec, theta):
     """Computes a rotation matrix given an axis of rotation and an angle of rotation
 
     Args:
@@ -166,7 +159,7 @@ def rotMatAxisAng(n_hat, theta):
             A 3x3 rotation matrix
 
     """
-
+    n_hat = n_vec/np.linalg.norm(n_vec)
     r_skew = np.array([[0, -n_hat[2], n_hat[1]],
                        [n_hat[2], 0, -n_hat[0]],
                        [-n_hat[1], n_hat[0], 0]])
@@ -176,8 +169,8 @@ def rotMatAxisAng(n_hat, theta):
     return R
     
 
-def inert2geo(startTime, equinox):
-    """Computes the DCM to go from the inertial Earth-Moon CRTBP perifocal frame (I frame) to the GeocentricMeanEcliptic
+def inert2geo(startTime, equinox, t_veq):
+    """Computes the DCM to go from the inertial Earth-Moon CRTBP perifocal frame (P frame) to the GeocentricMeanEcliptic
      frame centered at the Earth-Moon barycenter (G frame)
 
     Args:
@@ -191,17 +184,14 @@ def inert2geo(startTime, equinox):
             3x3 Array for the directional cosine matrix
 
     """
-
+    # coarse search for LAAN vector
     tarray = startTime + np.arange(28)*u.d
     r_moon = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
-    r_bary = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
 
     ctr = 0
     r_m = np.zeros([len(tarray), 3])
     for ii in tarray:
-        tmp1 = icrs2gmec(r_moon[:, ctr], ii).to('AU').value
-        tmp2 = icrs2gmec(r_bary[:, ctr], ii).to('AU').value
-        r_m[ctr, :] = tmp1 - tmp2
+        r_m[ctr, :] = icrs2gmec(r_moon[:, ctr], ii).to('AU').value
         ctr = ctr + 1
     
     ZZ = r_m[:, 2]
@@ -209,6 +199,7 @@ def inert2geo(startTime, equinox):
     diffZ = np.diff(signZ)
     indZ = np.argwhere(2 == diffZ)[0][0]
     
+    # fine search for LAAN vector
     t1 = tarray[indZ]
     t2 = tarray[indZ + 1]
     dt = (t2 - t1)/2
@@ -217,24 +208,13 @@ def inert2geo(startTime, equinox):
     r_moon1 = (get_body_barycentric_posvel('Moon', t1)[0].get_xyz()).to('AU')
     r_moon2 = (get_body_barycentric_posvel('Moon', t2)[0].get_xyz()).to('AU')
     r_moon3 = (get_body_barycentric_posvel('Moon', t3)[0].get_xyz()).to('AU')
-    r_bary1 = (get_body_barycentric_posvel('Earth-Moon-Barycenter', t1)[0].get_xyz()).to('AU')
-    r_bary2 = (get_body_barycentric_posvel('Earth-Moon-Barycenter', t2)[0].get_xyz()).to('AU')
-    r_bary3 = (get_body_barycentric_posvel('Earth-Moon-Barycenter', t3)[0].get_xyz()).to('AU')
-    r_moon1 = icrs2gmec(r_moon1, t1)
-    r_moon2 = icrs2gmec(r_moon2, t2)
-    r_moon3 = icrs2gmec(r_moon3, t3)
-    r_bary1 = icrs2gmec(r_bary1, t1)
-    r_bary2 = icrs2gmec(r_bary2, t2)
-    r_bary3 = icrs2gmec(r_bary3, t3)
-
-    r_m1 = r_moon1 - r_bary1
-    r_m2 = r_moon2 - r_bary2
-    r_m3 = r_moon3 - r_bary3
+    r_m1 = icrs2gmec(r_moon1, t1)
+    r_m2 = icrs2gmec(r_moon2, t2)
+    r_m3 = icrs2gmec(r_moon3, t3)
 
     error = r_m3[2]
 
     while np.abs(error.value) > 1E-8:
-        print(np.abs(error.value))
         sign1 = np.sign(r_m1[2])
         sign2 = np.sign(r_m2[2])
         sign3 = np.sign(r_m3[2])
@@ -268,59 +248,73 @@ def inert2geo(startTime, equinox):
             breakpoint()
             
         r_m = (get_body_barycentric_posvel('Moon', t3)[0].get_xyz()).to('AU')
-        r_b = (get_body_barycentric_posvel('Earth-Moon-Barycenter', t3)[0].get_xyz()).to('AU')
-        r_m = icrs2gmec(r_m, t3)
-        r_b = icrs2gmec(r_b, t3)
-        r_m3 = r_m - r_b
+        r_m3 = icrs2gmec(r_m, t3)
             
         error = r_m3[2]
         
     t_LAAN = t3
-    t_LAAN2 = t_LAAN + 27.321582/4*u.d
+    moon_LAAN = get_body_barycentric_posvel('Moon', t_LAAN)[0].get_xyz()
     
-    moon_LAAN1 = get_body_barycentric_posvel('Moon', t_LAAN)[0].get_xyz()
-    moon_LAAN2 = get_body_barycentric_posvel('Moon', t_LAAN2)[0].get_xyz()
-    bary_LAAN1 = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_LAAN)[0].get_xyz()
-    bary_LAAN2 = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_LAAN2)[0].get_xyz()
+    r_LAAN = icrs2gmec(moon_LAAN, t_LAAN)
     
-    m_LAAN1 = icrs2gmec(moon_LAAN1, t_LAAN)
-    m_LAAN2 = icrs2gmec(moon_LAAN2, t_LAAN2)
-    b_LAAN1 = icrs2gmec(bary_LAAN1, t_LAAN)
-    b_LAAN2 = icrs2gmec(bary_LAAN2, t_LAAN2)
+    t_ss = t_veq + (1*u.yr).to('d')/4
     
-    r_LAAN1 = m_LAAN1 - b_LAAN1
-    r_LAAN2 = m_LAAN2 - b_LAAN2
+    b1_h = get_body_barycentric_posvel('Sun', t_veq)[0].get_xyz()
+    b2_h = get_body_barycentric_posvel('Sun', t_ss)[0].get_xyz()
     
-    r_LAAN3 = np.cross(r_LAAN1, r_LAAN2)
-    n_LAAN = r_LAAN3/np.linalg.norm(r_LAAN3)
+    b1_g = icrs2gmec(b1_h, t_veq)
+    b2_g = icrs2gmec(b2_h, t_ss)
+    b3_g = np.cross(b1_g, b2_g).value
+
+    theta_LAAN = equinoxAngle(r_LAAN, b1_g, t_LAAN, t_veq).value
     
-    theta_LAAN = equinoxAngle(r_LAAN1, t_LAAN, equinox)
-    
-    C_LAAN = rotMatAxisAng(n_LAAN, theta_LAAN)
-    
+    C_LAAN = rotMatAxisAng(b3_g, theta_LAAN)
+
     # find INC DCM
     tarray_r = startTime + np.arange(28)/1*u.d
-    r_moons_r = get_body_barycentric_posvel('Moon', tarray)[0].get_xyz()
-    r_barys_r = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray)[0].get_xyz()
+    r_moons_r = get_body_barycentric_posvel('Moon', tarray_r)[0].get_xyz()
 
+    r_m_g = np.zeros([len(tarray_r), 3])
     ctr = 0
     r_m_r = np.zeros([len(tarray_r), 3])
 
     for ii in tarray_r:
-        tmp1 = C_LAAN @ icrs2gmec(r_moons_r[:, ctr], ii).to('AU').value
-        tmp2 = C_LAAN @ icrs2gmec(r_barys_r[:, ctr], ii).to('AU').value
-        r_m_r[ctr,:] = tmp1 - tmp2
+        r_m_g[ctr,:] = icrs2gmec(r_moons_r[:, ctr], ii).to('AU').value
+        r_m_r[ctr,:] = C_LAAN @ icrs2gmec(r_moons_r[:, ctr], ii).to('AU').value
         ctr = ctr + 1
 
-    XX = max(r_m_r[:,0]) - min(r_m_r[:, 0])
-    YY = max(r_m_r[:,1]) - min(r_m_r[:, 1])
-    ZZ = max(r_m_r[:,2]) - min(r_m_r[:, 2])
-
-    theta_INC = -np.deg2rad(5.145) #np.arctan2(ZZ,YY)
-
-    n_INC = r_LAAN1/np.linalg.norm(r_LAAN1)
-
+    n_INC = b1_g/np.linalg.norm(b1_g)
+    
+#    rise = max(r_m_r[:,2]) - min(r_m_r[:,2])
+#    if np.abs(n_INC[0]) > np.abs(n_INC[1]):
+#        run = max(r_m_r[:,1]) - min(r_m_r[:,1])
+#    else:
+#        run = max(r_m_r[:,0]) - min(r_m_r[:,0])
+#    theta_INC = -np.arctan2(rise, run)
+    theta_INC = -np.deg2rad(5.145)
     C_INC = rotMatAxisAng(n_INC, theta_INC)
+    
+    r_m_c = np.zeros([len(tarray_r), 3])
+    ctr = 0
+    for ii in tarray_r:
+        r_m_c[ctr,:] = C_INC @ r_m_r[ctr,:]
+        ctr = ctr + 1
+#    
+#    r_LAAN = r_LAAN.to('AU')
+#    b1_g = b1_g.to('AU')*.002
+#    import matplotlib.pyplot as plt
+#    ax2 = plt.figure().add_subplot(projection='3d')
+##    ax2.plot(r_m_g[:, 0], r_m_g[:, 1], r_m_g[:, 2], 'k', label='start')
+##    ax2.plot(r_m_r[:, 0], r_m_r[:, 1], r_m_r[:, 2], 'b', label='LAAN')
+##    ax2.plot([0, r_LAAN[0].value], [0, r_LAAN[1].value], [0, r_LAAN[2].value], 'r', label='node vector')
+##    ax2.plot([0, b1_g[0].value], [0, b1_g[1].value], [0, b1_g[2].value], 'g', label='vernal equinox vector')
+#    ax2.plot(r_m_c[:, 0], r_m_c[:, 1], r_m_c[:, 2], 'g', label='LAAN + INC')
+#    ax2.set_xlabel('X [AU]')
+#    ax2.set_ylabel('Y [AU]')
+#    ax2.set_zlabel('Z [AU]')
+#    plt.legend()
+#    plt.show()
+#    breakpoint()
 
     # find AOP DCM
     # rough search
@@ -331,20 +325,23 @@ def inert2geo(startTime, equinox):
 
     # fine search
     t_AOP_r = tarray_r[r_ind_r-1]
+#    tarray_f = startTime + np.arange(28)/1*u.d
     tarray_f = t_AOP_r + 0.5*u.d + np.arange(1600)/800*u.d
     
     r_moons_f = get_body_barycentric_posvel('Moon', tarray_f)[0].get_xyz()
-    r_barys_f = get_body_barycentric_posvel('Earth-Moon-Barycenter', tarray_f)[0].get_xyz()
 
     ctr = 0
     r_m_f = np.zeros([len(tarray_f), 3])
 
     for ii in tarray_f:
-        tmp1 = C_LAAN @ icrs2gmec(r_moons_f[:, ctr], ii).to('AU').value
-        tmp2 = C_LAAN @ icrs2gmec(r_barys_f[:, ctr], ii).to('AU').value
-        r_m_f[ctr,:] = tmp1 - tmp2
+        r_m_f[ctr,:] = C_INC @ C_LAAN @ icrs2gmec(r_moons_f[:, ctr], ii).to('AU').value
         ctr = ctr + 1
         
+#    ZZ = max(r_m_f[:,2]) - min(r_m_f[:,2])
+#    YY = max(r_m_f[:,1]) - min(r_m_f[:,1])
+#    XX = max(r_m_f[:,0]) - min(r_m_f[:,0])
+#
+#    breakpoint()
     r_norm_f = np.linalg.norm(r_m_f, axis=1)
     r_min_f = min(r_norm_f)
     
@@ -353,14 +350,54 @@ def inert2geo(startTime, equinox):
     
     theta_AOP = rotAngle(t_AOP, t_LAAN).value
     
-    n_AOP = C_INC @ C_LAAN @ n_LAAN
-    
+#    n_AOP = C_INC @ C_LAAN @ b3_g
+    n_AOP = np.array([0, 0, 1])
     C_AOP = rotMatAxisAng(n_AOP, theta_AOP)
 
-    C_G2I = C_AOP @ C_INC @ C_LAAN
-    C_I2G = C_G2I.T
+    C_G2P = C_AOP @ C_INC @ C_LAAN
+#    breakpoint()
 
+    ctr = 0
+    r_m_e = np.zeros([len(tarray_r), 3])
+
+    for ii in tarray_r:
+        r_m_e[ctr,:] = C_AOP @ r_m_c[ctr,:]
+        ctr = ctr + 1
+        
+    C_P2I = peri2inert(r_m_e[0,:])
+    
+    C_G2I = C_P2I @ C_G2P
+    C_I2G = C_G2I.T
+    
+#    n_AOP = n_AOP/np.linalg.norm(n_AOP)*1E-5
+#    import matplotlib.pyplot as plt
+#    ax2 = plt.figure().add_subplot(projection='3d')
+##    ax2.plot(r_m_g[:, 0], r_m_g[:, 1], r_m_g[:, 2], 'k', label='start')
+##    ax2.plot(r_m_r[:, 0], r_m_r[:, 1], r_m_r[:, 2], 'b', label='LAAN')
+#    ax2.plot(r_m_c[:, 0], r_m_c[:, 1], r_m_c[:, 2], 'r', label='LAAN + INC')
+##    ax2.plot([0, r_LAAN[0].value], [0, r_LAAN[1].value], [0, r_LAAN[2].value], 'r', label='node vector')
+##    ax2.plot([0, b1_g[0].value], [0, b1_g[1].value], [0, b1_g[2].value], 'g', label='vernal equinox vector')
+#    ax2.plot([0, n_AOP[0]], [0, n_AOP[1]], [0, n_AOP[2]], 'y', label='n AOP vector')
+#    ax2.plot(r_m_e[:, 0], r_m_e[:, 1], r_m_e[:, 2], 'g', label='LAAN + INC + AOP')
+#    ax2.set_xlabel('X [AU]')
+#    ax2.set_ylabel('Y [AU]')
+#    ax2.set_zlabel('Z [AU]')
+#    plt.legend()
+#    plt.show()
+#    breakpoint()
     return C_I2G
+    
+def peri2inert(pos):
+    i1 = np.array([1, 0, 0])
+    p1 = np.array([pos[0], pos[1], 0])
+    p1 = p1/np.linalg.norm(p1)
+    
+    r_sin = np.linalg.norm(np.cross(i1, p1))
+    r_cos = np.dot(i1, p1)
+    theta = np.arctan2(r_sin, r_cos)
+    C_P2I = rot(theta,3)
+
+    return C_P2I
     
     
 def inert2rot(currentTime, startTime):
@@ -639,18 +676,18 @@ def convertIC_I2H(pos_I, vel_I, currentTime, mu_star, C_I2G, Tp_can=None):
     vel_G = C_I2G @ v_dim
     vel_GMECL = vel_G + velEMB_E
 
-    pos_H, vel_H = gmec2icrs(pos_GCRS, currentTime, vel_GMECL)
+    pos_H, vel_H = gmec2icrs(pos_GMECL, currentTime, vel_GMECL)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
     
-    tmp_G = icrs2gcrs(pos_H, currentTime)
+    tmp_G = icrs2gmec(pos_H, currentTime)
     tmp_GMECL = tmp_G - posEMB_E
-    tmp_I = C_B2G.T @ tmp_GMECL
+    tmp_I = C_I2G.T @ tmp_GMECL
     
     tmpM_H = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
-    tmpM_G = icrs2gcrs(tmpM_H, currentTime).to('AU')
+    tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
     tmpM_GMECL = tmpM_G - posEMB_E
-    tmpM_I = C_B2G.T @ tmpM_GMECL
+    tmpM_I = C_I2G.T @ tmpM_GMECL
     
 #    breakpoint()
 
