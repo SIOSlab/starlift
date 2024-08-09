@@ -228,7 +228,7 @@ def statePropCRTBP_R(freeVar, mu_star):
     return states, times
 
 
-def statePropFF(state0, t_mjd):
+def statePropFF(state0, t_mjd,timesTMP):
     """Propagates the dynamics using the free variables in the full force model
 
     Args:
@@ -249,7 +249,7 @@ def statePropFF(state0, t_mjd):
     T = state0[-1]
 
     # sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA',t_eval=np.arange(0,T,1E-4))
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
 
     states = sol_int.y.T
     times = sol_int.t

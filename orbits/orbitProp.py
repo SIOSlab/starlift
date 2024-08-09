@@ -36,7 +36,7 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_I2G = frameConversion.inert2geo(t_start,t_equinox, t_veq)
+C_I2G = frameConversion.inert2geo(t_start,t_veq)
 C_G2I = C_I2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
@@ -64,7 +64,7 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*IC[-1]])   # IC[-1] for 1 period
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 61*IC[-1]])
 
 # Propagate the dynamics in the CRTBP model
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
@@ -79,6 +79,7 @@ r_MoonEM_CRTBP = np.zeros([len(timesCRTBP), 3])
 r_CRTBP_rot = np.zeros([len(timesCRTBP), 3])
 r_CRTBP_I = np.zeros([len(timesCRTBP), 3])
 r_CRTBP_G = np.zeros([len(timesCRTBP), 3])
+r_CRTBP_G2 = np.zeros([len(timesCRTBP), 3])
 r_CRTBP_I2 = np.zeros([len(timesCRTBP), 3])
 r_diff = np.zeros([len(timesCRTBP), 3])
 
@@ -87,56 +88,46 @@ r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
 times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
-timesCRTBP_mjd = Time(timesCRTBP + t_start.value, format='mjd', scale='utc')
+timesCRTBP_mjd = Time(times_dim.value + t_start.value, format='mjd', scale='utc')
 
 # Rotate CRTBP to different frames
-for kk in np.arange(len(timesCRTBP)):
+for kk in np.arange(len(timesCRTBP_mjd)):
     time = timesCRTBP_mjd[kk]
 
-#    # Positions of the Moon and EM barycenter relative SS barycenter in H frame
-#    r_MoonO = get_body_barycentric_posvel('Moon', tim)[0].get_xyz().to('AU').value
+    # Positions of the Moon and EM barycenter relative SS barycenter in H frame
     EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)
     r_EMO = EMO[0].get_xyz().to('AU').value
-#
-#    # Convert from H frame to GCRS frame
-    r_EMG = (frameConversion.icrs2gmec(r_EMO * u.AU, time)).to('AU')
-#    r_MoonG = frameConversion.icrs2gmec(r_MoonO * u.AU, time)
-#
-#    # Change the origin to the EM barycenter, G frame
-#    r_EarthEM = -r_EMG
-#    r_MoonEM = r_MoonG - r_EMG
-#
-#    # Convert from G frame to I frame
-#    r_EarthEM_CRTBP[ii, :] = C_G2I @ r_EarthEM.to('AU')
-#    r_MoonEM_CRTBP[ii, :] = C_G2I @ r_MoonEM.to('AU')
 
+    # Convert from H frame to GCRS frame
+    r_EMG = (frameConversion.icrs2gmec(r_EMO * u.AU, time)).to('AU')
 
     # Convert to AU
-#    r_PEM_CRTBP[ii, :] = (unitConversion.convertPos_to_dim(posCRTBP[ii, :])).to('AU')
     r_dim = (unitConversion.convertPos_to_dim(posCRTBP[kk, :])).to('AU').value
     r_EM = C_I2G @ r_dim
-    r_GCRS = r_EM +  r_EMG.value
 
     r_PO_H, _ = frameConversion.convertSC_I2H(posCRTBP[kk,:], velCRTBP[kk,:], time, C_I2G)
     r_PO_CRTBP[kk, :] = r_PO_H
     
+    r_PE_GME = frameConversion.icrs2gmec(r_PO_H, time)
+    r_CRTBP_G[kk, :] = r_EM
+    r_CRTBP_G2[kk,:] = (r_PE_GME - r_EMG).to('AU')
+#    r_CRTBP_G2[kk,:] = (r_PE_GME).to('AU')
+    
+    r_CRTBP_I[kk,:] = r_dim
+    r_CRTBP_I2[kk, :] = C_G2I @ (r_PE_GME - r_EMG).to('AU')
+    
     C_I2R = frameConversion.inert2rot(time,t_start)
     r_CRTBP_rot[kk,:] = C_I2R @ r_dim
-    r_CRTBP_I[kk,:] = r_dim
-#    r_CRTBP_G[kk,:] = r_GCRS
-    r_CRTBP_G[kk, :] = r_EM
-    r_CRTBP_I2[kk, :] = C_G2I @ r_EM
-    
-    r_diff[kk,:] = C_G2I @ r_EM - r_dim
+
 
 # Convert position from I frame to H frame [AU]
-pos_H, vel_H, Tp_dim = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G, timesCRTBP[-1])
+pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), 5*Tp_dim.value)   # Change to Tp_dim.value for one orbit
+state0 = np.append(np.append(pos_H.value, vel_H.value), times_dim[-1].value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
-statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start)
+statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start,times_dim)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
@@ -174,62 +165,93 @@ for ii in np.arange(len(timesFF_mjd)):
 
     # Convert from H frame to GCRS frame
     r_PG = frameConversion.icrs2gmec(posFF[ii]*u.AU, time)
-    r_EMG = frameConversion.icrs2gmec(r_EMO, time)
+    r_EMG2 = frameConversion.icrs2gmec(r_EMO, time)
     r_SunG = frameConversion.icrs2gmec(r_SunO, time)
     r_MoonG = frameConversion.icrs2gmec(r_MoonO, time)
     
-    r_PI = C_G2I@r_PG
-    r_EMI = C_G2I@r_EMG
-    r_SunI = C_G2I@r_SunG
-    r_MoonI = C_G2I@r_MoonG
+    r_PEM_g[ii, :] = (r_PG - r_EMG2).to('AU').value
+#    r_PEM_g[ii, :] = (r_PG).to('AU').value
+    r_SunEM = (r_SunG - r_EMG2).to('AU').value
+    r_EarthEM = -r_EMG2.to('AU').value
+    r_MoonEM = (r_MoonG - r_EMG2).to('AU').value
+        
+    r_PEM_i[ii, :] = C_G2I@r_PEM_g[ii, :]
+    r_EarthEM_i[ii, :] = C_G2I@r_EarthEM
+    r_SunEM_i[ii, :] = C_G2I@r_SunEM
+    r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
     
-    r_PEM = (r_PI - r_EMI).to('AU')
-    r_SunEM = (r_SunI - r_EMI).to('AU')
-    r_EarthEM = -r_EMI.to('AU')
-    r_MoonEM = (r_MoonI - r_EMI).to('AU')
-    
-    r_PEM_i[ii, :] = r_PEM
-    r_SunEM_i[ii, :] = r_SunEM
-    r_EarthEM_i[ii, :] = r_EarthEM
-    r_MoonEM_i[ii, :] = r_MoonEM
+#    breakpoint()
 
 
-#    # Change the origin to the EM barycenter, G frame
-#    r_PEM = (r_PG - r_EMG).to('AU')
-#    r_SunEM = (r_SunG - r_EMG).to('AU')
-#    r_EarthEM = -r_EMG.to('AU')
-#    r_MoonEM = (r_MoonG - r_EMG).to('AU')
-#    
-#    r_PEM_g[ii, :] = r_PEM
-#    r_SunEM_g[ii, :] = r_SunEM
-#    r_EarthEM_g[ii, :] = r_EarthEM
-#    r_MoonEM_g[ii, :] = r_MoonEM
-#
-#    # Convert from G frame to I frame
-#    r_PEM_i[ii, :] = C_G2I@r_PEM
-#    r_SunEM_i[ii, :] = C_G2I@r_SunEM
-#    r_EarthEM_i[ii, :] = C_G2I@r_EarthEM
-#    r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
+ax1 = plt.figure().add_subplot(projection='3d')
+ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
+ax1.plot(r_PO_CRTBP[:,0], r_PO_CRTBP[:,1], r_PO_CRTBP[:,2], 'r-.', label='CRTBP')
+ax1.scatter(posFF[0, 0], posFF[0, 1], posFF[0, 2], c='b', marker='*', label='Full Force Start')
+ax1.scatter(posFF[-1, 0], posFF[-1, 1], posFF[-1, 2], c='b', marker='D', label='Full Force End')
+ax1.scatter(r_PO_CRTBP[0, 0], r_PO_CRTBP[0, 1], r_PO_CRTBP[0, 2], c='r', marker='*', label='CRTBP Start')
+ax1.scatter(r_PO_CRTBP[-1, 0], r_PO_CRTBP[-1, 1], r_PO_CRTBP[-1, 2], c='r', marker='D', label='CRTBP End')
+ax1.set_title('FF vs CRTBP in H frame (ICRS)')
+ax1.set_xlabel('X [AU]')
+ax1.set_ylabel('Y [AU]')
+ax1.set_zlabel('Z [AU]')
+plt.legend()
 
-#ax1 = plt.figure().add_subplot(projection='3d')
-#ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
-#ax1.plot(r_PO_CRTBP[:,0], r_PO_CRTBP[:,1], r_PO_CRTBP[:,2], 'r-.', label='CRTBP')
-#ax1.set_title('FF vs CRTBP in H frame (ICRS)')
-#ax1.set_xlabel('X [AU]')
-#ax1.set_ylabel('Y [AU]')
-#ax1.set_zlabel('Z [AU]')
-#plt.legend()
+fig, axs = plt.subplots(3)
+fig.suptitle('ICRS differences')
+axs[0].plot(timesFF, posFF[:,0]-r_PO_CRTBP[:,0])
+axs[0].set_ylabel('x [AU]')
+axs[1].plot(timesFF, posFF[:,1]-r_PO_CRTBP[:,1])
+axs[1].set_ylabel('y [AU]')
+axs[2].plot(timesFF, posFF[:,2]-r_PO_CRTBP[:,2])
+axs[2].set_ylabel('z [AU]')
+axs[2].set_xlabel('time [d]')
+
+fig, axs = plt.subplots(3)
+fig.suptitle('ICRS differences')
+axs[0].plot(timesFF[:635], posFF[:635,0]-r_PO_CRTBP[:635,0])
+axs[0].set_ylabel('x [AU]')
+axs[1].plot(timesFF[:635], posFF[:635,1]-r_PO_CRTBP[:635,1])
+axs[1].set_ylabel('y [AU]')
+axs[2].plot(timesFF[:635], posFF[:635,2]-r_PO_CRTBP[:635,2])
+axs[2].set_ylabel('z [AU]')
+axs[2].set_xlabel('time [d]')
+
 
 ax2 = plt.figure().add_subplot(projection='3d')
 ax2.plot(r_PEM_i[:, 0], r_PEM_i[:, 1], r_PEM_i[:, 2], 'b', label='Full Force')
+ax2.plot(r_CRTBP_I2[:, 0], r_CRTBP_I2[:, 1], r_CRTBP_I2[:, 2], 'g', label='CRTBP FF conversion method')
 ax2.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r-.', label='CRTBP')
 ax2.plot(r_EarthEM_i[:, 0], r_EarthEM_i[:, 1], r_EarthEM_i[:, 2], 'g', label='Earth')
 ax2.plot(r_MoonEM_i[:, 0], r_MoonEM_i[:, 1], r_MoonEM_i[:, 2], 'k', label='Moon')
+#ax2.scatter(r_PEM_i[0, 0], r_PEM_i[0, 1], r_PEM_i[0, 2], c='b', marker='*', label='Full Force Start')
+#ax2.scatter(r_PEM_i[-1, 0], r_PEM_i[-1, 1], r_PEM_i[-1, 2], c='b', marker='D', label='Full Force End')
+#ax2.scatter(r_CRTBP_I[0, 0], r_CRTBP_I[0, 1], r_CRTBP_I[0, 2], c='r', marker='*', label='CRTBP Start')
+#ax2.scatter(r_CRTBP_I[-1, 0], r_CRTBP_I[-1, 1], r_CRTBP_I[-1, 2], c='r', marker='D', label='CRTBP End')
 ax2.set_title('FF vs CRTBP in I frame (Inertial EM)')
 ax2.set_xlabel('X [AU]')
 ax2.set_ylabel('Y [AU]')
 ax2.set_zlabel('Z [AU]')
 plt.legend()
+
+fig, axs = plt.subplots(3)
+fig.suptitle('I frame differences')
+axs[0].plot(timesFF, r_PEM_i[:,0]-r_CRTBP_I[:,0])
+axs[0].set_ylabel('x [AU]')
+axs[1].plot(timesFF, r_PEM_i[:,1]-r_CRTBP_I[:,1])
+axs[1].set_ylabel('y [AU]')
+axs[2].plot(timesFF, r_PEM_i[:,2]-r_CRTBP_I[:,2])
+axs[2].set_ylabel('z [AU]')
+axs[2].set_xlabel('time [d]')
+
+fig, axs = plt.subplots(3)
+fig.suptitle('I frame differences')
+axs[0].plot(timesFF[:635], r_PEM_i[:635,0]-r_CRTBP_I[:635,0])
+axs[0].set_ylabel('x [AU]')
+axs[1].plot(timesFF[:635], r_PEM_i[:635,1]-r_CRTBP_I[:635,1])
+axs[1].set_ylabel('y [AU]')
+axs[2].plot(timesFF[:635], r_PEM_i[:635,2]-r_CRTBP_I[:635,2])
+axs[2].set_ylabel('z [AU]')
+axs[2].set_xlabel('time [d]')
 
 #ax3 = plt.figure().add_subplot(projection='3d')
 #ax3.plot(r_PEM_i[:, 0], r_PEM_i[:, 1], r_PEM_i[:, 2], 'b', label='Full Force')
@@ -243,16 +265,37 @@ plt.legend()
 #ax3.set_zlabel('Z [AU]')
 #plt.legend()
 
-#ax4 = plt.figure().add_subplot(projection='3d')
-##ax4.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')
-##ax4.plot(r_CRTBP_G[:,0], r_CRTBP_G[:,1], r_CRTBP_G[:,2], 'r-.', label='CRTBP')
-##ax4.plot(r_EarthEM_g[:,0], r_EarthEM_g[:,1], r_EarthEM_g[:,2], 'g', label='Earth')
-#ax4.plot(r_MoonEM_g[:,0], r_MoonEM_g[:,1], r_MoonEM_g[:,2], 'k', label='Moon')
-#ax4.set_title('FF vs CRTBP in G frame (GCRS centered at EM)')
-#ax4.set_xlabel('X [AU]')
-#ax4.set_ylabel('Y [AU]')
-#ax4.set_zlabel('Z [AU]')
-#plt.legend()
+ax4 = plt.figure().add_subplot(projection='3d')
+ax4.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')
+ax4.plot(r_CRTBP_G2[:,0], r_CRTBP_G2[:,1], r_CRTBP_G2[:,2], 'g', label='CRTBP FF method')
+ax4.plot(r_CRTBP_G[:,0], r_CRTBP_G[:,1], r_CRTBP_G[:,2], 'r-.', label='CRTBP')
+ax4.plot(r_EarthEM_g[:,0], r_EarthEM_g[:,1], r_EarthEM_g[:,2], 'g', label='Earth')
+ax4.plot(r_MoonEM_g[:,0], r_MoonEM_g[:,1], r_MoonEM_g[:,2], 'k', label='Moon')
+ax4.set_title('FF vs CRTBP in G frame (GME centered at EM)')
+ax4.set_xlabel('X [AU]')
+ax4.set_ylabel('Y [AU]')
+ax4.set_zlabel('Z [AU]')
+plt.legend()
+
+fig, axs = plt.subplots(3)
+fig.suptitle('G frame differences')
+axs[0].plot(timesFF, r_PEM_g[:,0]-r_CRTBP_G[:,0])
+axs[0].set_ylabel('x [AU]')
+axs[1].plot(timesFF, r_PEM_g[:,1]-r_CRTBP_G[:,1])
+axs[1].set_ylabel('y [AU]')
+axs[2].plot(timesFF, r_PEM_g[:,2]-r_CRTBP_G[:,2])
+axs[2].set_ylabel('z [AU]')
+axs[2].set_xlabel('time [d]')
+
+fig, axs = plt.subplots(3)
+fig.suptitle('G frame differences')
+axs[0].plot(timesFF[:635], r_PEM_g[:635,0]-r_CRTBP_G[:635,0])
+axs[0].set_ylabel('x [AU]')
+axs[1].plot(timesFF[:635], r_PEM_g[:635,1]-r_CRTBP_G[:635,1])
+axs[1].set_ylabel('y [AU]')
+axs[2].plot(timesFF[:635], r_PEM_g[:635,2]-r_CRTBP_G[:635,2])
+axs[2].set_ylabel('z [AU]')
+axs[2].set_xlabel('time [d]')
 
 #ax5 = plt.figure().add_subplot(projection='3d')
 #ax5.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')
