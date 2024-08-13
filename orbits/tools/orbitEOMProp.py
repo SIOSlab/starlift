@@ -143,7 +143,13 @@ def FF_EOM(tt, w, t_mjd):
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
     r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
+    v_BaryO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[1].get_xyz().to('AU/d')
 
+    vel = v_PO - v_BaryO.value
+    vx = vel[0]
+    vy = vel[1]
+    vz = vel[2]
+    
     # Distance vectors
     r_PSun = r_PO - r_SunO.value
     r_PEarth = r_PO - r_EarthO.value
@@ -155,7 +161,7 @@ def FF_EOM(tt, w, t_mjd):
     rMoon_mag = np.linalg.norm(r_PMoon)
 
     # Equations of motion
-    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gSun_p = 0 #-gmSun*(r_PSun/rSun_mag**3)
     F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
 

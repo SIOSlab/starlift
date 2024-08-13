@@ -31,8 +31,8 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d + 1*u.yr/4
-t_start = Time(52027, format='mjd', scale='utc')
-#t_start = Time(57727, format='mjd', scale='utc')
+#t_start = Time(52027, format='mjd', scale='utc')
+t_start = Time(57727, format='mjd', scale='utc')
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -125,7 +125,7 @@ for kk in np.arange(len(timesCRTBP_mjd)):
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), 61*10*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
+state0 = np.append(np.append(pos_H.value, vel_H.value), 1*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start) #,times_dim)
