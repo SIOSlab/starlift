@@ -65,7 +65,7 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*IC[-1]])
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 61*IC[-1]])
 
 # Propagate the dynamics in the CRTBP model
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
