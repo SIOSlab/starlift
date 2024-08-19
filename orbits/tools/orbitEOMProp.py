@@ -164,7 +164,8 @@ def FF_EOM(tt, w, t_mjd):
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
     F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
 
-    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p + F_gJupiter_p
+    # F_g = F_gSun_p + F_gEarth_p + F_gMoon_p + F_gJupiter_p
+    F_g = F_gEarth_p + F_gMoon_p  # No Sun, no Jupiter
     
     a_PO = F_g
     
@@ -253,7 +254,7 @@ def statePropFF(state0, t_mjd, timesTMP=None):
     
     T = state0[-1]
 
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
 #    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
 
     states = sol_int.y.T

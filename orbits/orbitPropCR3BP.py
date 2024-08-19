@@ -69,7 +69,7 @@ ax = plt.figure().add_subplot(projection='3d')
 ax.plot(pos_au[:, 0], pos_au[:, 1], pos_au[:, 2], color='blue', label='Propagated CRTBP')
 ax.plot(moon_r*np.cos(times), moon_r*np.sin(times), 0, color='gray', label='Moon')
 ax.plot(earth_r*np.cos(times), earth_r*np.sin(times), 0, color='green', label='Earth')
-# ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
+ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
 limit = 0.003
 ax.set_xlim([-limit, limit])
 ax.set_ylim([-limit, limit])
