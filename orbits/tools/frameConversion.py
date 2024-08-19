@@ -61,10 +61,16 @@ def equinoxAngle(r_LAAN, r_veq, t_LAAN, t_veq):
     """Finds the angle between the GMECL equinox and the moon's ascending node
 
     Args:
-        startTime (astropy Time array):
-            Mission start time in MJD
-        equinox (astropy Time array):
-            Equinox time in MJD
+        r_LAAN (astropy Quantity array):
+            Longitude of the ascending node vector in Geocentric Mean Ecliptic frame
+            in arbitrary distance units
+        r_veq (astropy Quantity array):
+            Vernal equinnox vector in Geocentric Mean Ecliptic frame in arbitrary
+            distance units
+        t_LAAN (astropy Time array):
+            Longitude of the ascending node time in MJD
+        t_veq (astropy Time array):
+            Vernal equinox time in MJD
 
     Returns:
         theta (float):
@@ -153,7 +159,7 @@ def rotMatAxisAng(n_vec, theta):
     return R
     
 
-def inert2geo(startTime, equinox, t_veq):
+def inert2geo(startTime, t_veq):
     """Computes the DCM to go from the inertial Earth-Moon CRTBP frame
     (I frame) to the GeocentricMeanEcliptic frame centered at the Earth-Moon barycenter
     (G frame)
@@ -161,6 +167,8 @@ def inert2geo(startTime, equinox, t_veq):
     Args:
         startTime (astropy Time array):
             Mission start time in MJD
+        t_veq (astropy Time array):
+            Vernal equinox time for 2000 in MJD
 
     Returns:
         C_I2G (float n array):

@@ -133,6 +133,7 @@ def FF_EOM(tt, w, t_mjd):
     gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
     gmEarth = const.GM_earth.to('AU3/d2').value
     gmMoon = 0.109318945437743700E-10              # from de432s header
+    gmJupiter = const.GM_jup.to('AU3/d2').value
     
     r_PO = np.array([x, y, z])  # AU
     v_PO = np.array([vx, vy, vz])  # AU/d
@@ -143,23 +144,27 @@ def FF_EOM(tt, w, t_mjd):
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
     r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
-
+    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
+    
     # Distance vectors
     r_PSun = r_PO - r_SunO.value
     r_PEarth = r_PO - r_EarthO.value
     r_PMoon = r_PO - r_MoonO.value
+    r_PJupiter = r_PO - r_JupiterO.value
 
     # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
+    rJupiter_mag = np.linalg.norm(r_PJupiter)
 
     # Equations of motion
     F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
     F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
 
-    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p + F_gJupiter_p
     
     a_PO = F_g
     
@@ -228,7 +233,7 @@ def statePropCRTBP_R(freeVar, mu_star):
     return states, times
 
 
-def statePropFF(state0, t_mjd):
+def statePropFF(state0, t_mjd, timesTMP=None):
     """Propagates the dynamics using the free variables in the full force model
 
     Args:
@@ -248,8 +253,8 @@ def statePropFF(state0, t_mjd):
     
     T = state0[-1]
 
-    # sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA',t_eval=np.arange(0,T,1E-4))
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), method='LSODA')
+#    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
 
     states = sol_int.y.T
     times = sol_int.t
