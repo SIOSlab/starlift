@@ -15,6 +15,7 @@ sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
 import orbitEOMProp
+import gmatTools
 #import plot_tools
 
 #import tools.unitConversion as unitConversion
@@ -30,7 +31,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
-t_veq = t_equinox + 79.3125*u.d + 1*u.yr/4
+t_veq = t_equinox + 79.3125*u.d
 #t_start = Time(52027, format='mjd', scale='utc')
 t_start = Time(57727, format='mjd', scale='utc')
 mu_star = 1.215059*10**(-2)
@@ -65,7 +66,7 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 61*IC[-1]])
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 33*IC[-1]])
 
 # Propagate the dynamics in the CRTBP model
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
@@ -184,9 +185,31 @@ for ii in np.arange(len(timesFF_mjd)):
 #    breakpoint()
 
 
+# Obtain CRTBP data from GMAT
+file_name = "gmatFiles/FF_rot.txt"
+gmat_km, gmat_time = gmatTools.extract_pos(file_name)
+gmat_posrot = np.array((gmat_km * u.km).to('AU'))
+
+# Convert to I frame from R frame
+gmat_posinert = np.zeros([len(gmat_time), 3])
+gmat_posgme = np.zeros([len(gmat_time), 3])
+gmat_posicrs = np.zeros([len(gmat_time), 3])
+for ii in np.arange(len(gmat_time)):
+    C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
+    C_R2I = C_I2R.T
+    gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
+    gmat_posgme[ii, :] = C_I2G @ gmat_posinert[ii, :]
+    tmp1 = get_body_barycentric_posvel('Earth-Moon-Barycenter', gmat_time[ii])[0].get_xyz().to('AU')
+    tmp1 = frameConversion.icrs2gmec(tmp1, gmat_time[ii]).to('AU')
+    tmp2 = gmat_posgme[ii, :]*u.AU + tmp1
+    gmat_posicrs[ii, :] = frameConversion.gmec2icrs(tmp2, gmat_time[ii]).to('AU').value
+    
+
+# Plot
 ax1 = plt.figure().add_subplot(projection='3d')
 ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
 ax1.plot(r_PO_CRTBP[:,0], r_PO_CRTBP[:,1], r_PO_CRTBP[:,2], 'r-.', label='CRTBP')
+ax1.plot(gmat_posicrs[:, 0], gmat_posicrs[:, 1], gmat_posicrs[:, 2], color='g', label='GMAT Orbit')
 ax1.scatter(posFF[0, 0], posFF[0, 1], posFF[0, 2], c='b', marker='*', label='Full Force Start')
 ax1.scatter(posFF[-1, 0], posFF[-1, 1], posFF[-1, 2], c='b', marker='D', label='Full Force End')
 ax1.scatter(r_PO_CRTBP[0, 0], r_PO_CRTBP[0, 1], r_PO_CRTBP[0, 2], c='r', marker='*', label='CRTBP Start')
@@ -220,7 +243,7 @@ plt.legend()
 
 ax2 = plt.figure().add_subplot(projection='3d')
 ax2.plot(r_PEM_i[:, 0], r_PEM_i[:, 1], r_PEM_i[:, 2], 'b', label='Full Force')
-ax2.plot(r_CRTBP_I2[:, 0], r_CRTBP_I2[:, 1], r_CRTBP_I2[:, 2], 'g', label='CRTBP FF conversion method')
+ax2.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='g', label='GMAT Orbit')
 ax2.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r-.', label='CRTBP')
 ax2.plot(r_EarthEM_i[:, 0], r_EarthEM_i[:, 1], r_EarthEM_i[:, 2], 'g', label='Earth')
 ax2.plot(r_MoonEM_i[:, 0], r_MoonEM_i[:, 1], r_MoonEM_i[:, 2], 'k', label='Moon')
@@ -268,7 +291,7 @@ plt.legend()
 
 ax4 = plt.figure().add_subplot(projection='3d')
 ax4.plot(r_PEM_g[:, 0], r_PEM_g[:, 1], r_PEM_g[:, 2], 'b', label='Full Force')
-ax4.plot(r_CRTBP_G2[:,0], r_CRTBP_G2[:,1], r_CRTBP_G2[:,2], 'g', label='CRTBP FF method')
+ax4.plot(gmat_posgme[:, 0], gmat_posgme[:, 1], gmat_posgme[:, 2], color='g', label='GMAT Orbit')
 ax4.plot(r_CRTBP_G[:,0], r_CRTBP_G[:,1], r_CRTBP_G[:,2], 'r-.', label='CRTBP')
 ax4.plot(r_EarthEM_g[:,0], r_EarthEM_g[:,1], r_EarthEM_g[:,2], 'g', label='Earth')
 ax4.plot(r_MoonEM_g[:,0], r_MoonEM_g[:,1], r_MoonEM_g[:,2], 'k', label='Moon')

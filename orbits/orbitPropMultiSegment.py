@@ -123,16 +123,16 @@ for kk in np.arange(len(timesCRTBP_mjd)):
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
 
-N = 4
+N = 8
 
-dt = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/N
+dt_epoch = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/(N)
+dt_int = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/(N-1)
 taus = Time(np.zeros(N), format='mjd', scale='utc')
-Ts = Time(np.zeros(N), format='mjd', scale='utc')
-X = np.array([])
-X0 = np.array([])
+Ts = Time(np.ones(N-1)*dt_int, format='jd', scale='utc')
+posvel = np.array([])
 nodeInds = np.array([])
 for ii in np.arange(N):
-    time_i = ii*dt
+    time_i = ii*dt_epoch
 
     difference_array_i = np.absolute(times_dim.value-time_i)
     index_i = difference_array_i.argmin()
@@ -143,33 +143,28 @@ for ii in np.arange(N):
     vel_i = velCRTBP[index_i]
 
     pos_Hi, vel_Hi = frameConversion.convertSC_I2H(pos_i, vel_i, taus[ii], C_I2G)
-    X = np.append(X,np.append(pos_Hi.value, vel_Hi.value))
+    posvel = np.append(posvel,np.append(pos_Hi.value, vel_Hi.value))
 
-    time_f = (ii+1)*dt
-
-    difference_array_f = np.absolute(times_dim.value-time_f)
-    index_f = difference_array_f.argmin()
-
-    tau_f = timesCRTBP_mjd[index_f]
-    pos_f = posCRTBP[index_f]
-    vel_f = velCRTBP[index_f]
-
-    pos_Hf, vel_Hf = frameConversion.convertSC_I2H(pos_f, vel_f, tau_f, C_I2G)
-    
-    X0 = np.append(X0, np.append(pos_Hf.value,vel_Hf.value))
-
-eps = 1E-3
+eps = 1E-8
 error = 10
-
+X = np.append(np.append(posvel,Ts.value),taus.value)
+#print(X)
 while error > eps:
-    Fx = orbitEOMProp.calcFx_FF(X, taus, N, X0, dt)
+    Fx = orbitEOMProp.calcFx_FF(posvel, taus, N, Ts)
     
     error = np.linalg.norm(Fx)
     print('Error is')
     print(error)
-    dFx = orbitEOMProp.calcdFx_FF(X, taus, N, X0, dt)
-
+    dFx = orbitEOMProp.calcdFx_FF(posvel, taus, N, Ts)
+    Xold = X
     X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
+    posvel = X[0:6*N]
+    Ts = Time(X[6*N:7*N-1], format='jd', scale='utc')
+    taus = Time(X[7*N-1:], format='mjd', scale='utc')
+    
+    diff = X - Xold
+    if np.any(diff > .1):
+        breakpoint()
 
 ctr = 0
 posH = np.array([np.nan, np.nan, np.nan])
@@ -179,8 +174,8 @@ posR = np.array([np.nan, np.nan, np.nan])
 posEM = np.array([np.nan, np.nan, np.nan])
 nanArray = np.array([np.nan, np.nan, np.nan])
 timesAll = np.array([])
-for ii in np.arange(N):
-    IC = np.append(X[ctr*6:((ctr+1)*6)], dt)
+for ii in np.arange(N-1):
+    IC = np.append(X[ctr*6:((ctr+1)*6)], Ts[ctr].value)
     tau = taus[ctr]
     states, timesT = orbitEOMProp.statePropFF(IC, tau)
     posFF = states[:, 0:3]

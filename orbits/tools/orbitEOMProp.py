@@ -118,7 +118,7 @@ def FF_EOM(tt, w, t_mjd):
     Args:
         w (~numpy.ndarray(float)):
             State [position in AU, velocity in AU/d]
-        t_mjd (astropy Time array):
+        t_mjd (astropy Time):
             Mission start time in MJD
 
     Returns:
@@ -144,27 +144,27 @@ def FF_EOM(tt, w, t_mjd):
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
     r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
-    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
+#    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
     
     # Distance vectors
     r_PSun = r_PO - r_SunO.value
     r_PEarth = r_PO - r_EarthO.value
     r_PMoon = r_PO - r_MoonO.value
-    r_PJupiter = r_PO - r_JupiterO.value
+#    r_PJupiter = r_PO - r_JupiterO.value
 
     # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
-    rJupiter_mag = np.linalg.norm(r_PJupiter)
+#    rJupiter_mag = np.linalg.norm(r_PJupiter)
 
     # Equations of motion
     F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
     F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
-    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
+#    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
 
-    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p + F_gJupiter_p
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p #+ F_gJupiter_p
     
     a_PO = F_g
     
@@ -239,7 +239,7 @@ def statePropFF(state0, t_mjd, timesTMP=None):
     Args:
         state0 (~numpy.ndarray(float)):
             Position [AU], velocity [AU/d], and propagation time [DU] in the H frame
-        t_mjd (astropy Time array):
+        t_mjd (astropy Time):
             Mission start time in MJD
 
     Returns:
@@ -306,24 +306,43 @@ def calcFx_R(freeVar, mu_star):
     return Fx
 
 
-def calcFx_FF(X, taus, N, X0, dt):
-    """Applies constraints to the free variables for a full force model
+def calcFx_FF(X, taus, N, Ts):
+    """Applies constraints to the free variables in the full force model
 
-    *Add documentation
+    Args:
+        X (~numpy.ndarray(float)):
+            states (position and velocity) stacked in a 1x6N array
+        taus (astropy Time array):
+            epochs stacked in a 1xN array
+        N (int):
+            Number of patch points
+        Ts (astropy Time array):
+            integration times stacked in a 1xN array
+
+    Returns:
+        ~numpy.ndarray(float):
+            constraint array
 
     """
-    ctr = 0
+    
+    ctr1 = 0
     Fx = np.array([])
-
-    for ii in np.arange(N):
-        IC = np.append(X[ctr * 6:((ctr + 1) * 6)], dt)
-        tau = taus[ctr]
-        const = X0[ctr * 6:((ctr + 1) * 6)]
+    for ii in np.arange(N-1):
+        IC = np.append(X[ctr1 * 6:((ctr1 + 1) * 6)], Ts[ctr1].value)
+        tau = taus[ctr1]
+        const = X[ctr1 * 6:((ctr1 + 1) * 6)]
         states, times = statePropFF(IC, tau)
 
         Fx = np.append(Fx, states[-1, :] - const)
 
-        ctr = ctr + 1
+        ctr1 = ctr1 + 1
+    
+    ctr2 = 0
+    for jj in np.arange(N-1):
+        timeEq = taus[ctr2].value + Ts[ctr2].value - taus[ctr2 + 1].value
+        Fx = np.append(Fx, timeEq)
+        
+        ctr2 = ctr2 + 1
     return Fx
 
 
@@ -365,37 +384,74 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
     return dFx
 
 
-def calcdFx_FF(X, taus, N, X0, dt):
+def calcdFx_FF(X, taus, N, Ts):
     """Calculates the Jacobian of the free variables wrt the constraints for the full force model
 
-    *Add documentation
+    Args:
+        X (~numpy.ndarray(float)):
+            states (position and velocity) stacked in a 1x6N array
+        taus (astropy Time array):
+            epochs stacked in a 1xN array
+        N (int):
+            Number of patch points
+        Ts (astropy Time array):
+            integration times stacked in a 1xN array
+
+    Returns:
+        ~numpy.ndarray(float):
+            constraint array
 
     """
-    hstep = 1E-4
+    hstep = 1E-8
 
-    Fx_0 = calcFx_FF(X, taus, N, X0, dt)
+    Fx_0 = calcFx_FF(X, taus, N, Ts)
 
-    dFx = np.zeros((6 * N, 6 * N))
+    dFx = np.zeros((7*(N - 1), 8*N - 1))
     indsXh = np.arange(0, N * 6, 6)
-    indsD = np.arange(0, N * 6, 6)
+    indsD = np.arange(0, (N-1) * 6, 6)
     for ii in np.arange(6):
         dh = np.zeros(N * 6)
         dh[indsXh] = hstep
 
         Xh = X + dh
 
-        Fx_ii = calcFx_FF(Xh, taus, N, X0, dt)
+        Fx_ii = calcFx_FF(Xh, taus, N, Ts)
 
         dFx_ii = (Fx_ii - Fx_0) / hstep
 
         for jj in np.arange(len(indsD)):
             ind1 = indsD[jj]
             ind2 = ind1 + 6
+            
             dFx[jj * 6:(jj + 1) * 6, ind1] = dFx_ii[jj * 6:(jj + 1) * 6]
-
         indsD = indsD + 1
         indsXh = indsXh + 1
+    
+    I6 = -np.identity(6)
+    ind3 = 6
+    ind4 = ind3 + 6
+    for kk in np.arange(N-1):
+        dFx[kk * 6:(kk + 1) * 6, ind3:ind4] = I6
+        ind3 = ind3 + 6
+        ind4 = ind4 + 6
 
+    taus_ll = taus + hstep*u.d
+    Ts_ll = Ts + hstep*u.d
+    dFx_ll_taus = (calcFx_FF(X, taus_ll, N, Ts) - Fx_0) / hstep
+    dFx_ll_Ts = (calcFx_FF(X, taus, N, Ts_ll) - Fx_0) / hstep
+    for ll in np.arange(N-1):
+        dFx[ll * 6:(ll + 1) * 6, 6*N + ll] = dFx_ll_Ts[ll * 6:(ll + 1) * 6]
+        dFx[ll * 6:(ll + 1) * 6, 7*N + ll - 1] = dFx_ll_taus[ll * 6:(ll + 1) * 6]
+
+    ind5 = 6*N
+    ind6 = 7*N - 1
+    for mm in np.arange(N-1):
+        dFx[6*(N-1) + mm, ind5] = 1
+        dFx[6*(N-1) + mm, ind6] = 1
+        dFx[6*(N-1) + mm, ind6 + 1] = -1
+        
+        ind5 = ind5 + 1
+        ind6 = ind6 + 1
     return dFx
 
 
