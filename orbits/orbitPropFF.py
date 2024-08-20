@@ -80,14 +80,14 @@ if theta > np.pi/2:
 rot_matrix = frameConversion.rot(theta, 3)
 IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
-# Convert IC to dimensional, rotating frame (for GMAT)
-pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')
-vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')
-C_I2R = frameConversion.inert2rot(t_mjd, t_mjd)
-pos_dimrot = C_I2R @ pos_dim
-vel_dimrot = C_I2R @ vel_dim
-print('Dimensional position IC in the rotating frame: ', pos_dimrot)
-print('Dimensional velocity IC in the rotating frame: ', vel_dimrot)
+# # Convert IC to dimensional, rotating frame (for GMAT)
+# pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')
+# vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')
+# C_I2R = frameConversion.inert2rot(t_mjd, t_mjd)
+# pos_dimrot = C_I2R @ pos_dim
+# vel_dimrot = C_I2R @ vel_dim
+# print('Dimensional position IC in the rotating frame: ', pos_dimrot)
+# print('Dimensional velocity IC in the rotating frame: ', vel_dimrot)
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
 pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_mjd, C_I2G, Tp_can=None)
@@ -104,7 +104,7 @@ vel = states[:, 3:6]
 pos_can = unitConversion.convertPos_to_canonical(pos * u.AU)
 vel_can = unitConversion.convertVel_to_canonical(vel * u.AU/u.d)
 
-# Sim time in mjd
+# Simulation time in mjd
 times_dim = unitConversion.convertTime_to_dim(times)  # Days from zero
 times_mjd = times_dim + t_mjd  # Days from mission start time
 
@@ -123,7 +123,7 @@ for ii in np.arange(len(times_mjd)):
 
 # ~~~~~PLOT FF SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
-# Obtain CRTBP data from GMAT
+# Obtain FF rotating data from GMAT
 file_name = "gmatFiles/FF_rot.txt"
 gmat_km, gmat_time = gmatTools.extract_pos(file_name)
 gmat_posrot = np.array((gmat_km * u.km).to('AU'))
@@ -136,142 +136,22 @@ for ii in np.arange(len(gmat_time)):
     gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
 
 # Plot
-ax = plt.figure().add_subplot(projection='3d')
-# ax.plot(pos_SC[:, 0], pos_SC[:, 1], pos_SC[:, 2], color='blue', label='Propagated FF')
-ax.plot(pos_Earth[:, 0], pos_Earth[:, 1], pos_Earth[:, 2], color='green', label='Earth')
-ax.plot(pos_Moon[:, 0], pos_Moon[:, 1], pos_Moon[:, 2], color='gray', label='Moon')
-ax.plot(pos_Sun[:, 0], pos_Sun[:, 1], pos_Sun[:, 2], color='orange', label='Sun')
-ax.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='red', label='GMAT Orbit')
-
-# ax.scatter(unitConversion.convertPos_to_dim([0, 1-mu_star]).to('AU'), 0, s=50, label='Initial ideal moon position')
-# ax.scatter(moon_I[0], moon_I[1], moon_I[2], s=50, label='Initial actual moon position')
-# scale = 500
-# ax.plot([0, vO[0]/scale], [0, vO[1]/scale], [0, vO[2]/scale], label='Unrotated velocity vector')
-# ax.plot([0, IC[3]/scale], [0, IC[4]/scale], [0, IC[5]/scale], label='Rotated velocity vector')
-
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-# ax.set_box_aspect([1.0, 1.0, 1.0])
-# plot_tools.set_axes_equal(ax)
-limit = 1
-ax.set_xlim([-limit, limit])
-ax.set_ylim([-limit, limit])
-ax.set_zlim([-limit, limit])
-plt.title('FF Model in the Inertial (I) Frame')
-plt.legend()
+title = 'Full Force Model in the Inertial (I) Frame'
+body_names = ['Propagated FF', 'Earth', 'Moon', 'Sun', 'GMAT Orbit']
+fig, ax = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, pos_Sun, gmat_posinert, body_names=body_names, title=title)
 
 # # Save
-# plt.savefig('FF L2.png')
+# fig.savefig('FF L2.png')
 
 
 # ~~~~~ANIMATION~~~~~
-# Note that this animation has an error of about 5 days, i.e. is not perfect
 
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-
-# Collect animation data
-data_sc = np.array([pos_SC[:, 0], pos_SC[:, 1], pos_SC[:, 2]])
-data_Earth = np.array([pos_Earth[:, 0], pos_Earth[:, 1], pos_Earth[:, 2]])
-data_Moon = np.array([pos_Moon[:, 0], pos_Moon[:, 1], pos_Moon[:, 2]])
-data_Sun = np.array([pos_Sun[:, 0], pos_Sun[:, 1], pos_Sun[:, 2]])
-
-# Initialize the first point for each body
-line_sc, = ax.plot(data_sc[0, 0:1], data_sc[1, 0:1], data_sc[2, 0:1], color='blue', label='Orbit')
-line_Earth, = ax.plot(data_Earth[0, 0:1], data_Earth[1, 0:1], data_Earth[2, 0:1], color='green', label='Earth')
-line_Moon, = ax.plot(data_Moon[0, 0:1], data_Moon[1, 0:1], data_Moon[2, 0:1], color='gray', label='Moon')
-line_Sun, = ax.plot(data_Sun[0, 0:1], data_Sun[1, 0:1], data_Sun[2, 0:1], color='orange', label='Sun')
-
-interval = unitConversion.convertTime_to_canonical(days * u.d) / 1000  # Fixed time interval for each frame
-
-
-# def next_frame(times, interval):
-#     # Determines the indices of the frames in order for the time interval between frames to be the same
-#     t0 = 0
-#     idx = 0
-#     frame_indices = []
-#     while idx < len(times):
-#         diff = times[idx] - t0
-#         if diff >= interval:
-#             frame_indices.append(idx)
-#             t0 = times[idx]
-#         idx += 1
-#     return frame_indices
-
-# def next_frame(times, interval):
-#     frame_indices = []
-#     t0 = times[0]
-#     num_frames = int(np.floor((times[-1] - t0) / interval))
-#
-#     for i in range(1, num_frames + 1):
-#         target_time = t0 + i * interval
-#
-#         # Find the exact index using linear interpolation
-#         idx = np.interp(target_time, times, np.arange(len(times)))
-#
-#         # Round to the nearest integer index
-#         idx = int(np.round(idx))
-#         frame_indices.append(idx)
-#
-#     return frame_indices
-
-
-def next_frame(times, interval):
-    frame_indices = []
-    t0 = times[0]
-    target_time = t0
-
-    for i in range(1, len(times)):
-        target_time += interval
-        idx = np.argmin(np.abs(times - target_time))
-        frame_indices.append(idx)
-
-    # Remove duplicate indices to ensure smooth animation
-    frame_indices = sorted(set(frame_indices))
-
-    return frame_indices
-
-
-def animate(i):
-    idx = frame_indices[i]
-    if idx == 0:
-        return
-    line_sc.set_data(data_sc[0, :idx], data_sc[1, :idx])  # Set the x and y positions
-    line_sc.set_3d_properties(data_sc[2, :idx])  # Set the z position
-    line_Earth.set_data(data_Earth[0, :idx], data_Earth[1, :idx])
-    line_Earth.set_3d_properties(data_Earth[2, :idx])
-    line_Moon.set_data(data_Moon[0, :idx], data_Moon[1, :idx])
-    line_Moon.set_3d_properties(data_Moon[2, :idx])
-    line_Sun.set_data(data_Sun[0, :idx], data_Sun[1, :idx])
-    line_Sun.set_3d_properties(data_Sun[2, :idx])
-
-
-frame_indices = next_frame(times, interval)
-skip_factor = 1  # Reduce the number of frames
-frame_indices = frame_indices[::skip_factor]
-
-ani = animation.FuncAnimation(fig, animate, frames=len(frame_indices), interval=1, repeat=True)
-
-# Debugging frame intervals
-for ii in np.arange(len(frame_indices)):
-    if ii > 0:
-        print(times[frame_indices[ii]] - times[frame_indices[ii]-1])
-
-limit_ani = 1
-ax.set_xlim([-limit_ani, limit_ani])
-ax.set_ylim([-limit_ani, limit_ani])
-ax.set_zlim([-limit_ani, limit_ani])
-ax.set_xlabel('X [AU]')
-ax.set_ylabel('Y [AU]')
-ax.set_zlabel('Z [AU]')
-plt.legend()
-plt.title('Full Force model in the I frame')
+desired_duration = 3  # seconds
+body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun']
+animate_func, ani_object = plot_tools.create_animation(times, days, desired_duration,
+                                                       [pos_SC, pos_Earth, pos_Moon, pos_Sun], body_names=body_names,
+                                                       title=title)
 
 # # Save
 # writergif = animation.PillowWriter(fps=30)
-# ani.save('FF L2.gif', writer=writergif)
-
-plt.show()
-
-breakpoint()
+# ani_object.save('FF L2.gif', writer=writergif)

@@ -164,8 +164,8 @@ def FF_EOM(tt, w, t_mjd):
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
     F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
 
-    # F_g = F_gSun_p + F_gEarth_p + F_gMoon_p + F_gJupiter_p
-    F_g = F_gEarth_p + F_gMoon_p  # No Sun, no Jupiter
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p + F_gJupiter_p
+    # F_g = F_gEarth_p + F_gMoon_p  # No Sun, no Jupiter
     
     a_PO = F_g
     

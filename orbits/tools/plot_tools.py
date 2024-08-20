@@ -6,11 +6,14 @@ from matplotlib import pyplot as plt
 import astropy.coordinates as coord
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import astropy.units as u
+from scipy.interpolate import interp1d
+from matplotlib import animation
 
 # temporary, for anna
 import starlift.orbits.tools.unitConversion as unitConversion
 import starlift.orbits.tools.frameConversion as frameConversion
 import starlift.orbits.tools.constants as c
+
 
 def Orbit3D(solvec, time, args={}):
     """Plot the orbit in three dimensions. Default origin is the EM barycenter in the EM synodic reference frame. The dimensioned argument is also supplied to properly organize the display of the Earth, Moon, and axis scaling. 
@@ -171,10 +174,10 @@ def plotConvertBodies(timesFF, posFF, t_mjd, frame, C_G2I):
     return r_PEM_r, r_SunEM_r, r_EarthEM_r, r_MoonEM_r
 
         
-def plotBodiesFF(timesFF,posFF,t_mjd,frame):
+def plotBodiesFF(timesFF, posFF, t_mjd, frame):
     # ** Add documentation
 
-    r_PEM, r_SunEM, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF,posFF,t_mjd,frame)
+    r_PEM, r_SunEM, r_EarthEM, r_MoonEM = plotConvertBodies(timesFF, posFF, t_mjd, frame)
     
     ax = plt.figure().add_subplot(projection='3d')
     ax.plot(r_EarthEM[:, 0], r_EarthEM[:, 1], r_EarthEM[:, 2], 'g', label='Earth')
@@ -189,7 +192,8 @@ def plotBodiesFF(timesFF,posFF,t_mjd,frame):
     
     # ** Add lines to resize figure and automatically save png and svg
     return
-    
+
+
 def plotCompare_rot(timesFF, posFF, t_mjd, frame, timesCRTBP, posCRTBP, C_G2I):
     # ** Add documentation
     
@@ -255,8 +259,17 @@ def plotCompare_inert(timesCRTBP, posCRTBP, t_mjd, timesFF, posFF, mu_star):
 
 
 def set_axes_equal(ax):
-    # Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
-    # Input ax: a matplotlib axis, e.g., as output from plt.gca().
+    """
+    Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
+
+    Example usage:
+        ax.set_box_aspect([1.0, 1.0, 1.0])
+        set_axes_equal(ax)
+
+    Args:
+        ax
+            A matplotlib axis, e.g., as output from plt.gca().
+    """
 
     x_limits = ax.get_xlim3d()
     y_limits = ax.get_ylim3d()
@@ -274,3 +287,203 @@ def set_axes_equal(ax):
     ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
     ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+
+def calculate_plot_limits(*positions):
+    """
+    Calculates the plot limit based on the position data of multiple bodies to ensure that the plot includes the
+    entire range of the data. A single limit is returned to be used on all axes to create a square plot.
+
+    Example usage:
+        limit = calculate_plot_limits(pos_SC, pos_Earth, pos_Moon, pos_Sun)
+        ax.set_xlim([-limit, limit])
+        ax.set_ylim([-limit, limit])
+        ax.set_zlim([-limit, limit])
+
+    Parameters:
+        positions (list of numpy arrays)
+            X, Y, and Z position data for a list of bodies [AU]
+
+    Returns:
+        limit (float)
+            The limit value for the plot to encompass the entire range of the data.
+    """
+
+    # Initialize min and max values for each axis
+    min_x, min_y, min_z = np.inf, np.inf, np.inf
+    max_x, max_y, max_z = -np.inf, -np.inf, -np.inf
+
+    # Find min and max values across all positions
+    for pos in positions:
+        x, y, z = pos[:, 0], pos[:, 1], pos[:, 2]
+        min_x = min(min_x, np.min(x))
+        min_y = min(min_y, np.min(y))
+        min_z = min(min_z, np.min(z))
+        max_x = max(max_x, np.max(x))
+        max_y = max(max_y, np.max(y))
+        max_z = max(max_z, np.max(z))
+
+    # Calculate the limit as the maximum distance from the origin to any data point
+    limit_x = max(abs(min_x), abs(max_x))
+    limit_y = max(abs(min_y), abs(max_y))
+    limit_z = max(abs(min_z), abs(max_z))
+
+    limit = max(limit_x, limit_y, limit_z)
+
+    return limit
+
+
+def plot_bodies(*positions, body_names=None, title='Celestial Bodies Plot'):
+    """
+    Plots an indeterminate number of bodies in a static 3D plot. Returns fig and ax to be used to save the plot, as
+    in the following example:
+        fig.savefig('FF L2.png')
+
+    Args::
+        positions (list of numpy arrays)
+            X, Y, and Z position of various celestial bodies or spacecraft in AU
+        body_names (list of strings)
+            Names for the bodies. If None, default names 'Body 1', 'Body 2', etc. are used.
+        title (string)
+            A title for the plot. Default is 'Celestial Bodies Plot'.
+
+    Returns:
+        fig
+            The matplotlib figure object.
+        ax
+            The matplotlib 3D axis object.
+    """
+
+    # Set up the figure
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    # If no body names are given
+    if body_names is None:
+        body_names = [f'Body {i + 1}' for i in range(len(positions))]
+
+    # Plot each body's data
+    for i, pos in enumerate(positions):
+        ax.plot(pos[:, 0], pos[:, 1], pos[:, 2], label=body_names[i])
+
+    # Set axis limits based on calculated limit
+    limit = calculate_plot_limits(*positions)
+    ax.set_xlim([-limit, limit])
+    ax.set_ylim([-limit, limit])
+    ax.set_zlim([-limit, limit])
+    ax.set_xlabel('X [AU]')
+    ax.set_ylabel('Y [AU]')
+    ax.set_zlabel('Z [AU]')
+    plt.legend()
+    plt.title(title)
+
+    # Show the plot
+    plt.show()
+
+    return fig, ax
+
+
+def create_animation(times, days, desired_duration, positions, body_names=None, title='Celestial Bodies Animation'):
+    """
+    This function generates an animation of multiple celestial bodies over a given animation duration.
+
+    Example usage:
+        title = 'Full Force Model in the Inertial (I) Frame'
+        body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun']
+        animate_func, ani_object = create_animation(times, days, desired_duration,
+                                                       [pos_SC, pos_Earth, pos_Moon, pos_Sun], body_names=body_names,
+                                                       title=title)
+
+    Args:
+        times (float n array)
+            A normalized (starting from zero) time vector in canonical units
+        days (float)
+            The duration of the orbit simulation, in days
+        desired_duration (float)
+            The desired duration of the animation, in seconds
+        positions (list of numpy arrays)
+            X, Y, and Z position data in AU of multiple bodies. The number of bodies given is variable (for example,
+            the Earth and the Sun can be given, or just the Earth)
+        body_names (list of strings, optional)
+            A list of the names of the bodies being plotted. This is so the legend on the plot is accurate. It's
+            important that the order of the names matches the order of the position data, as seen in the example above.
+        title (string)
+            A title for the plot. Default is 'Celestial Bodies Animation'.
+
+    Returns:
+        animate (function)
+            A function used to update the animation frames
+        ani (FuncAnimation object)
+            A FuncAnimation object that controls the creation and playback of the animation. Useful if one wants to
+            save the animation. For example:
+                writergif = animation.PillowWriter(fps=30)
+                ani.save('FF L2.gif', writer=writergif)
+    """
+
+    # Compute a constant time interval between frames for the animation
+    interval = unitConversion.convertTime_to_canonical(days * u.d) / 1000
+
+    # Generate new evenly spaced times
+    new_times = np.arange(times[0], times[-1], interval)
+
+    # Interpolate positions for all bodies
+    interpolated_positions = []
+    for pos in positions:
+        interpolated_pos = [
+            interp1d(times, pos[:, 0], kind='linear')(new_times),
+            interp1d(times, pos[:, 1], kind='linear')(new_times),
+            interp1d(times, pos[:, 2], kind='linear')(new_times)
+        ]
+        interpolated_positions.append(np.array(interpolated_pos))
+
+    # Calculate skip factor such that the animation lasts for the desired duration
+    total_frames = len(new_times)
+    frame_rate = 30  # Frames per second
+    skip_factor = max(1, total_frames // (desired_duration * frame_rate))
+
+    # Set up the figure
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    # If no body names are given
+    if body_names is None:
+        body_names = [f'Body {i + 1}' for i in range(len(positions))]
+
+    # Initialize lines for each body
+    lines = []
+    for i, interp_pos in enumerate(interpolated_positions):
+        line, = ax.plot(interp_pos[0, 0:1], interp_pos[1, 0:1], interp_pos[2, 0:1], label=body_names[i])
+        lines.append(line)
+
+    # Set axis limits
+    limit = calculate_plot_limits(*positions)
+    ax.set_xlim([-limit, limit])
+    ax.set_ylim([-limit, limit])
+    ax.set_zlim([-limit, limit])
+    ax.set_xlabel('X [AU]')
+    ax.set_ylabel('Y [AU]')
+    ax.set_zlabel('Z [AU]')
+    plt.legend()
+
+    # Define the animate function
+    def animate(i):
+        idx = i * skip_factor
+        if idx >= len(new_times):
+            return
+
+        for j, line in enumerate(lines):
+            interp_pos = interpolated_positions[j]
+            line.set_data(interp_pos[0, :idx], interp_pos[1, :idx])
+            line.set_3d_properties(interp_pos[2, :idx])
+
+    # Create the animation
+    ani = animation.FuncAnimation(fig, animate, frames=total_frames // skip_factor, interval=1, repeat=True)
+    plt.title(title)
+    plt.show()
+
+    # # Debugging frame intervals
+    # print('Interval: ', interval)
+    # for ii in range(1, len(new_times)):
+    #     print(new_times[ii] - new_times[ii-1])
+
+    return animate, ani
