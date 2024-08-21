@@ -66,7 +66,7 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 33*IC[-1]])
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*IC[-1]])
 
 # Propagate the dynamics in the CRTBP model
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
@@ -127,7 +127,7 @@ pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, 
 breakpoint()
 
 # Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), 1*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
+state0 = np.append(np.append(pos_H.value, vel_H.value), 33*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start) #,times_dim)
