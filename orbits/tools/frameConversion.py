@@ -616,36 +616,43 @@ def convertSC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
 
     """
 
+    # Convert to dimensional
     pos_I = unitConversion.convertPos_to_dim(pos_I).to('AU')
+    vel_I = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
 
+    # Convert from I frame to GMEc (G) frame
     pos_G = C_I2G @ pos_I
+    vel_G = C_I2G @ vel_I
 
-    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
-    posEMB = state_EMB[0].get_xyz().to('AU')
-    velEMB = state_EMB[1].get_xyz().to('AU/day')
-
-    stateEMB_E = icrs2gmec(posEMB, currentTime, velEMB)
-    posEMB_E = stateEMB_E[0].to('AU')
-    velEMB_E = stateEMB_E[1].to('AU/d')
-
-    pos_GMEC = pos_G + posEMB_E  # G frame
-
-    v_dim = unitConversion.convertVel_to_dim(vel_I).to('AU/day')
-    vel_G = C_I2G @ v_dim
-    vel_GMEC = vel_G + velEMB_E
-
-    pos_H, vel_H = gmec2icrs(pos_GMEC, currentTime, vel_GMEC)
+    # Convert from G frame (AU and AU/d) to H frame (km and km/s)
+    pos_H, vel_H = gmec2icrs(pos_G, currentTime, vel_G)
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
-    
-    tmp_G = icrs2gmec(pos_H, currentTime)
-    tmp_GMECL = tmp_G - posEMB_E
-    tmp_I = C_I2G.T @ tmp_GMECL
-    
-    tmpM_H = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
-    tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
-    tmpM_GMECL = tmpM_G - posEMB_E
-    tmpM_I = C_I2G.T @ tmpM_GMECL
+
+    # state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
+    # posEMB = state_EMB[0].get_xyz().to('AU')
+    # velEMB = state_EMB[1].get_xyz().to('AU/day')
+    #
+    # stateEMB_E = icrs2gmec(posEMB, currentTime, velEMB)
+    # posEMB_E = stateEMB_E[0].to('AU')
+    # velEMB_E = stateEMB_E[1].to('AU/d')
+    #
+    # pos_GMEC = pos_G + posEMB_E  # G frame
+    #
+    # vel_GMEC = vel_G + velEMB_E
+    #
+    # pos_H, vel_H = gmec2icrs(pos_GMEC, currentTime, vel_GMEC)
+    # pos_H = pos_H.to('AU')
+    # vel_H = vel_H.to('AU/d')
+    #
+    # tmp_G = icrs2gmec(pos_H, currentTime)
+    # tmp_GMECL = tmp_G - posEMB_E
+    # tmp_I = C_I2G.T @ tmp_GMECL
+    #
+    # tmpM_H = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
+    # tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
+    # tmpM_GMECL = tmpM_G - posEMB_E
+    # tmpM_I = C_I2G.T @ tmpM_GMECL
 
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
@@ -655,7 +662,7 @@ def convertSC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
 
 
 def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
-    """Converts initial conditions (or any position and velocity) from the I frame to the H frame
+    """Converts initial conditions (or any position and velocity) from the H frame to the I frame
 
     Args:
         pos_H (float n array):
@@ -680,34 +687,37 @@ def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
 
     """
 
-    pos_H = unitConversion.convertPos_to_dim(pos_H).to('AU')
-    vel_H = unitConversion.convertVel_to_dim(vel_H).to('AU/day')
-
     C_G2I = C_I2G.T
 
-    state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
-    posEMB = state_EMB[0].get_xyz().to('AU')
-    velEMB = state_EMB[1].get_xyz().to('AU/d')
+    # Convert to dimensional
+    pos_H = unitConversion.convertPos_to_dim(pos_H).to('AU')
+    vel_H = unitConversion.convertVel_to_dim(vel_H).to('AU/d')
 
-    stateEMB_E = icrs2gmec(posEMB, currentTime, velEMB)
-    posEMB_E = stateEMB_E[0].to('AU')
-    velEMB_E = stateEMB_E[1].to('AU/d')
+    # # Position and velocity of EM barycenter in H
+    # posEMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz().to('AU')
+    # velEMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[1].get_xyz().to('AU/d')
+    #
+    # # Convert EM barycenter to the GMEc frame
+    # posEMB_gmec, velEMB_gmec = icrs2gmec(posEMB, currentTime, velEMB)  # km and km/s
+    # posEMB_gmec = posEMB_gmec.to('AU')
+    # velEMB_E = velEMB_gmec.to('AU/d')
 
-    pos_GMEC, vel_GMEC = icrs2gmec(pos_H, currentTime, vel_H)  # Gives km and km/s
-    pos_GMEC = pos_GMEC.to('AU')
-    vel_GMEC = vel_GMEC.to('AU/d')
+    # Convert given data to GMEc (G) frame
+    pos_gmec, vel_gmec = icrs2gmec(pos_H, currentTime, vel_H)  # km and km/s
+    pos_gmec = pos_gmec.to('AU')
+    vel_gmec = vel_gmec.to('AU/d')
 
-    pos_G = pos_GMEC - posEMB_E
-    pos_I = C_G2I @ pos_G
+    # pos_G = pos_gmec - posEMB_gmec
+    pos_I = C_G2I @ pos_gmec
 
-    vel_G = vel_GMEC - velEMB_E
-    vel_I = C_G2I @ vel_G
+    # vel_G = vel_gmec - velEMB_gmec
+    vel_I = C_G2I @ vel_gmec
 
     return pos_I, vel_I
 
 
 def getSunEarthMoon(currentTime, C_I2G):
-    """Retrieves the position of the Sun at a given time in AU in the I frame
+    """Retrieves the position of the Sun, Earth, and Moon at a given time in AU in the I frame
 
         Args:
             currentTime (astropy Time array)
@@ -729,22 +739,17 @@ def getSunEarthMoon(currentTime, C_I2G):
 
     # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
     r_SunO = get_body_barycentric_posvel('Sun', currentTime)[0].get_xyz().to('AU').value
+    r_EarthO = get_body_barycentric_posvel('Earth', currentTime)[0].get_xyz().to('AU').value
     r_MoonO = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz().to('AU').value
-    r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz().to('AU').value
 
-    # Convert from H frame (AU) to GMEc frame (km)
-    r_EMG = icrs2gmec(r_EMO * u.AU, currentTime)
+    # Convert from H frame (AU) to GMEc (G) frame (km)
     r_SunG = icrs2gmec(r_SunO * u.AU, currentTime)
+    r_EarthG = icrs2gmec(r_EarthO * u.AU, currentTime)
     r_MoonG = icrs2gmec(r_MoonO * u.AU, currentTime)
 
-    # Change the origin to the EM barycenter, G frame (all km)
-    r_SunEM = r_SunG - r_EMG
-    r_EarthEM = -r_EMG
-    r_MoonEM = r_MoonG - r_EMG
-
     # Convert from G frame (in km) to I frame (in AU)
-    r_SunEM_r = C_G2I @ r_SunEM.to('AU')
-    r_EarthEM_r = C_G2I @ r_EarthEM.to('AU')
-    r_MoonEM_r = C_G2I @ r_MoonEM.to('AU')
+    r_SunEM_r = C_G2I @ r_SunG.to('AU')
+    r_EarthEM_r = C_G2I @ r_EarthG.to('AU')
+    r_MoonEM_r = C_G2I @ r_MoonG.to('AU')
 
     return r_SunEM_r, r_EarthEM_r, r_MoonEM_r
