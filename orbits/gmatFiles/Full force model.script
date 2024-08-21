@@ -20,12 +20,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 394918.5300000002;
-GMAT SC1.Y = 9.466020856052637e-08;
-GMAT SC1.Z = -66162.7317;
-GMAT SC1.VX = 0.0009968099999999591;
-GMAT SC1.VY = 0.97133591;
-GMAT SC1.VZ = -1.110223024625157e-16;
+GMAT SC1.X = 394918.5300000003;
+GMAT SC1.Y = 9.468203643336892e-08;
+GMAT SC1.Z = -66162.73169999999;
+GMAT SC1.VX = 0.0009968099999998481;
+GMAT SC1.VY = 0.9713359100000001;
+GMAT SC1.VZ = -2.220446049250313e-16;
 GMAT SC1.DryMass = 850;
 GMAT SC1.Cd = 2.2;
 GMAT SC1.Cr = 1.8;
@@ -61,6 +61,7 @@ GMAT SC1.AttitudeDisplayStateType = 'Quaternion';
 GMAT SC1.AttitudeRateDisplayStateType = 'AngularVelocity';
 GMAT SC1.AttitudeCoordinateSystem = EarthMJ2000Eq;
 GMAT SC1.EulerAngleSequence = '321';
+
 
 
 
@@ -131,16 +132,20 @@ Create CoordinateSystem GeoMeanEc;
 GMAT GeoMeanEc.Origin = Earth;
 GMAT GeoMeanEc.Axes = MJ2000Ec;
 
+Create CoordinateSystem SunICRS;
+GMAT SunICRS.Origin = SolarSystemBarycenter;
+GMAT SunICRS.Axes = ICRF;
+
 %----------------------------------------
 %---------- Subscribers
 %----------------------------------------
 
 Create OrbitView Inertial;
 GMAT Inertial.SolverIterations = Current;
-GMAT Inertial.UpperLeft = [ 0.04193138500635324 0.07587064676616916 ];
-GMAT Inertial.Size = [ 0.8792884371029225 0.8743781094527363 ];
-GMAT Inertial.RelativeZOrder = 229;
-GMAT Inertial.Maximized = true;
+GMAT Inertial.UpperLeft = [ 0.04125615763546798 0.07338308457711443 ];
+GMAT Inertial.Size = [ 0.8786945812807881 0.8743781094527363 ];
+GMAT Inertial.RelativeZOrder = 100;
+GMAT Inertial.Maximized = false;
 GMAT Inertial.Add = {SC1, Luna, Sun};
 GMAT Inertial.CoordinateSystem = EMInert;
 GMAT Inertial.DrawObject = [ true true true ];
@@ -169,9 +174,9 @@ GMAT Inertial.EnableConstellations = Off;
 
 Create ReportFile FF_rot;
 GMAT FF_rot.SolverIterations = Current;
-GMAT FF_rot.UpperLeft = [ 0 0 ];
-GMAT FF_rot.Size = [ 0 0 ];
-GMAT FF_rot.RelativeZOrder = 0;
+GMAT FF_rot.UpperLeft = [ 0.03879310344827586 0.07835820895522388 ];
+GMAT FF_rot.Size = [ 0.5985221674876847 0.7972636815920398 ];
+GMAT FF_rot.RelativeZOrder = 74;
 GMAT FF_rot.Maximized = false;
 GMAT FF_rot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\FF_rot.txt';
 GMAT FF_rot.Precision = 16;
@@ -186,9 +191,9 @@ GMAT FF_rot.WriteReport = true;
 
 Create OrbitView Rotating;
 GMAT Rotating.SolverIterations = Current;
-GMAT Rotating.UpperLeft = [ 0.2401524777636595 0.4751243781094527 ];
-GMAT Rotating.Size = [ 0.5432020330368488 0.4502487562189055 ];
-GMAT Rotating.RelativeZOrder = 200;
+GMAT Rotating.UpperLeft = [ 0.2395320197044335 0.472636815920398 ];
+GMAT Rotating.Size = [ 0.5431034482758621 0.4502487562189055 ];
+GMAT Rotating.RelativeZOrder = 96;
 GMAT Rotating.Maximized = false;
 GMAT Rotating.Add = {SC1, Earth, Luna, Sun};
 GMAT Rotating.CoordinateSystem = EMBaryRot;
@@ -235,9 +240,9 @@ GMAT FF_inert.WriteReport = true;
 
 Create OrbitView Ecliptic;
 GMAT Ecliptic.SolverIterations = Current;
-GMAT Ecliptic.UpperLeft = [ 0.4758576874205845 0.02611940298507463 ];
+GMAT Ecliptic.UpperLeft = [ 0.4747536945812808 0.0236318407960199 ];
 GMAT Ecliptic.Size = [ 0.5 0.4502487562189055 ];
-GMAT Ecliptic.RelativeZOrder = 196;
+GMAT Ecliptic.RelativeZOrder = 92;
 GMAT Ecliptic.Maximized = false;
 GMAT Ecliptic.Add = {SC1, Earth, Luna, Sun};
 GMAT Ecliptic.CoordinateSystem = GeoMeanEc;
@@ -264,6 +269,40 @@ GMAT Ecliptic.UseInitialView = On;
 GMAT Ecliptic.StarCount = 7000;
 GMAT Ecliptic.EnableStars = On;
 GMAT Ecliptic.EnableConstellations = On;
+
+Create ReportFile FF_ICRS;
+GMAT FF_ICRS.SolverIterations = Current;
+GMAT FF_ICRS.UpperLeft = [ 0 0 ];
+GMAT FF_ICRS.Size = [ 0 0 ];
+GMAT FF_ICRS.RelativeZOrder = 0;
+GMAT FF_ICRS.Maximized = false;
+GMAT FF_ICRS.Filename = 'FF_ICRS.txt';
+GMAT FF_ICRS.Precision = 16;
+GMAT FF_ICRS.Add = {SC1.SunICRS.X, SC1.SunICRS.Y, SC1.SunICRS.Z, SC1.SunICRS.VX, SC1.SunICRS.VY, SC1.SunICRS.VZ};
+GMAT FF_ICRS.WriteHeaders = true;
+GMAT FF_ICRS.LeftJustify = On;
+GMAT FF_ICRS.ZeroFill = Off;
+GMAT FF_ICRS.FixedWidth = true;
+GMAT FF_ICRS.Delimiter = ' ';
+GMAT FF_ICRS.ColumnWidth = 23;
+GMAT FF_ICRS.WriteReport = true;
+
+Create ReportFile FF_rotstate;
+GMAT FF_rotstate.SolverIterations = Current;
+GMAT FF_rotstate.UpperLeft = [ 0 0 ];
+GMAT FF_rotstate.Size = [ 0 0 ];
+GMAT FF_rotstate.RelativeZOrder = 0;
+GMAT FF_rotstate.Maximized = false;
+GMAT FF_rotstate.Filename = 'FF_rotstate.txt';
+GMAT FF_rotstate.Precision = 16;
+GMAT FF_rotstate.Add = {SC1.EMBaryRot.X, SC1.EMBaryRot.Y, SC1.EMBaryRot.Z, SC1.EMBaryRot.VX, SC1.EMBaryRot.VY, SC1.EMBaryRot.VZ};
+GMAT FF_rotstate.WriteHeaders = true;
+GMAT FF_rotstate.LeftJustify = On;
+GMAT FF_rotstate.ZeroFill = Off;
+GMAT FF_rotstate.FixedWidth = true;
+GMAT FF_rotstate.Delimiter = ' ';
+GMAT FF_rotstate.ColumnWidth = 23;
+GMAT FF_rotstate.WriteReport = true;
 
 
 %----------------------------------------

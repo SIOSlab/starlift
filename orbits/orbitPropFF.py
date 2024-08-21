@@ -26,7 +26,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
-t_veq = t_equinox + 79.3125*u.d + 1*u.yr/4
+t_veq = t_equinox + 79.3125*u.d # + 1*u.yr/4
 t_mjd = Time(57727, format='mjd', scale='utc')
 days = 200
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
@@ -90,9 +90,14 @@ IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 # print('Dimensional velocity IC in the rotating frame: ', vel_dimrot)
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
-pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_mjd, C_I2G, Tp_can=None)
+# DEBUGGING
+# posCRTBP0 = np.array([1.01103506, 0, -0.17315])
+# velCRTBP0 = np.array([0, 0.93302079, 0])
+# pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP0, velCRTBP0, t_mjd, C_I2G)
+pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_mjd, C_I2G)
 
 # Define the initial state array
+# state0 = np.append(np.append(pos_H.value, vel_H.value), 195.61518984223997)  # 1*times_dim[-1].value
 state0 = np.append(np.append(pos_H.value, vel_H.value), days_can)
 
 # Propagate the dynamics (states in AU or AU/day, times in DU)
@@ -115,7 +120,7 @@ pos_Sun = np.zeros([len(times_mjd), 3])
 pos_Earth = np.zeros([len(times_mjd), 3])
 pos_Moon = np.zeros([len(times_mjd), 3])
 
-# Obtain celestial body positions in the I frame [AU]
+# Obtain celestial body positions in the I frame [AU] and convert state to I frame
 for ii in np.arange(len(times_mjd)):
     pos_SC[ii, :], vel_SC[ii, :] = frameConversion.convertSC_H2I(pos_can[ii, :], vel_can[ii, :], times_mjd[ii], C_I2G)
     pos_Sun[ii, :], pos_Earth[ii, :], pos_Moon[ii, :] = frameConversion.getSunEarthMoon(times_mjd[ii], C_I2G)

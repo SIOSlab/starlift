@@ -660,7 +660,7 @@ def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
     Args:
         pos_H (float n array):
             Array of distance in canonical units
-        vel_I (float n array):
+        vel_H (float n array):
             Array of velocities in canonical units
         currentTime (astropy Time array)
             Current mission time in MJD

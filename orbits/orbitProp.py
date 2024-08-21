@@ -16,7 +16,7 @@ import unitConversion
 import frameConversion
 import orbitEOMProp
 import gmatTools
-#import plot_tools
+import plot_tools
 
 #import tools.unitConversion as unitConversion
 #import tools.frameConversion as frameConversion
@@ -38,7 +38,7 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_I2G = frameConversion.inert2geo(t_start,t_veq)
+C_I2G = frameConversion.inert2geo(t_start, t_veq)
 C_G2I = C_I2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
@@ -124,6 +124,7 @@ for kk in np.arange(len(timesCRTBP_mjd)):
 
 # Convert position from I frame to H frame [AU]
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
+breakpoint()
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), 1*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
@@ -256,6 +257,26 @@ ax2.set_xlabel('X [AU]')
 ax2.set_ylabel('Y [AU]')
 ax2.set_zlabel('Z [AU]')
 plt.legend()
+
+desired_duration = 3  # seconds
+title = 'Full Force Model in the Inertial (I) Frame'
+body_names = ['Propagated FF', 'Earth', 'Moon', 'Sun']
+animate_func, ani_object = plot_tools.create_animation(timesFF, 33*IC[-1], desired_duration,
+                                                       [r_PEM_i, r_EarthEM_i, r_MoonEM_i, r_SunEM_i], body_names=body_names,
+                                                       title=title)
+# # Save
+# writergif = animation.PillowWriter(fps=30)
+# ani_object.save('FF L2 orbitProp.gif', writer=writergif)
+
+desired_duration = 3  # seconds
+title = 'Full Force Model in the Inertial (I) Frame, no Sun'
+body_names = ['Propagated FF', 'Earth', 'Moon']
+animate_func2, ani_object2 = plot_tools.create_animation(timesFF, 33*IC[-1], desired_duration,
+                                                       [r_PEM_i, r_EarthEM_i, r_MoonEM_i], body_names=body_names,
+                                                       title=title)
+# # Save
+# writergif = animation.PillowWriter(fps=30)
+# ani_object2.save('FF L2 orbitProp no sun.gif', writer=writergif)
 
 #fig, axs = plt.subplots(3)
 #fig.suptitle('I frame differences')
