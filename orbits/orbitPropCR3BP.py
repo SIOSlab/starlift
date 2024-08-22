@@ -42,7 +42,7 @@ vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 freeVar = np.array([IC[0], IC[2], vI[1], days_can])
 
 # Propagate the dynamics in the CRTBP model
-states, times = orbitEOMProp.statePropCRTBP(freeVar, mu_star)
+states, times = orbitEOMProp.statePropCRTBP(freeVar, mu_star)  # Canonical
 pos = states[:, 0:3]
 vel = states[:, 3:6]
 

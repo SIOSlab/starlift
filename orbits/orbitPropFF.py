@@ -27,14 +27,14 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d # + 1*u.yr/4
-t_mjd = Time(57727, format='mjd', scale='utc')
+t_start = Time(57727, format='mjd', scale='utc')
 days = 200
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-# Initial condition in non dimensional units in rotating frame R [pos, vel]
+# Initial condition in canonical units in rotating frame R [pos, vel]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
 
 # Generate new ICs using the free variable and constraint method
@@ -53,14 +53,14 @@ while error > eps and ctr < max_iter:
 
     ctr = ctr + 1
 
-IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2 * X[3]])  # Canonical, rotating frame
+IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])  # Canonical, rotating frame
 
 # DCM for G frame and I frame
-C_I2G = frameConversion.inert2geo(t_mjd, t_veq)
+C_I2G = frameConversion.inert2geo(t_start, t_veq)
 C_G2I = C_I2G.T
 
 # Get position of the moon at the epoch in the inertial frame
-sun_I, earth_I, moon_I = frameConversion.getSunEarthMoon(t_mjd, C_I2G)  # I frame [AU]
+sun_I, earth_I, moon_I = frameConversion.getSunEarthMoon(t_start, C_I2G)  # I frame [AU]
 moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
 
 # Transform position ICs to the epoch moon
@@ -90,18 +90,18 @@ IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 # print('Dimensional velocity IC in the rotating frame: ', vel_dimrot)
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
-# DEBUGGING
 # posCRTBP0 = np.array([1.01103506, 0, -0.17315])
 # velCRTBP0 = np.array([0, 0.93302079, 0])
-# pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP0, velCRTBP0, t_mjd, C_I2G)
-pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_mjd, C_I2G)
+# pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP0, velCRTBP0, t_start, C_I2G)
+# breakpoint()
+pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
 
 # Define the initial state array
-# state0 = np.append(np.append(pos_H.value, vel_H.value), 195.61518984223997)  # 1*times_dim[-1].value
+# state0 = np.append(np.append(pos_H.value, vel_H.value), 195.61518984223997)  # 1*times_dim[-1].value, in days
 state0 = np.append(np.append(pos_H.value, vel_H.value), days_can)
 
 # Propagate the dynamics (states in AU or AU/day, times in DU)
-states, times = orbitEOMProp.statePropFF(state0, t_mjd)  # State is in the H frame
+states, times = orbitEOMProp.statePropFF(state0, t_start)  # State is in the H frame
 pos = states[:, 0:3]
 vel = states[:, 3:6]
 
@@ -110,8 +110,9 @@ pos_can = unitConversion.convertPos_to_canonical(pos * u.AU)
 vel_can = unitConversion.convertVel_to_canonical(vel * u.AU/u.d)
 
 # Simulation time in mjd
+# times_mjd = Time(times + t_start.value, format='mjd', scale='utc')
 times_dim = unitConversion.convertTime_to_dim(times)  # Days from zero
-times_mjd = times_dim + t_mjd  # Days from mission start time
+times_mjd = times_dim + t_start  # Days from mission start time
 
 # Preallocate space
 pos_SC = np.zeros([len(times_mjd), 3])
@@ -160,3 +161,32 @@ animate_func, ani_object = plot_tools.create_animation(times, days, desired_dura
 # # Save
 # writergif = animation.PillowWriter(fps=30)
 # ani_object.save('FF L2.gif', writer=writergif)
+
+
+# # ~~~~~DEBUGGING WITH THE SUN~~~~~
+#
+# Sun_I = np.zeros([len(times_mjd), 3])
+# Sun_H = np.zeros([len(times_mjd), 3])
+# Sun_H2 = np.zeros([len(times_mjd), 3])
+# Sun_Hvel = np.zeros([len(times_mjd), 3])
+# Sun_I2 = np.zeros([len(times_mjd), 3])
+# Sun_I2vel = np.zeros([len(times_mjd), 3])
+# for ii in np.arange(len(times_mjd)):
+#     Sun_I[ii, :], _, _ = frameConversion.getSunEarthMoon(times_mjd[ii], C_I2G)
+#     Sun_H[ii, :] = get_body_barycentric_posvel('Sun', times_mjd[ii])[0].get_xyz().to('AU')
+#     Sun_Hvel[ii, :] = get_body_barycentric_posvel('Sun', times_mjd[ii])[1].get_xyz().to('AU/d')
+#     Sun_I2[ii, :], Sun_I2vel[ii, :] = frameConversion.convertSC_H2I(unitConversion.convertPos_to_canonical(Sun_H[ii, :]*u.AU),
+#                                                                     unitConversion.convertVel_to_canonical(Sun_Hvel[ii, :]*u.AU/u.d),
+#                                                                     times_mjd[ii], C_I2G)
+#     Sun_H2[ii, :], _ = frameConversion.convertSC_I2H(unitConversion.convertPos_to_canonical(Sun_I2[ii, :]*u.AU),
+#                                                      unitConversion.convertVel_to_canonical(Sun_I2vel[ii, :]*u.AU/u.d),
+#                                                      times_mjd[ii], C_I2G)
+#
+# file_name = "gmatFiles/FF_Sun_H.txt"
+# Sun_H_gmat, _, _ = gmatTools.extract_posvel(file_name)  # In km, km/s, ModJulian
+# Sun_H_gmat = np.array((Sun_H_gmat*u.km).to('AU'))
+#
+# # Plot
+# title = 'Sun'
+# body_names = ['I from getSunEarthMoon', 'H from get_body', 'H to I', 'I to H', 'H from GMAT']
+# fig, ax = plot_tools.plot_bodies(Sun_I, Sun_H, Sun_I2, Sun_H2, Sun_H_gmat, body_names=body_names, title=title)

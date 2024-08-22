@@ -122,9 +122,8 @@ for kk in np.arange(len(timesCRTBP_mjd)):
     r_CRTBP_rot[kk,:] = C_I2R @ r_dim
 
 
-# Convert position from I frame to H frame [AU]
+# Convert position from I frame (canonical) to H frame [AU]
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
-breakpoint()
 
 # Define the initial state array
 state0 = np.append(np.append(pos_H.value, vel_H.value), 33*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
@@ -166,7 +165,7 @@ for ii in np.arange(len(timesFF_mjd)):
     r_MoonO_h[ii, :] = r_MoonO.value
     r_EMO_h[ii, :] = r_EMO.value
 
-    # Convert from H frame to GCRS frame
+    # Convert from H frame to GMEc frame
     r_PG = frameConversion.icrs2gmec(posFF[ii]*u.AU, time)
     r_EMG2 = frameConversion.icrs2gmec(r_EMO, time)
     r_SunG = frameConversion.icrs2gmec(r_SunO, time)
