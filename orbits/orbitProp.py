@@ -64,6 +64,7 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])  # Canonical, rotating frame
 
 # Convert ICs to dimensional, rotating frame (for GMAT)
 pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')
+breakpoint()
 vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')
 print('Dimensional [km] position IC in the rotating frame: ', pos_dim)
 print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dim)

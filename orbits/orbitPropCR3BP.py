@@ -35,6 +35,12 @@ earth_r = (unitConversion.convertPos_to_dim(earth_r_can)).to('AU')
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
 # IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO, 0.9697497-day period
 
+# Convert ICs to dimensional, rotating frame (for GMAT)
+pos_dim = unitConversion.convertPos_to_dim(np.array(IC[0:3])).to('km')
+vel_dim = unitConversion.convertVel_to_dim(np.array(IC[3:6])).to('km/s')
+print('Dimensional [km] position IC in the rotating frame: ', pos_dim)
+print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dim)
+
 # Convert the velocity to inertial from R (still canonical)
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
 

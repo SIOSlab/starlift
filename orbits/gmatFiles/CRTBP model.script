@@ -20,12 +20,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 388641.8766523507;
-GMAT SC1.Y = 4.292814992368221e-10;
-GMAT SC1.Z = -66558.8599385399;
-GMAT SC1.VX = -8.326672684688674e-17;
-GMAT SC1.VY = -0.07982110999999981;
-GMAT SC1.VZ = -1.665334536937735e-16;
+GMAT SC1.X = 388641.8766523509;
+GMAT SC1.Y = 6.548361852765083e-11;
+GMAT SC1.Z = -66558.85993853988;
+GMAT SC1.VX = 6.938893903907228e-17;
+GMAT SC1.VY = -0.0798211099999997;
+GMAT SC1.VZ = 5.551115123125783e-17;
 GMAT SC1.DryMass = 850;
 GMAT SC1.Cd = 2.2;
 GMAT SC1.Cr = 1.8;
@@ -61,6 +61,7 @@ GMAT SC1.AttitudeDisplayStateType = 'Quaternion';
 GMAT SC1.AttitudeRateDisplayStateType = 'AngularVelocity';
 GMAT SC1.AttitudeCoordinateSystem = EarthMJ2000Eq;
 GMAT SC1.EulerAngleSequence = '321';
+
 
 
 
@@ -136,9 +137,9 @@ GMAT ICRS.Axes = ICRF;
 
 Create OrbitView Inertial;
 GMAT Inertial.SolverIterations = Current;
-GMAT Inertial.UpperLeft = [ 0.02449479485609308 0 ];
-GMAT Inertial.Size = [ 0.8291488058787507 0.7985074626865671 ];
-GMAT Inertial.RelativeZOrder = 225;
+GMAT Inertial.UpperLeft = [ 0.0241635687732342 0 ];
+GMAT Inertial.Size = [ 0.828996282527881 0.7976190476190477 ];
+GMAT Inertial.RelativeZOrder = 340;
 GMAT Inertial.Maximized = true;
 GMAT Inertial.Add = {SC1, Earth, Luna};
 GMAT Inertial.CoordinateSystem = EMInert;
@@ -202,10 +203,10 @@ GMAT CRTBP_inert.WriteReport = true;
 
 Create OrbitView Rotating;
 GMAT Rotating.SolverIterations = Current;
-GMAT Rotating.UpperLeft = [ 0.05572565829761176 0.154228855721393 ];
-GMAT Rotating.Size = [ 0.5058175137783221 0.4490049751243781 ];
-GMAT Rotating.RelativeZOrder = 223;
-GMAT Rotating.Maximized = true;
+GMAT Rotating.UpperLeft = [ 0.05514250309789343 0.1534391534391534 ];
+GMAT Rotating.Size = [ 0.5055762081784386 0.4484126984126984 ];
+GMAT Rotating.RelativeZOrder = 328;
+GMAT Rotating.Maximized = false;
 GMAT Rotating.Add = {SC1, Earth, Luna};
 GMAT Rotating.CoordinateSystem = EMBaryRot;
 GMAT Rotating.DrawObject = [ true true true ];
@@ -268,9 +269,9 @@ GMAT Moon_rot.WriteReport = true;
 
 Create OrbitView ICRF;
 GMAT ICRF.SolverIterations = Current;
-GMAT ICRF.UpperLeft = [ 0 0 ];
-GMAT ICRF.Size = [ 0 0 ];
-GMAT ICRF.RelativeZOrder = 0;
+GMAT ICRF.UpperLeft = [ 0.003097893432465923 0 ];
+GMAT ICRF.Size = [ 0.5 0.4497354497354497 ];
+GMAT ICRF.RelativeZOrder = 323;
 GMAT ICRF.Maximized = false;
 GMAT ICRF.Add = {SC1, Earth};
 GMAT ICRF.CoordinateSystem = ICRS;
