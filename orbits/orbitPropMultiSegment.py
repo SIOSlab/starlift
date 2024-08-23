@@ -1,7 +1,7 @@
 import numpy as np
 import os.path
 import pickle
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, solve_bvp
 from scipy.optimize import fsolve
 import sys
 import astropy.coordinates as coord
@@ -144,6 +144,25 @@ for ii in np.arange(N):
 
     pos_Hi, vel_Hi = frameConversion.convertSC_I2H(pos_i, vel_i, taus[ii], C_I2G)
     posvel = np.append(posvel,np.append(pos_Hi.value, vel_Hi.value))
+
+
+
+bc = np.append(posvel[0:3], posvel[6:9])
+tspan = np.linspace(0,dt_int,2)
+sG = np.array(
+            [
+                [posvel[0], posvel[6]],
+                [posvel[1], posvel[7]],
+                [posvel[2], posvel[8]],
+                [posvel[3], posvel[9]],
+                [posvel[4], posvel[10]],
+                [posvel[5], posvel[11]],
+            ]
+        )
+
+sol = solve_bvp(orbitEOMProp.FF_EOM, bc, tspan, sG, p=t_start)
+
+breakpoint()
 
 eps = 1E-8
 error = 10
