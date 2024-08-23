@@ -25,7 +25,7 @@ moonpos_H = (moonpos_H*u.km).to('AU')
 moonpos_H_can = unitConversion.convertPos_to_canonical(moonpos_H)
 moonvel_H_can = unitConversion.convertVel_to_canonical(moonvel_H*(u.km/u.s))
 
-# Convert H frame to I frame
+# Convert to I frame from H frame
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d
 C_I2G = frameConversion.inert2geo(times_H[0], t_veq)
@@ -37,7 +37,7 @@ for ii in np.arange(len(times_H)):
      # Array in AU and AU/day
      moonpos_I[ii, :], moonvel_I[ii, :] = frameConversion.convertSC_H2I(moonpos_H_can[ii, :], moonvel_H_can[ii, :], times_H[ii], C_I2G)
 
-# Convert to I frame
+# Convert to I frame from R frame
 moon_i = np.zeros([len(times), 3])
 for ii in np.arange(len(times)):
      C_I2R = frameConversion.inert2rot(times[ii], times[0])

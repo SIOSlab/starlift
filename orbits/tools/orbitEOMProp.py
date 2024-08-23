@@ -138,7 +138,7 @@ def FF_EOM(tt, w, t_mjd):
     r_PO = np.array([x, y, z])  # AU
     v_PO = np.array([vx, vy, vz])  # AU/d
 
-    time = unitConversion.convertTime_to_dim(tt) + t_mjd  # Current mission time in mjd
+    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
 
     # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
@@ -238,7 +238,7 @@ def statePropFF(state0, t_mjd, timesTMP=None):
 
     Args:
         state0 (~numpy.ndarray(float)):
-            Position [AU], velocity [AU/d], and propagation time [DU] in the H frame
+            Position [AU], velocity [AU/d], and propagation time [days] in the H frame
         t_mjd (astropy Time):
             Mission start time in MJD
 
@@ -247,11 +247,11 @@ def statePropFF(state0, t_mjd, timesTMP=None):
         states ~numpy.ndarray(float):
             Positions and velocities in AU and AU/d
         times ~numpy.ndarray(float):
-            Canonical times
+            Times in days
 
     """
     
-    T = state0[-1]
+    T = state0[-1]  # days
 
     sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
 #    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)

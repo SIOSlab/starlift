@@ -20,12 +20,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 394918.5300000002;
-GMAT SC1.Y = 9.466020856052637e-08;
-GMAT SC1.Z = -66162.7317;
-GMAT SC1.VX = 0.0009968099999999591;
-GMAT SC1.VY = 0.97133591;
-GMAT SC1.VZ = -1.110223024625157e-16;
+GMAT SC1.X = 394956.2328076093;
+GMAT SC1.Y = 7717.392657566525;
+GMAT SC1.Z = -66153.2571083471;
+GMAT SC1.VX = 0.02898066900506896;
+GMAT SC1.VY = 2.864019633303311;
+GMAT SC1.VZ = 0.004647225540442062;
 GMAT SC1.DryMass = 850;
 GMAT SC1.Cd = 2.2;
 GMAT SC1.Cr = 1.8;
@@ -85,6 +85,9 @@ GMAT SC1.EulerAngleSequence = '321';
 
 
 
+
+
+
 %----------------------------------------
 %---------- ForceModels
 %----------------------------------------
@@ -119,7 +122,7 @@ Create CoordinateSystem EMBaryRot;
 GMAT EMBaryRot.Origin = EarthMoonBarycenter;
 GMAT EMBaryRot.Axes = ObjectReferenced;
 GMAT EMBaryRot.XAxis = R;
-GMAT EMBaryRot.ZAxis = N;
+GMAT EMBaryRot.YAxis = V;
 GMAT EMBaryRot.Primary = Earth;
 GMAT EMBaryRot.Secondary = Luna;
 
@@ -131,15 +134,23 @@ Create CoordinateSystem GeoMeanEc;
 GMAT GeoMeanEc.Origin = Earth;
 GMAT GeoMeanEc.Axes = MJ2000Ec;
 
+Create CoordinateSystem SunICRS;
+GMAT SunICRS.Origin = SolarSystemBarycenter;
+GMAT SunICRS.Axes = ICRF;
+
+Create CoordinateSystem H;
+GMAT H.Origin = SolarSystemBarycenter;
+GMAT H.Axes = ICRF;
+
 %----------------------------------------
 %---------- Subscribers
 %----------------------------------------
 
 Create OrbitView Inertial;
 GMAT Inertial.SolverIterations = Current;
-GMAT Inertial.UpperLeft = [ 0.04193138500635324 0.07587064676616916 ];
-GMAT Inertial.Size = [ 0.8792884371029225 0.8743781094527363 ];
-GMAT Inertial.RelativeZOrder = 229;
+GMAT Inertial.UpperLeft = [ 0.06469849246231156 0.236318407960199 ];
+GMAT Inertial.Size = [ 0.9082914572864321 1.060945273631841 ];
+GMAT Inertial.RelativeZOrder = 367;
 GMAT Inertial.Maximized = true;
 GMAT Inertial.Add = {SC1, Luna, Sun};
 GMAT Inertial.CoordinateSystem = EMInert;
@@ -169,9 +180,9 @@ GMAT Inertial.EnableConstellations = Off;
 
 Create ReportFile FF_rot;
 GMAT FF_rot.SolverIterations = Current;
-GMAT FF_rot.UpperLeft = [ 0 0 ];
-GMAT FF_rot.Size = [ 0 0 ];
-GMAT FF_rot.RelativeZOrder = 0;
+GMAT FF_rot.UpperLeft = [ 0.03879310344827586 0.07835820895522388 ];
+GMAT FF_rot.Size = [ 0.5985221674876847 0.7972636815920398 ];
+GMAT FF_rot.RelativeZOrder = 74;
 GMAT FF_rot.Maximized = false;
 GMAT FF_rot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\FF_rot.txt';
 GMAT FF_rot.Precision = 16;
@@ -186,9 +197,9 @@ GMAT FF_rot.WriteReport = true;
 
 Create OrbitView Rotating;
 GMAT Rotating.SolverIterations = Current;
-GMAT Rotating.UpperLeft = [ 0.2401524777636595 0.4751243781094527 ];
-GMAT Rotating.Size = [ 0.5432020330368488 0.4502487562189055 ];
-GMAT Rotating.RelativeZOrder = 200;
+GMAT Rotating.UpperLeft = [ 0.2456030150753769 0.5696517412935324 ];
+GMAT Rotating.Size = [ 0.5615577889447236 0.5472636815920398 ];
+GMAT Rotating.RelativeZOrder = 321;
 GMAT Rotating.Maximized = false;
 GMAT Rotating.Add = {SC1, Earth, Luna, Sun};
 GMAT Rotating.CoordinateSystem = EMBaryRot;
@@ -235,17 +246,17 @@ GMAT FF_inert.WriteReport = true;
 
 Create OrbitView Ecliptic;
 GMAT Ecliptic.SolverIterations = Current;
-GMAT Ecliptic.UpperLeft = [ 0.4758576874205845 0.02611940298507463 ];
-GMAT Ecliptic.Size = [ 0.5 0.4502487562189055 ];
-GMAT Ecliptic.RelativeZOrder = 196;
-GMAT Ecliptic.Maximized = false;
+GMAT Ecliptic.UpperLeft = [ 0.4886934673366834 0.02487562189054726 ];
+GMAT Ecliptic.Size = [ 0.5175879396984925 0.5472636815920398 ];
+GMAT Ecliptic.RelativeZOrder = 302;
+GMAT Ecliptic.Maximized = true;
 GMAT Ecliptic.Add = {SC1, Earth, Luna, Sun};
 GMAT Ecliptic.CoordinateSystem = GeoMeanEc;
 GMAT Ecliptic.DrawObject = [ true true true true ];
 GMAT Ecliptic.DataCollectFrequency = 1;
 GMAT Ecliptic.UpdatePlotFrequency = 50;
 GMAT Ecliptic.NumPointsToRedraw = 0;
-GMAT Ecliptic.ShowPlot = true;
+GMAT Ecliptic.ShowPlot = false;
 GMAT Ecliptic.MaxPlotPoints = 20000;
 GMAT Ecliptic.ShowLabels = true;
 GMAT Ecliptic.ViewPointReference = Earth;
@@ -264,6 +275,89 @@ GMAT Ecliptic.UseInitialView = On;
 GMAT Ecliptic.StarCount = 7000;
 GMAT Ecliptic.EnableStars = On;
 GMAT Ecliptic.EnableConstellations = On;
+
+Create ReportFile FF_ICRS;
+GMAT FF_ICRS.SolverIterations = Current;
+GMAT FF_ICRS.UpperLeft = [ 0 0 ];
+GMAT FF_ICRS.Size = [ 0 0 ];
+GMAT FF_ICRS.RelativeZOrder = 0;
+GMAT FF_ICRS.Maximized = false;
+GMAT FF_ICRS.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\FF_ICRF.txt';
+GMAT FF_ICRS.Precision = 16;
+GMAT FF_ICRS.Add = {SC1.EarthICRF.X, SC1.EarthICRF.Y, SC1.EarthICRF.Z, SC1.UTCModJulian};
+GMAT FF_ICRS.WriteHeaders = false;
+GMAT FF_ICRS.LeftJustify = On;
+GMAT FF_ICRS.ZeroFill = Off;
+GMAT FF_ICRS.FixedWidth = true;
+GMAT FF_ICRS.Delimiter = ' ';
+GMAT FF_ICRS.ColumnWidth = 23;
+GMAT FF_ICRS.WriteReport = true;
+
+Create ReportFile FF_rotstate;
+GMAT FF_rotstate.SolverIterations = Current;
+GMAT FF_rotstate.UpperLeft = [ 0 0 ];
+GMAT FF_rotstate.Size = [ 0 0 ];
+GMAT FF_rotstate.RelativeZOrder = 0;
+GMAT FF_rotstate.Maximized = false;
+GMAT FF_rotstate.Filename = 'FF_rotstate.txt';
+GMAT FF_rotstate.Precision = 16;
+GMAT FF_rotstate.Add = {SC1.EMBaryRot.X, SC1.EMBaryRot.Y, SC1.EMBaryRot.Z, SC1.EMBaryRot.VX, SC1.EMBaryRot.VY, SC1.EMBaryRot.VZ};
+GMAT FF_rotstate.WriteHeaders = true;
+GMAT FF_rotstate.LeftJustify = On;
+GMAT FF_rotstate.ZeroFill = Off;
+GMAT FF_rotstate.FixedWidth = true;
+GMAT FF_rotstate.Delimiter = ' ';
+GMAT FF_rotstate.ColumnWidth = 23;
+GMAT FF_rotstate.WriteReport = true;
+
+Create ReportFile FF_Sun_H;
+GMAT FF_Sun_H.SolverIterations = Current;
+GMAT FF_Sun_H.UpperLeft = [ 0 0 ];
+GMAT FF_Sun_H.Size = [ 0 0 ];
+GMAT FF_Sun_H.RelativeZOrder = 0;
+GMAT FF_Sun_H.Maximized = false;
+GMAT FF_Sun_H.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\FF_Sun_H.txt';
+GMAT FF_Sun_H.Precision = 16;
+GMAT FF_Sun_H.Add = {Sun.H.X, Sun.H.Y, Sun.H.Z, Sun.H.VX, Sun.H.VY, Sun.H.VZ, Sun.UTCModJulian};
+GMAT FF_Sun_H.WriteHeaders = false;
+GMAT FF_Sun_H.LeftJustify = On;
+GMAT FF_Sun_H.ZeroFill = Off;
+GMAT FF_Sun_H.FixedWidth = true;
+GMAT FF_Sun_H.Delimiter = ' ';
+GMAT FF_Sun_H.ColumnWidth = 23;
+GMAT FF_Sun_H.WriteReport = true;
+
+Create OrbitView Sun_H;
+GMAT Sun_H.SolverIterations = Current;
+GMAT Sun_H.UpperLeft = [ 0.1670854271356784 0.1194029850746269 ];
+GMAT Sun_H.Size = [ 0.5 0.4502487562189055 ];
+GMAT Sun_H.RelativeZOrder = 329;
+GMAT Sun_H.Maximized = true;
+GMAT Sun_H.Add = {SC1, Sun};
+GMAT Sun_H.CoordinateSystem = H;
+GMAT Sun_H.DrawObject = [ true true ];
+GMAT Sun_H.DataCollectFrequency = 1;
+GMAT Sun_H.UpdatePlotFrequency = 50;
+GMAT Sun_H.NumPointsToRedraw = 0;
+GMAT Sun_H.ShowPlot = true;
+GMAT Sun_H.MaxPlotPoints = 20000;
+GMAT Sun_H.ShowLabels = true;
+GMAT Sun_H.ViewPointReference = Earth;
+GMAT Sun_H.ViewPointVector = [ 0 0 30000 ];
+GMAT Sun_H.ViewDirection = Earth;
+GMAT Sun_H.ViewScaleFactor = 1;
+GMAT Sun_H.ViewUpCoordinateSystem = H;
+GMAT Sun_H.ViewUpAxis = Z;
+GMAT Sun_H.EclipticPlane = Off;
+GMAT Sun_H.XYPlane = On;
+GMAT Sun_H.WireFrame = Off;
+GMAT Sun_H.Axes = On;
+GMAT Sun_H.Grid = Off;
+GMAT Sun_H.SunLine = Off;
+GMAT Sun_H.UseInitialView = On;
+GMAT Sun_H.StarCount = 7000;
+GMAT Sun_H.EnableStars = On;
+GMAT Sun_H.EnableConstellations = On;
 
 
 %----------------------------------------
