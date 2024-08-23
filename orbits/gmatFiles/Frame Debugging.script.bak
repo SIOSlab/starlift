@@ -1,0 +1,305 @@
+%General Mission Analysis Tool(GMAT) Script
+%Created: 2024-08-21 13:08:30
+
+
+%----------------------------------------
+%---------- User-Defined Calculated Points
+%----------------------------------------
+
+Create Barycenter EMBarycenter;
+GMAT EMBarycenter.OrbitColor = Gold;
+GMAT EMBarycenter.TargetColor = DarkGray;
+GMAT EMBarycenter.BodyNames = {Earth, Luna};
+
+%----------------------------------------
+%---------- Spacecraft
+%----------------------------------------
+
+Create Spacecraft DefaultSC;
+GMAT DefaultSC.DateFormat = UTCModJulian;
+GMAT DefaultSC.Epoch = '57727';
+GMAT DefaultSC.CoordinateSystem = EarthICRF;
+GMAT DefaultSC.DisplayStateType = Cartesian;
+GMAT DefaultSC.X = -1.367211861824064e-13;
+GMAT DefaultSC.Y = 9000;
+GMAT DefaultSC.Z = -8.886121005691194e-16;
+GMAT DefaultSC.VX = -1.519124291983557e-16;
+GMAT DefaultSC.VY = 10;
+GMAT DefaultSC.VZ = -9.870051417880735e-19;
+GMAT DefaultSC.DryMass = 850;
+GMAT DefaultSC.Cd = 2.2;
+GMAT DefaultSC.Cr = 1.8;
+GMAT DefaultSC.DragArea = 15;
+GMAT DefaultSC.SRPArea = 1;
+GMAT DefaultSC.SPADDragScaleFactor = 1;
+GMAT DefaultSC.SPADSRPScaleFactor = 1;
+GMAT DefaultSC.AtmosDensityScaleFactor = 1;
+GMAT DefaultSC.ExtendedMassPropertiesModel = 'None';
+GMAT DefaultSC.NAIFId = -10002001;
+GMAT DefaultSC.NAIFIdReferenceFrame = -9002001;
+GMAT DefaultSC.OrbitColor = Red;
+GMAT DefaultSC.TargetColor = Teal;
+GMAT DefaultSC.OrbitErrorCovariance = [ 1e+70 0 0 0 0 0 ; 0 1e+70 0 0 0 0 ; 0 0 1e+70 0 0 0 ; 0 0 0 1e+70 0 0 ; 0 0 0 0 1e+70 0 ; 0 0 0 0 0 1e+70 ];
+GMAT DefaultSC.CdSigma = 1e+70;
+GMAT DefaultSC.CrSigma = 1e+70;
+GMAT DefaultSC.Id = 'SatId';
+GMAT DefaultSC.Attitude = CoordinateSystemFixed;
+GMAT DefaultSC.SPADSRPInterpolationMethod = Bilinear;
+GMAT DefaultSC.SPADSRPScaleFactorSigma = 1e+70;
+GMAT DefaultSC.SPADDragInterpolationMethod = Bilinear;
+GMAT DefaultSC.SPADDragScaleFactorSigma = 1e+70;
+GMAT DefaultSC.AtmosDensityScaleFactorSigma = 1e+70;
+GMAT DefaultSC.ModelFile = 'aura.3ds';
+GMAT DefaultSC.ModelOffsetX = 0;
+GMAT DefaultSC.ModelOffsetY = 0;
+GMAT DefaultSC.ModelOffsetZ = 0;
+GMAT DefaultSC.ModelRotationX = 0;
+GMAT DefaultSC.ModelRotationY = 0;
+GMAT DefaultSC.ModelRotationZ = 0;
+GMAT DefaultSC.ModelScale = 1;
+GMAT DefaultSC.AttitudeDisplayStateType = 'Quaternion';
+GMAT DefaultSC.AttitudeRateDisplayStateType = 'AngularVelocity';
+GMAT DefaultSC.AttitudeCoordinateSystem = EarthMJ2000Eq;
+GMAT DefaultSC.EulerAngleSequence = '321';
+
+
+
+
+
+
+%----------------------------------------
+%---------- ForceModels
+%----------------------------------------
+
+Create ForceModel DefaultProp_ForceModel;
+GMAT DefaultProp_ForceModel.CentralBody = Earth;
+GMAT DefaultProp_ForceModel.PointMasses = {Earth, Luna};
+GMAT DefaultProp_ForceModel.Drag = None;
+GMAT DefaultProp_ForceModel.SRP = Off;
+GMAT DefaultProp_ForceModel.RelativisticCorrection = Off;
+GMAT DefaultProp_ForceModel.ErrorControl = RSSStep;
+
+%----------------------------------------
+%---------- Propagators
+%----------------------------------------
+
+Create Propagator DefaultProp;
+GMAT DefaultProp.FM = DefaultProp_ForceModel;
+GMAT DefaultProp.Type = RungeKutta89;
+GMAT DefaultProp.InitialStepSize = 60;
+GMAT DefaultProp.Accuracy = 9.999999999999999e-12;
+GMAT DefaultProp.MinStep = 0.001;
+GMAT DefaultProp.MaxStep = 2700;
+GMAT DefaultProp.MaxStepAttempts = 50;
+GMAT DefaultProp.StopIfAccuracyIsViolated = true;
+
+%----------------------------------------
+%---------- Coordinate Systems
+%----------------------------------------
+
+Create CoordinateSystem EMBaryRot;
+GMAT EMBaryRot.Origin = EMBarycenter;
+GMAT EMBaryRot.Axes = ObjectReferenced;
+GMAT EMBaryRot.XAxis = R;
+GMAT EMBaryRot.YAxis = V;
+GMAT EMBaryRot.Primary = EMBarycenter;
+GMAT EMBaryRot.Secondary = Luna;
+
+Create CoordinateSystem H;
+GMAT H.Origin = SolarSystemBarycenter;
+GMAT H.Axes = ICRF;
+
+%----------------------------------------
+%---------- Subscribers
+%----------------------------------------
+
+Create OrbitView ICRF;
+GMAT ICRF.SolverIterations = Current;
+GMAT ICRF.UpperLeft = [ 0 0 ];
+GMAT ICRF.Size = [ 0.8135593220338984 0.8482587064676617 ];
+GMAT ICRF.RelativeZOrder = 169;
+GMAT ICRF.Maximized = false;
+GMAT ICRF.Add = {DefaultSC, Earth, Luna};
+GMAT ICRF.CoordinateSystem = EarthICRF;
+GMAT ICRF.DrawObject = [ true true true ];
+GMAT ICRF.DataCollectFrequency = 1;
+GMAT ICRF.UpdatePlotFrequency = 50;
+GMAT ICRF.NumPointsToRedraw = 0;
+GMAT ICRF.ShowPlot = true;
+GMAT ICRF.MaxPlotPoints = 20000;
+GMAT ICRF.ShowLabels = true;
+GMAT ICRF.ViewPointReference = Earth;
+GMAT ICRF.ViewPointVector = [ 30000 0 0 ];
+GMAT ICRF.ViewDirection = Earth;
+GMAT ICRF.ViewScaleFactor = 1;
+GMAT ICRF.ViewUpCoordinateSystem = EarthICRF;
+GMAT ICRF.ViewUpAxis = Z;
+GMAT ICRF.EclipticPlane = Off;
+GMAT ICRF.XYPlane = On;
+GMAT ICRF.WireFrame = Off;
+GMAT ICRF.Axes = On;
+GMAT ICRF.Grid = Off;
+GMAT ICRF.SunLine = Off;
+GMAT ICRF.UseInitialView = On;
+GMAT ICRF.StarCount = 7000;
+GMAT ICRF.EnableStars = On;
+GMAT ICRF.EnableConstellations = On;
+
+Create OrbitView Rotating;
+GMAT Rotating.SolverIterations = Current;
+GMAT Rotating.UpperLeft = [ 0.3819612590799031 0.2947761194029851 ];
+GMAT Rotating.Size = [ 0.513317191283293 0.4477611940298508 ];
+GMAT Rotating.RelativeZOrder = 226;
+GMAT Rotating.Maximized = false;
+GMAT Rotating.Add = {DefaultSC, Earth, Luna};
+GMAT Rotating.CoordinateSystem = EMBaryRot;
+GMAT Rotating.DrawObject = [ true true true ];
+GMAT Rotating.DataCollectFrequency = 1;
+GMAT Rotating.UpdatePlotFrequency = 50;
+GMAT Rotating.NumPointsToRedraw = 0;
+GMAT Rotating.ShowPlot = true;
+GMAT Rotating.MaxPlotPoints = 20000;
+GMAT Rotating.ShowLabels = true;
+GMAT Rotating.ViewPointReference = Earth;
+GMAT Rotating.ViewPointVector = [ 0 0 30000 ];
+GMAT Rotating.ViewDirection = Earth;
+GMAT Rotating.ViewScaleFactor = 1;
+GMAT Rotating.ViewUpCoordinateSystem = EMBaryRot;
+GMAT Rotating.ViewUpAxis = Z;
+GMAT Rotating.EclipticPlane = Off;
+GMAT Rotating.XYPlane = On;
+GMAT Rotating.WireFrame = Off;
+GMAT Rotating.Axes = On;
+GMAT Rotating.Grid = Off;
+GMAT Rotating.SunLine = Off;
+GMAT Rotating.UseInitialView = On;
+GMAT Rotating.StarCount = 7000;
+GMAT Rotating.EnableStars = Off;
+GMAT Rotating.EnableConstellations = On;
+
+Create ReportFile DebugICRF;
+GMAT DebugICRF.SolverIterations = Current;
+GMAT DebugICRF.UpperLeft = [ 0.03989867004433185 0.07835820895522388 ];
+GMAT DebugICRF.Size = [ 0.5984800506649778 0.7972636815920398 ];
+GMAT DebugICRF.RelativeZOrder = 272;
+GMAT DebugICRF.Maximized = false;
+GMAT DebugICRF.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\DebugICRF.txt';
+GMAT DebugICRF.Precision = 16;
+GMAT DebugICRF.Add = {Luna.EarthICRF.X, Luna.EarthICRF.Y, Luna.EarthICRF.Z, Luna.UTCModJulian};
+GMAT DebugICRF.WriteHeaders = false;
+GMAT DebugICRF.LeftJustify = On;
+GMAT DebugICRF.ZeroFill = Off;
+GMAT DebugICRF.FixedWidth = true;
+GMAT DebugICRF.Delimiter = ' ';
+GMAT DebugICRF.ColumnWidth = 23;
+GMAT DebugICRF.WriteReport = true;
+
+Create ReportFile DebugRot;
+GMAT DebugRot.SolverIterations = Current;
+GMAT DebugRot.UpperLeft = [ 0 0 ];
+GMAT DebugRot.Size = [ 0 0 ];
+GMAT DebugRot.RelativeZOrder = 0;
+GMAT DebugRot.Maximized = false;
+GMAT DebugRot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\DebugRot.txt';
+GMAT DebugRot.Precision = 16;
+GMAT DebugRot.Add = {Luna.EMBaryRot.X, Luna.EMBaryRot.Y, Luna.EMBaryRot.Z, Luna.UTCModJulian};
+GMAT DebugRot.WriteHeaders = false;
+GMAT DebugRot.LeftJustify = On;
+GMAT DebugRot.ZeroFill = Off;
+GMAT DebugRot.FixedWidth = true;
+GMAT DebugRot.Delimiter = ' ';
+GMAT DebugRot.ColumnWidth = 23;
+GMAT DebugRot.WriteReport = true;
+
+Create ReportFile DebugSC_ICRF;
+GMAT DebugSC_ICRF.SolverIterations = Current;
+GMAT DebugSC_ICRF.UpperLeft = [ 0.03989867004433185 0.07835820895522388 ];
+GMAT DebugSC_ICRF.Size = [ 0.5984800506649778 0.7972636815920398 ];
+GMAT DebugSC_ICRF.RelativeZOrder = 272;
+GMAT DebugSC_ICRF.Maximized = false;
+GMAT DebugSC_ICRF.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\DebugSC_ICRF.txt';
+GMAT DebugSC_ICRF.Precision = 16;
+GMAT DebugSC_ICRF.Add = {DefaultSC.EarthICRF.X, DefaultSC.EarthICRF.Y, DefaultSC.EarthICRF.Z, DefaultSC.UTCModJulian};
+GMAT DebugSC_ICRF.WriteHeaders = false;
+GMAT DebugSC_ICRF.LeftJustify = On;
+GMAT DebugSC_ICRF.ZeroFill = Off;
+GMAT DebugSC_ICRF.FixedWidth = true;
+GMAT DebugSC_ICRF.Delimiter = ' ';
+GMAT DebugSC_ICRF.ColumnWidth = 23;
+GMAT DebugSC_ICRF.WriteReport = true;
+
+Create ReportFile DebugSC_Rot;
+GMAT DebugSC_Rot.SolverIterations = Current;
+GMAT DebugSC_Rot.UpperLeft = [ 0 0 ];
+GMAT DebugSC_Rot.Size = [ 0 0 ];
+GMAT DebugSC_Rot.RelativeZOrder = 0;
+GMAT DebugSC_Rot.Maximized = false;
+GMAT DebugSC_Rot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\DebugSC_Rot.txt';
+GMAT DebugSC_Rot.Precision = 16;
+GMAT DebugSC_Rot.Add = {DefaultSC.EMBaryRot.X, DefaultSC.EMBaryRot.Y, DefaultSC.EMBaryRot.Z, DefaultSC.UTCModJulian};
+GMAT DebugSC_Rot.WriteHeaders = false;
+GMAT DebugSC_Rot.LeftJustify = On;
+GMAT DebugSC_Rot.ZeroFill = Off;
+GMAT DebugSC_Rot.FixedWidth = true;
+GMAT DebugSC_Rot.Delimiter = ' ';
+GMAT DebugSC_Rot.ColumnWidth = 23;
+GMAT DebugSC_Rot.WriteReport = true;
+
+Create ReportFile DebugBary;
+GMAT DebugBary.SolverIterations = Current;
+GMAT DebugBary.UpperLeft = [ 0.0387409200968523 0.07960199004975124 ];
+GMAT DebugBary.Size = [ 0.5992736077481841 0.7985074626865671 ];
+GMAT DebugBary.RelativeZOrder = 81;
+GMAT DebugBary.Maximized = false;
+GMAT DebugBary.Filename = 'DebugBary.txt';
+GMAT DebugBary.Precision = 16;
+GMAT DebugBary.Add = {EMBarycenter.EMBaryRot.X, EMBarycenter.EMBaryRot.Y, EMBarycenter.EMBaryRot.Z};
+GMAT DebugBary.WriteHeaders = true;
+GMAT DebugBary.LeftJustify = On;
+GMAT DebugBary.ZeroFill = Off;
+GMAT DebugBary.FixedWidth = true;
+GMAT DebugBary.Delimiter = ' ';
+GMAT DebugBary.ColumnWidth = 23;
+GMAT DebugBary.WriteReport = true;
+
+Create ReportFile DebugVelocity;
+GMAT DebugVelocity.SolverIterations = Current;
+GMAT DebugVelocity.UpperLeft = [ 0.1162227602905569 0.2388059701492537 ];
+GMAT DebugVelocity.Size = [ 0.5992736077481841 0.7985074626865671 ];
+GMAT DebugVelocity.RelativeZOrder = 102;
+GMAT DebugVelocity.Maximized = false;
+GMAT DebugVelocity.Filename = 'DebugVelocity.txt';
+GMAT DebugVelocity.Precision = 16;
+GMAT DebugVelocity.Add = {DefaultSC.AngularVelocityX, DefaultSC.AngularVelocityY, DefaultSC.AngularVelocityZ};
+GMAT DebugVelocity.WriteHeaders = true;
+GMAT DebugVelocity.LeftJustify = On;
+GMAT DebugVelocity.ZeroFill = Off;
+GMAT DebugVelocity.FixedWidth = true;
+GMAT DebugVelocity.Delimiter = ' ';
+GMAT DebugVelocity.ColumnWidth = 23;
+GMAT DebugVelocity.WriteReport = true;
+
+Create ReportFile DebugSC_H;
+GMAT DebugSC_H.SolverIterations = Current;
+GMAT DebugSC_H.UpperLeft = [ 0 0 ];
+GMAT DebugSC_H.Size = [ 0 0 ];
+GMAT DebugSC_H.RelativeZOrder = 0;
+GMAT DebugSC_H.Maximized = false;
+GMAT DebugSC_H.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\DebugSC_H.txt';
+GMAT DebugSC_H.Precision = 16;
+GMAT DebugSC_H.Add = {DefaultSC.H.X, DefaultSC.H.Y, DefaultSC.H.Z, DefaultSC.H.VX, DefaultSC.H.VY, DefaultSC.H.VZ, DefaultSC.UTCModJulian};
+GMAT DebugSC_H.WriteHeaders = false;
+GMAT DebugSC_H.LeftJustify = On;
+GMAT DebugSC_H.ZeroFill = Off;
+GMAT DebugSC_H.FixedWidth = true;
+GMAT DebugSC_H.Delimiter = ' ';
+GMAT DebugSC_H.ColumnWidth = 23;
+GMAT DebugSC_H.WriteReport = true;
+
+
+%----------------------------------------
+%---------- Mission Sequence
+%----------------------------------------
+
+BeginMissionSequence;
+Propagate DefaultProp(DefaultSC) {DefaultSC.ElapsedDays = 30};

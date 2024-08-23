@@ -16,7 +16,7 @@ import unitConversion
 import frameConversion
 import orbitEOMProp
 import gmatTools
-#import plot_tools
+import plot_tools
 
 #import tools.unitConversion as unitConversion
 #import tools.frameConversion as frameConversion
@@ -38,10 +38,10 @@ mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
 m2 = mu_star
 
-C_I2G = frameConversion.inert2geo(t_start,t_veq)
+C_I2G = frameConversion.inert2geo(t_start, t_veq)
 C_G2I = C_I2G.T
 
-# Initial condition in non dimensional units in rotating frame R [pos, vel]
+# Initial condition in non-dimensional units in rotating frame R [pos, vel]
 IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]
 X = [IC[0], IC[2], IC[4], IC[6]]
 
@@ -60,7 +60,13 @@ while error > eps and ctr < max_iter:
     
     ctr = ctr + 1
     
-IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
+IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])  # Canonical, rotating frame
+
+# Convert ICs to dimensional, rotating frame (for GMAT)
+pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')
+vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')
+print('Dimensional [km] position IC in the rotating frame: ', pos_dim)
+print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dim)
     
 # Convert the velocity to I frame from R frame
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
@@ -71,7 +77,7 @@ Tp_dim = unitConversion.convertTime_to_dim(IC[-1]).value
 # Define the free variable array
 freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*Tp_dim])
 
-# Propagate the dynamics in the CRTBP model
+# Propagate the dynamics in the CRTBP model for 1 orbit
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
 posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
@@ -124,13 +130,13 @@ for kk in np.arange(len(timesCRTBP_mjd)):
     r_CRTBP_rot[kk,:] = C_I2R @ r_dim
 
 
-# Convert position from I frame to H frame [AU]
+# Convert position from I frame (canonical) to H frame [AU]
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
 
-# Define the initial state array
-state0 = np.append(np.append(pos_H.value, vel_H.value), 1*timesCRTBP[-1])   # Change to Tp_dim.value for one orbit
+# Define the initial state array (for ~200 day orbit)
+state0 = np.append(np.append(pos_H.value, vel_H.value), 33*times_dim[-1].value)   # Change to Tp_dim.value for one orbit
 
-# Propagate the dynamics in the full force model (H frame) [AU]
+# Propagate the dynamics in the full force model (H frame) [AU, AU/d, days from 0]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start) #,times_dim)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
@@ -167,7 +173,7 @@ for ii in np.arange(len(timesFF_mjd)):
     r_MoonO_h[ii, :] = r_MoonO.value
     r_EMO_h[ii, :] = r_EMO.value
 
-    # Convert from H frame to GCRS frame
+    # Convert from H frame to GMEc frame
     r_PG = frameConversion.icrs2gmec(posFF[ii]*u.AU, time)
     r_EMG2 = frameConversion.icrs2gmec(r_EMO, time)
     r_SunG = frameConversion.icrs2gmec(r_SunO, time)
@@ -258,6 +264,23 @@ ax2.set_xlabel('X [AU]')
 ax2.set_ylabel('Y [AU]')
 ax2.set_zlabel('Z [AU]')
 plt.legend()
+
+desired_duration = 3  # seconds
+title = 'Full Force Model in the Inertial (I) Frame'
+body_names = ['Propagated FF', 'Earth', 'Moon', 'Sun']
+animate_func, ani_object = plot_tools.create_animation(timesFF, 33*IC[-1], desired_duration,
+                                                       [r_PEM_i, r_EarthEM_i, r_MoonEM_i, r_SunEM_i], body_names=body_names,
+                                                       title=title)
+
+desired_duration = 3  # seconds
+title = 'Full Force Model in the Inertial (I) Frame, no Sun'
+body_names = ['Propagated FF', 'Earth', 'Moon']
+animate_func2, ani_object2 = plot_tools.create_animation(timesFF, 33*IC[-1], desired_duration,
+                                                       [r_PEM_i, r_EarthEM_i, r_MoonEM_i], body_names=body_names,
+                                                       title=title)
+# Save
+writergif = animation.PillowWriter(fps=30)
+ani_object2.save('FF L2 orbitProp no sun.gif', writer=writergif)
 
 #fig, axs = plt.subplots(3)
 #fig.suptitle('I frame differences')
