@@ -3,6 +3,7 @@ from scipy.integrate import solve_ivp
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
 import astropy.constants as const
 import astropy.units as u
+from astropy.time import Time
 import frameConversion
 import unitConversion
 import matplotlib.pyplot as plt
@@ -138,7 +139,73 @@ def FF_EOM(tt, w, t_mjd):
     r_PO = np.array([x, y, z])  # AU
     v_PO = np.array([vx, vy, vz])  # AU/d
 
+    time = tt*u.d + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
+#    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
+    
+    # Distance vectors
+    r_PSun = r_PO - r_SunO.value
+    r_PEarth = r_PO - r_EarthO.value
+    r_PMoon = r_PO - r_MoonO.value
+#    r_PJupiter = r_PO - r_JupiterO.value
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+#    rJupiter_mag = np.linalg.norm(r_PJupiter)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+#    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p #+ F_gJupiter_p
+    
+    a_PO = F_g
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    
+    return dw
+    
+def FF_EOM_bvp(tt, w):
+    """Equations of motion for the full force model in the ICRS frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w
+    t_mjd = 57727
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    gmJupiter = const.GM_jup.to('AU3/d2').value
+    
+    r_PO = np.array([x, y, z])  # AU
+    v_PO = np.array([vx, vy, vz])  # AU/d
+    
     time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+    time = Time(time, format='mjd', scale='utc')
 
     # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
@@ -601,3 +668,55 @@ def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
     Phi = np.block([[Z, I], [A, Z]])
 
     return Phi
+
+def bc(state0, statef):
+    p_0 = np.array([0.293459975082937,  0.8664766980864345, 0.3751912270529706])
+##    p_f = np.array([0.29256928112371167, 0.8667454121820384, 0.3753047062089779])   # N = 100
+##    p_f = np.array([0.2918025887196476, 0.8669761008142826, 0.37540230267798735])   # N = 64
+##    p_f = np.array([0.2910348243925246, 0.8672065402289629, 0.3754999570391617])    # N = 45
+##    p_f = np.array([0.29026617417111455, 0.8674366712085922, 0.37559764495326464])  # N = 32
+##    p_f = np.array([0.2871864246733962, 0.8683529483744982, 0.37598825164583155])   # N = 16
+    p_f = np.array([0.2810387320467509, 0.8701540301641734, 0.3767641410592875])    # N = 8
+#    p_f = np.array([0.26910354927248387, 0.8735421993247062, 0.37825701342346874])    # N = 4
+    
+#    p_0 = np.array([0.293634783008725,  0.8663258657327496, 0.37507494571988537])
+##    p_f = np.array([0.24403853973633585, 0.8800506266558372, 0.38106119573343483])    # N = 4
+##    p_f = np.array([0.26932476317034215, 0.8733525490018106, 0.3780884453668963])    # N = 8
+##    p_f = np.array([0.28146822533058674, 0.8699136411460817, 0.3766017108874802])    # N = 16
+#    p_f = np.array([0.28612421281664663, 0.8685573614537293, 0.3760217836148016])    # N = 25
+##    p_f = np.array([0.2870522892301213, 0.8682845303608613, 0.3759055396542829])    # N = 32
+##    p_f = np.array([0.2889044493647845, 0.8677375810426323, 0.37567291215903315])    # N = 40
+##    p_f = np.array([0.2907505712263835, 0.8671891585760192, 0.3754401978471223])    # N = 64
+    
+#    p_0 = np.array([0.2931860334846758,  0.866610438210121, 0.37571733524315])
+#    p_f = np.array([0.2522870459986221, 0.8785058382328347, 0.3806881400533124])    # N = 4
+#    p_f = np.array([0.2727829289261824, 0.8728076892201084, 0.37830588127309717])    # N = 8
+#    p_f = np.array([0.2828449328072871, 0.8698117385000085, 0.3770548074581724])    # N = 16
+#    p_f = np.array([0.28818455348817235, 0.868173107805625, 0.376370399023265])    # N = 32
+#    p_f = np.array([0.28909217118939623, 0.8678914518366184, 0.376252725351373])    # N = 40
+#    p_f = np.array([0.28998789602215685, 0.8676126331250213, 0.37613622368176797])    # N = 50
+#    p_f = np.array([0.2904320964617648, 0.8674740538029769, 0.3760783142903308])    # N = 64
+
+    b1 = state0[0:3] - p_0
+    b2 = statef[0:3] - p_f
+    
+    bb = np.append(b1, b2)
+    return bb
+    
+    
+def getNiceEarthMoon(t_veq,t_current):
+    pos_E = get_body_barycentric_posvel('Earth', t_veq)[0]
+    hat_E = pos_E/np.linalg.norm(pos_E)
+    
+    dt = (t_current - t_veq).value*u.d
+    theta = (dt/1*u.yr).to('d').value*2*np.pi
+    
+    C_R2I = frameConversion.rot(theta,3)
+    
+    r_Earth = C_R2I @ hat_E*u.AU
+    
+    
+
+    return r_Earth, r_Moon
+
+

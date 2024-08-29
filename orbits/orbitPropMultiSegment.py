@@ -40,23 +40,49 @@ C_I2G = frameConversion.inert2geo(t_start,t_veq)
 C_G2I = C_I2G.T
 
 # Initial condition in non dimensional units in rotating frame R [pos, vel]
-IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]
+#IC = [0.8497294463740502, 0, 0, 0, 0.47923580202109567, 0, 1.1515074327754002]       # DRO
+IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]   # NRHO L2
+#IC = [1.1093213406579072, 0, -0.19463236063796546, 0, -0.22111944917599072, 0, 1.3816048399182301]  # L2
 X = [IC[0], IC[2], IC[4], IC[6]]
 
 max_iter = 1000
-error = 10
-ctr = 0
+
+orbT = unitConversion.convertTime_to_dim(2*IC[6])
+step = 1E-2
 eps = 4E-6
-while error > eps and ctr < max_iter:
-    Fx = orbitEOMProp.calcFx_R(X, mu_star)
 
-    error = np.linalg.norm(Fx)
-    print(error)
-    dFx = orbitEOMProp.calcdFx_CRTBP(X,mu_star,m1,m2)
-
-    X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
+while orbT.value < 10:
+    print(orbT)
+    error = 10
+    ctr = 0
     
-    ctr = ctr + 1
+    z = np.array([0, 0, 0, 1])
+    while error > eps and ctr < max_iter:
+        Fx = orbitEOMProp.calcFx_R(X, mu_star)
+
+        error = np.linalg.norm(Fx)
+        print(error)
+        dFx = orbitEOMProp.calcdFx_CRTBP(X,mu_star,m1,m2)
+
+        X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
+        
+        ctr = ctr + 1
+        
+    # Generate new z and X for another orbit
+    solp = X + z * step
+    ss = fsolve(orbitEOMProp.fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
+    X = ss[0]
+    Q = ss[1]['fjac']
+    Rs = ss[1]['r']
+    R = np.zeros((4, 4))
+    idx, col = np.triu_indices(4, k=0)
+    R[idx, col] = Rs
+    J = Q.T @ R
+
+    z = np.linalg.inv(J) @ z
+    z = z / np.linalg.norm(z)
+
+    orbT = unitConversion.convertTime_to_dim(2*X[-1])
     
 IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
     
@@ -143,11 +169,28 @@ for ii in np.arange(N):
     vel_i = velCRTBP[index_i]
 
     pos_Hi, vel_Hi = frameConversion.convertSC_I2H(pos_i, vel_i, taus[ii], C_I2G)
+    
+    # Get position of the moon at the epoch in the inertial frame
+    _, _, moon_I = frameConversion.getSunEarthMoon(t_start, C_I2G)  # I frame [AU]
+    moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+
+    # Transform position ICs to the epoch moon
+    ideal_moon = [1-mu_star, 0, 0]
+    IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
+    IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
+    IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
+    IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
+
+    # Rotate velocity vector to match the epoch moon (I frame)
+    theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
+    if theta > np.pi/2:
+        theta = -theta
+    rot_matrix = frameConversion.rot(theta, 3)
+    pos_Hi = rot_matrix @ pos_Hi
+    vel_Hi = rot_matrix @ vel_Hi  # Canonical, I frame
+
     posvel = np.append(posvel,np.append(pos_Hi.value, vel_Hi.value))
 
-
-
-bc = np.append(posvel[0:3], posvel[6:9])
 tspan = np.linspace(0,dt_int,2)
 sG = np.array(
             [
@@ -159,9 +202,25 @@ sG = np.array(
                 [posvel[5], posvel[11]],
             ]
         )
+        
+print(posvel[0])
+print(posvel[1])
+print(posvel[2])
 
-sol = solve_bvp(orbitEOMProp.FF_EOM, bc, tspan, sG, p=t_start)
+print(posvel[6])
+print(posvel[7])
+print(posvel[8])
+breakpoint()
 
+sol = solve_bvp(orbitEOMProp.FF_EOM_bvp, orbitEOMProp.bc, tspan, sG)
+bvpState = sol.y
+diff = bvpState - sG
+b1 = diff[3:6,0]
+dv1 = (np.linalg.norm(b1)*u.AU/u.d).to('km/s')
+b2 = diff[3:6,1]
+dv2 = (np.linalg.norm(b2)*u.AU/u.d).to('km/s')
+print(dv1)
+print(dv2)
 breakpoint()
 
 eps = 1E-8
