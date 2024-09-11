@@ -16,7 +16,7 @@ import unitConversion
 import frameConversion
 import orbitEOMProp
 import gmatTools
-#import plot_tools
+import plot_tools
 
 #import tools.unitConversion as unitConversion
 #import tools.frameConversion as frameConversion
@@ -133,27 +133,27 @@ for kk in np.arange(len(timesCRTBP_mjd)):
 # Convert position from I frame (canonical) to H frame [AU]
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
 
-# Get position of the moon at the epoch in the inertial frame
-_, _, moon_I = frameConversion.getSunEarthMoon(t_start, C_I2G)  # I frame [AU]
-moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+## Get position of the moon at the epoch in the inertial frame
+#_, _, moon_I = frameConversion.getSunEarthMoon(t_start, C_I2G)  # I frame [AU]
+#moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+#
+## Transform position ICs to the epoch moon
+#ideal_moon = [1-mu_star, 0, 0]
+#IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
+#IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
+#IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
+#IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
 
-# Transform position ICs to the epoch moon
-ideal_moon = [1-mu_star, 0, 0]
-IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
-IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
-IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
-IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
-
-# Rotate velocity vector to match the epoch moon (I frame)
-theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
-if theta > np.pi/2:
-    theta = -theta
-rot_matrix = frameConversion.rot(theta, 3)
+## Rotate velocity vector to match the epoch moon (I frame)
+#theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
+#if theta > np.pi/2:
+#    theta = -theta
+#rot_matrix = frameConversion.rot(theta, 3)
 #pos_H = rot_matrix @ pos_H
-vel_H = rot_matrix @ vel_H  # Canonical, I frame
+#vel_H = rot_matrix @ vel_H  # Canonical, I frame
     
 # Define the initial state array (for ~200 day orbit)
-state0 = np.append(gmat_posicrs[0,:], 1*timesCRTBP[-1])   # Change to Tp_dim.value for one orbit
+state0 = np.append(np.append(pos_H.value,vel_H.value), 1*timesCRTBP[-1])   # Change to Tp_dim.value for one orbit
 
 # Propagate the dynamics in the full force model (H frame) [AU, AU/d, days from 0]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start) #,times_dim)
@@ -235,7 +235,7 @@ for ii in np.arange(len(gmat_time)):
 ax1 = plt.figure().add_subplot(projection='3d')
 ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
 ax1.plot(r_PO_CRTBP[:,0], r_PO_CRTBP[:,1], r_PO_CRTBP[:,2], 'r-.', label='CRTBP')
-ax1.plot(gmat_posicrs[:, 0], gmat_posicrs[:, 1], gmat_posicrs[:, 2], color='g', label='GMAT Orbit')
+#ax1.plot(gmat_posicrs[:, 0], gmat_posicrs[:, 1], gmat_posicrs[:, 2], color='g', label='GMAT Orbit')
 ax1.scatter(posFF[0, 0], posFF[0, 1], posFF[0, 2], c='b', marker='*', label='Full Force Start')
 ax1.scatter(posFF[-1, 0], posFF[-1, 1], posFF[-1, 2], c='b', marker='D', label='Full Force End')
 ax1.scatter(r_PO_CRTBP[0, 0], r_PO_CRTBP[0, 1], r_PO_CRTBP[0, 2], c='r', marker='*', label='CRTBP Start')
@@ -269,7 +269,7 @@ plt.legend()
 
 ax2 = plt.figure().add_subplot(projection='3d')
 ax2.plot(r_PEM_i[:, 0], r_PEM_i[:, 1], r_PEM_i[:, 2], 'b', label='Full Force')
-ax2.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='g', label='GMAT Orbit')
+#ax2.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='g', label='GMAT Orbit')
 ax2.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r-.', label='CRTBP')
 ax2.plot(r_EarthEM_i[:, 0], r_EarthEM_i[:, 1], r_EarthEM_i[:, 2], 'g', label='Earth')
 ax2.plot(r_MoonEM_i[:, 0], r_MoonEM_i[:, 1], r_MoonEM_i[:, 2], 'k', label='Moon')
@@ -277,12 +277,14 @@ ax2.plot(r_MoonEM_i[:, 0], r_MoonEM_i[:, 1], r_MoonEM_i[:, 2], 'k', label='Moon'
 #ax2.scatter(r_PEM_i[-1, 0], r_PEM_i[-1, 1], r_PEM_i[-1, 2], c='b', marker='D', label='Full Force End')
 #ax2.scatter(r_CRTBP_I[0, 0], r_CRTBP_I[0, 1], r_CRTBP_I[0, 2], c='r', marker='*', label='CRTBP Start')
 #ax2.scatter(r_CRTBP_I[-1, 0], r_CRTBP_I[-1, 1], r_CRTBP_I[-1, 2], c='r', marker='D', label='CRTBP End')
-ax2.set_title('FF vs CRTBP in I frame (Inertial EM)')
+ax2.set_title('GMAT in Inertial Earth-Moon CRTBP Frame')
 ax2.set_xlabel('X [AU]')
 ax2.set_ylabel('Y [AU]')
 ax2.set_zlabel('Z [AU]')
 plt.legend()
 
+plt.show()
+breakpoint()
 desired_duration = 3  # seconds
 title = 'Full Force Model in the Inertial (I) Frame'
 body_names = ['Propagated FF', 'Earth', 'Moon', 'Sun']
