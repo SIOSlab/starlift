@@ -3,6 +3,7 @@ import os.path
 import pickle
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
+from scipy.interpolate import interp1d
 import sys
 import astropy.coordinates as coord
 from astropy.coordinates.solar_system import get_body_barycentric_posvel
@@ -101,10 +102,13 @@ print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
 # Define the free variable array
 freeVar = np.array([IC[0], IC[2], IC[4], days_can])
 
-# Propagate the dynamics in the CRTBP model
-states_CRTBP, times_CRTBP = orbitEOMProp.statePropCRTBP(freeVar, mu_star)  # Canonical units
+# Propagate the dynamics in the CRTBP model (times_CRTBP is from zero)
+states_CRTBP, times_CRTBP_can = orbitEOMProp.statePropCRTBP(freeVar, mu_star)  # Canonical units
 pos_CRTBP = states_CRTBP[:, 0:3]
 vel_CRTBP = states_CRTBP[:, 3:6]
+
+# Convert time to dimensional
+times_CRTBP_dim = (unitConversion.convertTime_to_dim(times_CRTBP_can)).value
 
 # Convert to AU
 pos_CRTBP_au = np.array(unitConversion.convertPos_to_dim(pos_CRTBP).to('AU'))
@@ -128,11 +132,26 @@ pos_can = unitConversion.convertPos_to_canonical(pos * u.AU)
 vel_can = unitConversion.convertVel_to_canonical(vel * u.AU/u.d)
 
 # Simulation time in mjd
-times_mjd = times_FF + t_start  # Days from mission start time
+times_FF_mjd = times_FF + t_start  # Days from mission start time
 
 # Preallocate space
-pos_FF = np.zeros([len(times_mjd), 3])
-vel_FF = np.zeros([len(times_mjd), 3])
+pos_FF = np.zeros([len(times_FF_mjd), 3])
+vel_FF = np.zeros([len(times_FF_mjd), 3])
+
+# Obtain celestial body positions in the I frame and H frame [AU] and convert state to I frame
+for ii in np.arange(len(times_FF_mjd)):
+    pos_FF[ii, :], vel_FF[ii, :] = frameConversion.convertSC_H2I(pos_can[ii, :], vel_can[ii, :], times_FF_mjd[ii], C_I2G)
+
+
+# ~~~~~INTERPOLATE SO THAT CRTBP AND FF ARE THE SAME SIZE~~~~
+
+# Create a time vector that can be used for both CRTBP and FF (starting from 0)
+times = np.linspace(max(min(times_CRTBP_dim), min(times_FF)), min(max(times_CRTBP_dim), max(times_FF)),
+                    num=min(len(times_CRTBP_dim), len(times_FF)))
+
+# Obtain celestial body position data using this time vector
+times_mjd = times + t_start  # Days from mission start time
+
 pos_Sun = np.zeros([len(times_mjd), 3])
 pos_Earth = np.zeros([len(times_mjd), 3])
 pos_Moon = np.zeros([len(times_mjd), 3])
@@ -140,28 +159,45 @@ pos_Sun_H = np.zeros([len(times_mjd), 3])
 pos_Earth_H = np.zeros([len(times_mjd), 3])
 pos_Moon_H = np.zeros([len(times_mjd), 3])
 
-# Obtain celestial body positions in the I frame and H frame [AU] and convert state to I frame
-for ii in np.arange(len(times_mjd)):
-    pos_FF[ii, :], vel_FF[ii, :] = frameConversion.convertSC_H2I(pos_can[ii, :], vel_can[ii, :], times_mjd[ii], C_I2G)
+for ii in np.arange(len(times_FF_mjd)):
     pos_Sun[ii, :], pos_Earth[ii, :], pos_Moon[ii, :] = frameConversion.getSunEarthMoon(times_mjd[ii], C_I2G)
     pos_Sun_H[ii, :] = get_body_barycentric_posvel('Sun', times_mjd[ii])[0].get_xyz().to('AU').value
     pos_Earth_H[ii, :] = get_body_barycentric_posvel('Earth', times_mjd[ii])[0].get_xyz().to('AU').value
     pos_Moon_H[ii, :] = get_body_barycentric_posvel('Moon', times_mjd[ii])[0].get_xyz().to('AU').value
+
+# Interpolate CRTBP positions
+interp_CRTBP = interp1d(times_CRTBP_dim, pos_CRTBP_au, axis=0, kind='linear')
+pos_CRTBP_interp = interp_CRTBP(times)
+
+# Interpolate Full Force positions
+interp_FF = interp1d(times_FF, pos_FF, axis=0, kind='linear')
+pos_FF_interp = interp_FF(times)
 
 
 # ~~~~~PLOT~~~~
 
 title = 'I Frame'
 body_names = ['CRTBP', 'FF', 'Earth', 'Moon', 'Sun']
-fig_I, ax_I = plot_tools.plot_bodies(pos_CRTBP_au, pos_FF, pos_Earth, pos_Moon, pos_Sun, body_names=body_names, title=title)
+fig_I, ax_I = plot_tools.plot_bodies(pos_CRTBP_interp, pos_FF_interp, pos_Earth, pos_Moon, pos_Sun, body_names=body_names, title=title)
 
 title = 'I Frame, no Sun'
 body_names = ['CRTBP', 'FF', 'Earth', 'Moon']
-fig_InoS, ax_InoS = plot_tools.plot_bodies(pos_CRTBP_au, pos_FF, pos_Earth, pos_Moon, body_names=body_names, title=title)
+fig_InoS, ax_InoS = plot_tools.plot_bodies(pos_CRTBP_interp, pos_FF_interp, pos_Earth, pos_Moon, body_names=body_names, title=title)
+
+
+# ~~~~~ANIMATE~~~~~
+
+desired_duration = 3  # seconds
+title = 'CRTBP and FF in the I Frame'
+body_names = ['CRTBP', 'FF', 'Earth', 'Moon']
+animate_func, ani_object = plot_tools.create_animation(times, days, desired_duration, [pos_CRTBP_interp, pos_FF_interp,
+                                                                                       pos_Earth, pos_Moon],
+                                                       body_names=body_names, title=title)
 
 
 # # ~~~~~SAVE~~~~~
 #
 # fig_InoS.savefig('plotFigures/CRTBP and FF, L2 I frame, no Sun.png')
-
-breakpoint()
+#
+# writergif = animation.PillowWriter(fps=30)
+# ani_object.save('plotFigures/CRTBP and FF, L2 I frame, no Sun.gif', writer=writergif)
