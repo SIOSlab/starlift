@@ -20,12 +20,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 388641.8766523503;
-GMAT SC1.Y = 1.455191522836685e-10;
-GMAT SC1.Z = -66558.8599385399;
-GMAT SC1.VX = 9.71445146547012e-17;
-GMAT SC1.VY = -0.07982111000000014;
-GMAT SC1.VZ = -5.551115123125783e-17;
+GMAT SC1.X = 388641.8766523501;
+GMAT SC1.Y = 2.91038304567337e-11;
+GMAT SC1.Z = -66558.85993853997;
+GMAT SC1.VX = 1.110223024625157e-16;
+GMAT SC1.VY = -0.07982111000000003;
+GMAT SC1.VZ = 5.551115123125783e-17;
 GMAT SC1.DryMass = 1;
 GMAT SC1.Cd = 0;
 GMAT SC1.Cr = 0;
@@ -61,6 +61,7 @@ GMAT SC1.AttitudeDisplayStateType = 'Quaternion';
 GMAT SC1.AttitudeRateDisplayStateType = 'AngularVelocity';
 GMAT SC1.AttitudeCoordinateSystem = EarthMJ2000Eq;
 GMAT SC1.EulerAngleSequence = '321';
+
 
 
 
@@ -141,7 +142,7 @@ GMAT EMBaryRot.Origin = EarthMoonBarycenter;
 GMAT EMBaryRot.Axes = ObjectReferenced;
 GMAT EMBaryRot.XAxis = R;
 GMAT EMBaryRot.ZAxis = N;
-GMAT EMBaryRot.Primary = Earth;
+GMAT EMBaryRot.Primary = EarthMoonBarycenter;
 GMAT EMBaryRot.Secondary = Luna;
 
 Create CoordinateSystem EMInert;
@@ -170,10 +171,10 @@ GMAT DefaultDC.Algorithm = NewtonRaphson;
 
 Create OrbitView Inertial;
 GMAT Inertial.SolverIterations = Current;
-GMAT Inertial.UpperLeft = [ 0.01259445843828715 0 ];
-GMAT Inertial.Size = [ 0.698992443324937 1.019659239842726 ];
-GMAT Inertial.RelativeZOrder = 630;
-GMAT Inertial.Maximized = false;
+GMAT Inertial.UpperLeft = [ 0.01108213820078227 0 ];
+GMAT Inertial.Size = [ 0.7229465449804433 0.8248081841432225 ];
+GMAT Inertial.RelativeZOrder = 179;
+GMAT Inertial.Maximized = true;
 GMAT Inertial.Add = {SC1, Earth, Luna};
 GMAT Inertial.CoordinateSystem = EMInert;
 GMAT Inertial.DrawObject = [ true true true ];
@@ -355,14 +356,4 @@ GMAT Energy.WriteReport = true;
 %----------------------------------------
 
 BeginMissionSequence;
-Propagate DefaultProp(SC1) {SC1.ElapsedDays = 0.3704833081};
-While SC1.ElapsedDays < 30
-   Target DefaultDC {SolveMode = Solve, ExitMode = DiscardAndContinue, ShowProgressWindow = true};
-      Vary 'Vary_X' DefaultDC(DefaultIB.Element1 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 30, MaxStep = 0.2, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
-      Vary 'Vary_Y' DefaultDC(DefaultIB.Element2 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 30, MaxStep = 0.2, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
-      Vary 'Vary_Z' DefaultDC(DefaultIB.Element3 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 30, MaxStep = 0.2, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
-      Maneuver 'ApplyManeuver' DefaultIB(SC1);
-      Propagate DefaultProp(SC1) {SC1.ElapsedDays = 0.3704833081};
-      Achieve DefaultDC(SC1.Luna.Energy = -0.06651385755906224, {Tolerance = 0.01});
-   EndTarget;  % For targeter DefaultDC
-EndWhile;
+Propagate DefaultProp(SC1) {SC1.ElapsedDays = 30};

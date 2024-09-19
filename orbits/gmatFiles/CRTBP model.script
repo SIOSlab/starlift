@@ -20,12 +20,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 388641.8766523503;
-GMAT SC1.Y = 1.455191522836685e-10;
-GMAT SC1.Z = -66558.8599385399;
-GMAT SC1.VX = 9.71445146547012e-17;
-GMAT SC1.VY = -0.07982111000000014;
-GMAT SC1.VZ = -5.551115123125783e-17;
+GMAT SC1.X = 388641.8766523501;
+GMAT SC1.Y = 2.91038304567337e-11;
+GMAT SC1.Z = -66558.85993853997;
+GMAT SC1.VX = 1.110223024625157e-16;
+GMAT SC1.VY = -0.07982111000000003;
+GMAT SC1.VZ = 5.551115123125783e-17;
 GMAT SC1.DryMass = 1;
 GMAT SC1.Cd = 0;
 GMAT SC1.Cr = 0;
@@ -61,6 +61,8 @@ GMAT SC1.AttitudeDisplayStateType = 'Quaternion';
 GMAT SC1.AttitudeRateDisplayStateType = 'AngularVelocity';
 GMAT SC1.AttitudeCoordinateSystem = EarthMJ2000Eq;
 GMAT SC1.EulerAngleSequence = '321';
+
+
 
 
 
@@ -141,7 +143,7 @@ GMAT EMBaryRot.Origin = EarthMoonBarycenter;
 GMAT EMBaryRot.Axes = ObjectReferenced;
 GMAT EMBaryRot.XAxis = R;
 GMAT EMBaryRot.ZAxis = N;
-GMAT EMBaryRot.Primary = Earth;
+GMAT EMBaryRot.Primary = EarthMoonBarycenter;
 GMAT EMBaryRot.Secondary = Luna;
 
 Create CoordinateSystem EMInert;
@@ -170,9 +172,9 @@ GMAT DefaultDC.Algorithm = NewtonRaphson;
 
 Create OrbitView Inertial;
 GMAT Inertial.SolverIterations = Current;
-GMAT Inertial.UpperLeft = [ 0.01259445843828715 0 ];
-GMAT Inertial.Size = [ 0.698992443324937 1.019659239842726 ];
-GMAT Inertial.RelativeZOrder = 630;
+GMAT Inertial.UpperLeft = [ 0.0119047619047619 0 ];
+GMAT Inertial.Size = [ 0.6986215538847118 1.083443708609271 ];
+GMAT Inertial.RelativeZOrder = 97;
 GMAT Inertial.Maximized = false;
 GMAT Inertial.Add = {SC1, Earth, Luna};
 GMAT Inertial.CoordinateSystem = EMInert;
@@ -200,22 +202,22 @@ GMAT Inertial.StarCount = 7000;
 GMAT Inertial.EnableStars = Off;
 GMAT Inertial.EnableConstellations = Off;
 
-Create ReportFile CRTBP_rot;
-GMAT CRTBP_rot.SolverIterations = Current;
-GMAT CRTBP_rot.UpperLeft = [ 0.05705882352941177 0.1169154228855721 ];
-GMAT CRTBP_rot.Size = [ 0.5982352941176471 0.7960199004975125 ];
-GMAT CRTBP_rot.RelativeZOrder = 45;
-GMAT CRTBP_rot.Maximized = false;
-GMAT CRTBP_rot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\CRTBP_rot.txt';
-GMAT CRTBP_rot.Precision = 16;
-GMAT CRTBP_rot.Add = {SC1.EMBaryRot.X, SC1.EMBaryRot.Y, SC1.EMBaryRot.Z, SC1.UTCModJulian};
-GMAT CRTBP_rot.WriteHeaders = false;
-GMAT CRTBP_rot.LeftJustify = On;
-GMAT CRTBP_rot.ZeroFill = Off;
-GMAT CRTBP_rot.FixedWidth = true;
-GMAT CRTBP_rot.Delimiter = ' ';
-GMAT CRTBP_rot.ColumnWidth = 23;
-GMAT CRTBP_rot.WriteReport = true;
+Create ReportFile CRTBP_rot_diffcorr;
+GMAT CRTBP_rot_diffcorr.SolverIterations = Current;
+GMAT CRTBP_rot_diffcorr.UpperLeft = [ 0.05705882352941177 0.1169154228855721 ];
+GMAT CRTBP_rot_diffcorr.Size = [ 0.5982352941176471 0.7960199004975125 ];
+GMAT CRTBP_rot_diffcorr.RelativeZOrder = 45;
+GMAT CRTBP_rot_diffcorr.Maximized = false;
+GMAT CRTBP_rot_diffcorr.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\CRTBP_rot_diffcorr.txt';
+GMAT CRTBP_rot_diffcorr.Precision = 16;
+GMAT CRTBP_rot_diffcorr.Add = {SC1.EMBaryRot.X, SC1.EMBaryRot.Y, SC1.EMBaryRot.Z, SC1.UTCModJulian};
+GMAT CRTBP_rot_diffcorr.WriteHeaders = false;
+GMAT CRTBP_rot_diffcorr.LeftJustify = On;
+GMAT CRTBP_rot_diffcorr.ZeroFill = Off;
+GMAT CRTBP_rot_diffcorr.FixedWidth = true;
+GMAT CRTBP_rot_diffcorr.Delimiter = ' ';
+GMAT CRTBP_rot_diffcorr.ColumnWidth = 23;
+GMAT CRTBP_rot_diffcorr.WriteReport = true;
 
 Create ReportFile CRTBP_inert;
 GMAT CRTBP_inert.SolverIterations = Current;
@@ -355,14 +357,14 @@ GMAT Energy.WriteReport = true;
 %----------------------------------------
 
 BeginMissionSequence;
-Propagate DefaultProp(SC1) {SC1.ElapsedDays = 0.3704833081};
+Propagate DefaultProp(SC1) {SC1.ElapsedDays = 1.481933233};
 While SC1.ElapsedDays < 30
    Target DefaultDC {SolveMode = Solve, ExitMode = DiscardAndContinue, ShowProgressWindow = true};
       Vary 'Vary_X' DefaultDC(DefaultIB.Element1 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 30, MaxStep = 0.2, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
       Vary 'Vary_Y' DefaultDC(DefaultIB.Element2 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 30, MaxStep = 0.2, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
       Vary 'Vary_Z' DefaultDC(DefaultIB.Element3 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 30, MaxStep = 0.2, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
       Maneuver 'ApplyManeuver' DefaultIB(SC1);
-      Propagate DefaultProp(SC1) {SC1.ElapsedDays = 0.3704833081};
+      Propagate DefaultProp(SC1) {SC1.ElapsedDays = 1.481933233};
       Achieve DefaultDC(SC1.Luna.Energy = -0.06651385755906224, {Tolerance = 0.01});
    EndTarget;  % For targeter DefaultDC
 EndWhile;

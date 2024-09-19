@@ -70,7 +70,7 @@ for ii in np.arange(len(times)):
 # ~~~~~PLOT SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
 # Obtain CRTBP data from GMAT
-file_name = "gmatFiles/CRTBP_rot.txt"
+file_name = "gmatFiles/CRTBP_rot_diffcorr.txt"
 gmat_km, gmat_time = gmatTools.extract_pos(file_name)
 gmat_posrot = np.array((gmat_km * u.km).to('AU'))
 
@@ -85,6 +85,10 @@ for ii in np.arange(len(gmat_time)):
 title = 'CRTBP Model in the Inertial (I) Frame'
 body_names = ['Propagated CRTBP', 'Earth', 'Moon', 'GMAT Orbit']
 fig, ax = plot_tools.plot_bodies(pos_au, pos_earth, pos_moon, gmat_posinert, body_names=body_names, title=title)
+
+# title = 'GMAT CRTBP orbit in the Inertial (I) Frame'
+# body_names = ['Earth', 'Moon', 'GMAT Orbit']
+# fig, ax = plot_tools.plot_bodies(pos_earth, pos_moon, gmat_posinert, body_names=body_names, title=title)
 
 
 # ~~~~~ANIMATION~~~~~
