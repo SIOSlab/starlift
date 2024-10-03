@@ -143,6 +143,7 @@ for ii in np.arange(len(gmat_time)):
 
 
 # ~~~~~PLOT~~~~
+
 title = 'Full Force Model in the I Frame'
 body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun', 'GMAT Orbit']
 fig_I, ax_I = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, pos_Sun, gmat_posinert, body_names=body_names, title=title)
