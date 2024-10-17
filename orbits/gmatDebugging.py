@@ -9,119 +9,107 @@ import gmatTools
 import frameConversion
 import plot_tools
 import unitConversion
+from scipy.spatial.transform import Rotation as R
 
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d  # + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
 C_I2G = frameConversion.inert2geo(t_start, t_veq)
 
-# ~~~~~MOON~~~~~
+# ~~~~~GET DATA~~~~~
 
 # Get GMAT data
 file_name = "gmatFiles/Moon_EMInert.txt"  # MJ2000Eq centered at EM barycenter
-moon_inert, times = gmatTools.extract_pos(file_name)  # Array in km
+moon_inert, times = gmatTools.extract_pos(file_name)  # Array in km, time in MJD
 moon_inert = np.array((moon_inert * u.km).to('AU'))  # Array in AU
 
-file_name = "gmatFiles/Moon_EMRot.txt"  # Rotating with the moon centered at EM barycenter
-moon_rot, _ = gmatTools.extract_pos(file_name)  # Array in km
-moon_rot = np.array((moon_rot * u.km).to('AU'))  # Array in AU
+# file_name = "gmatFiles/Moon_EMRot.txt"  # Rotating with the moon centered at EM barycenter
+# moon_rot, _ = gmatTools.extract_pos(file_name)  # Array in km
+# moon_rot = np.array((moon_rot * u.km).to('AU'))  # Array in AU
+#
+# file_name = "gmatFiles/Moon_GMEc.txt"  # GMEc centered at EM barycenter
+# moon_gmec, _ = gmatTools.extract_pos(file_name)  # Array in km
+# moon_gmec = np.array((moon_gmec * u.km).to('AU'))  # Array in AU
 
-file_name = "gmatFiles/Moon_GMEc.txt"  # Rotating with the moon centered at EM barycenter
-moon_gmec, _ = gmatTools.extract_pos(file_name)  # Array in km
-moon_gmec = np.array((moon_gmec * u.km).to('AU'))  # Array in AU
-
-# Compare GMAT GMEc with astropy GMEc (conclusion: not the same)
-moon_astro_gmec = np.zeros([len(times), 3])
-moon_astro_inert = np.zeros([len(times), 3])
+# Get Astropy moon data (I frame, AU)
+C_I2G = frameConversion.inert2geo(t_start, t_veq)
+astro_moon = np.zeros([len(times), 3])
 for ii in np.arange(len(times)):
-    moon_astro_icrs = get_body_barycentric_posvel('Moon', times[ii])[0].get_xyz().to('AU').value
-    moon_astro_gmec[ii, :] = (frameConversion.icrs2gmec(moon_astro_icrs * u.AU, times[ii])).to('AU')
-    _, _, moon_astro_inert[ii, :] = frameConversion.getSunEarthMoon(times[ii], C_I2G)
-
-# Convert rot to inert 2 different ways
-moon_inert_frameconvert = np.zeros([len(times), 3])
-moon_inert_manual = np.zeros([len(times), 3])
-for ii in np.arange(len(times)):
-    # Convert GMAT rot to inert using Python function
-    C_I2R_astro = frameConversion.inert2rot(times[ii], times[0])
-    C_R2I_astro = C_I2R_astro.T
-    moon_inert_frameconvert[ii, :] = C_R2I_astro @ moon_rot[ii, :]
-
-    # DCM in GMAT
-    angle = np.arccos(np.dot(moon_rot[0], moon_rot[ii])/(np.linalg.norm(moon_rot[0])*np.linalg.norm(moon_rot[ii])))
-    C_I2R_gmat = frameConversion.rot(angle, 3)
-    C_R2I_gmat = C_I2R_gmat.T
-    moon_inert_manual[ii, :] = C_R2I_gmat @ moon_rot[ii, :]
+    _, _, astro_moon[ii, :] = frameConversion.getSunEarthMoon(times[ii], C_I2G)
 
 
-    # # Get the difference
-    # DCM_diff = C_I2R_astro - C_I2R_gmat
-    # plt.scatter(times[ii].value, DCM_diff[0, 0])
-    # plt.scatter(times[ii].value, DCM_diff[0, 1])
-    # plt.scatter(times[ii].value, DCM_diff[1, 0])
-    # plt.scatter(times[ii].value, DCM_diff[1, 1])
+# ~~~~~OBTAIN DCM DIFFERENCES~~~~~
+
+# Resample positions to equal time intervals
+def resample_positions(positions, times, new_times):
+    resampled_positions = np.zeros((len(new_times), 3))
+    for i in range(3):  # Interpolate for x, y, z separately
+        resampled_positions[:, i] = np.interp(new_times.mjd, times.mjd, positions[:, i])
+    return resampled_positions
 
 
-title = 'Moon'
-body_names = ['Raw gmat gmec', 'Astropy gmec']
-fig, ax = plot_tools.plot_bodies(moon_gmec, moon_astro_gmec, body_names=body_names, title=title)
+# Calculate DCM between two time steps
+def calculate_dcm(pos1, pos2):
+    # Normalizing position vectors
+    pos1_unit = pos1 / np.linalg.norm(pos1)
+    pos2_unit = pos2 / np.linalg.norm(pos2)
+
+    # Define rotation axis and angle
+    axis = np.cross(pos1_unit, pos2_unit)
+    if np.linalg.norm(axis) < 1e-8:  # Check for nearly parallel vectors
+        return np.eye(3)  # Return identity if vectors are parallel
+    axis = axis / np.linalg.norm(axis)
+    angle = np.arccos(np.dot(pos1_unit, pos2_unit))
+
+    # Create DCM using scipy Rotation
+    dcm = R.from_rotvec(angle * axis).as_matrix()
+    return dcm
+
+
+# Compare DCMs over time
+def compare_dcms(positions, times, interval):
+    # Create a new time array with equal intervals
+    start_time = times[0]
+    end_time = times[-1]
+    delta_time = interval * u.s  # Interval in seconds
+
+    new_times = Time(np.arange(start_time.mjd, end_time.mjd, delta_time.to(u.day).value), format='mjd')
+
+    resampled_positions = resample_positions(positions, times, new_times)
+
+    # Calculate a DCM between each position vector
+    dcms = []
+    for i in range(1, len(resampled_positions)):
+        dcm = calculate_dcm(resampled_positions[i - 1], resampled_positions[i])
+        dcms.append(dcm)
+
+    # Compare DCMs (using Frobenius norm)
+    differences = []
+    for i in range(1, len(dcms)):
+        diff = np.linalg.norm(dcms[i] - dcms[i - 1], ord='fro')  # Frobenius norm
+        differences.append(diff)
+
+    return differences, new_times[2:]
+
+
+interval = 3600  # Time interval in seconds for a new, even time array (e.g., 1 hour)
+gmat_differences, plot_times = compare_dcms(moon_inert, times, interval)
+astro_differences, plot_times_astro = compare_dcms(astro_moon, times, interval)
 
 breakpoint()
 
 
-# # ~~~~~SPACECRAFT~~~~~
-#
-# file_name = "gmatFiles/DebugSC_ICRF.txt"
-# sc_icrf, times_icrf = gmatTools.extract_pos(file_name)  # Array in km
-# sc_icrf = np.array((sc_icrf * u.km).to('AU'))  # Array in AU
-#
-# file_name = "gmatFiles/DebugSC_Rot.txt"
-# sc_rot, times_rot = gmatTools.extract_pos(file_name)
-# sc_rot = np.array((sc_rot * u.km).to('AU'))  # Array in AU
-#
-# file_name = "gmatFiles/DebugSC_H.txt"
-# pos_H, vel_H, times_H = gmatTools.extract_posvel(file_name)  # In km, km/s, ModJulian
-# pos_H = unitConversion.convertPos_to_canonical(pos_H*u.km)
-# vel_H = unitConversion.convertVel_to_canonical(vel_H*(u.km/u.s))
-#
-# # Convert H frame to I frame
-# t_equinox = Time(51544.5, format='mjd', scale='utc')
-# t_veq = t_equinox + 79.3125*u.d
-# C_I2G = frameConversion.inert2geo(times_H[0], t_veq)
-# sc_I = np.zeros([len(times_H), 3])
-# vel_I = np.zeros([len(times_H), 3])
-#
-# for ii in np.arange(len(times_H)):
-#      # Array in AU and AU/day
-#      sc_I[ii, :], vel_I[ii, :] = frameConversion.convertSC_H2I(pos_H[ii, :], vel_H[ii, :], times_H[ii], C_I2G)
-#
-# # # Convert rotating frame to I frame
-# # sc_I = np.zeros([len(times_rot), 3])
-# # for ii in np.arange(len(times_rot)):
-# #      C_I2R = frameConversion.inert2rot(times_rot[ii], times_rot[0])
-# #      C_R2I = C_I2R.T
-# #      sc_I[ii, :] = C_R2I @ sc_rot[ii, :]
-#
-# title = 'Spacecraft'
-# body_names = ['ICRF', 'Rotating', 'Converted to I from H']
-# fig, ax = plot_tools.plot_bodies(sc_icrf, sc_rot, sc_I, body_names=body_names, title=title)
+# ~~~~~PLOT~~~~~
 
+plt.figure(figsize=(10, 6))
+plt.plot(plot_times.value, gmat_differences, marker='.', linestyle='-', color='b', label="GMAT")
+plt.plot(plot_times.value, astro_differences, marker='.', linestyle='-', color='r', label="Astropy")
 
-# # ~~~~~FULL FORCE~~~~~
-#
-# file_name = "gmatFiles/FF_ICRF.txt"
-# FF_icrf, _ = gmatTools.extract_pos(file_name)
-#
-# file_name = "gmatFiles/FF_rot.txt"
-# FF_rot, times = gmatTools.extract_pos(file_name)
-#
-# # Convert to I frame
-# FF_i = np.zeros([len(times), 3])
-# for ii in np.arange(len(times)):
-#      C_I2R = frameConversion.inert2rot(times[ii], times[0])
-#      C_R2I = C_I2R.T
-#      FF_i[ii, :] = C_R2I @ FF_rot[ii, :]
-#
-# title = 'FF'
-# body_names = ['ICRF', 'Rotating', 'Converted to I']
-# fig, ax = plot_tools.plot_bodies(FF_icrf, FF_rot, FF_i, body_names=body_names, title=title)
+plt.xlabel('Time [MJD]')
+plt.ylabel('Frobenius Norm of DCM Differences')
+plt.title('Differences in DCMs Over Time')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+breakpoint()
