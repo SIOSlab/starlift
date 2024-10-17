@@ -3,6 +3,13 @@
 
 
 %----------------------------------------
+%---------- Solar System User-Modified Values
+%----------------------------------------
+
+GMAT SolarSystem.EphemerisSource = 'DE424';
+GMAT SolarSystem.SPKFilename = 'C:/Users/aeboe/Downloads/gmat-win-R2022a/GMAT/bin/../data/planetary_ephem/spk/DE424AllPlanets.bsp';
+
+%----------------------------------------
 %---------- User-Defined Calculated Points
 %----------------------------------------
 
@@ -20,12 +27,12 @@ GMAT SC1.DateFormat = UTCModJulian;
 GMAT SC1.Epoch = '57727';
 GMAT SC1.CoordinateSystem = EMBaryRot;
 GMAT SC1.DisplayStateType = Cartesian;
-GMAT SC1.X = 388641.8766523512;
-GMAT SC1.Y = 1.673470251262188e-10;
-GMAT SC1.Z = -66558.85993854004;
-GMAT SC1.VX = 8.187894806610529e-16;
-GMAT SC1.VY = -0.07982110999999981;
-GMAT SC1.VZ = 4.440892098500626e-16;
+GMAT SC1.X = 388641.8789831375;
+GMAT SC1.Y = -0.006960738588531967;
+GMAT SC1.Z = -66558.84605419413;
+GMAT SC1.VX = 2.482817160198714e-09;
+GMAT SC1.VY = -0.07982111308383;
+GMAT SC1.VZ = 2.29658732586735e-08;
 GMAT SC1.DryMass = 1;
 GMAT SC1.Cd = 0;
 GMAT SC1.Cr = 0;
@@ -63,6 +70,53 @@ GMAT SC1.AttitudeDisplayStateType = 'Quaternion';
 GMAT SC1.AttitudeRateDisplayStateType = 'AngularVelocity';
 GMAT SC1.AttitudeCoordinateSystem = EarthMJ2000Eq;
 GMAT SC1.EulerAngleSequence = '321';
+
+Create Spacecraft Python;
+GMAT Python.DateFormat = TAIModJulian;
+GMAT Python.Epoch = '21545';
+GMAT Python.CoordinateSystem = EarthMJ2000Eq;
+GMAT Python.DisplayStateType = Cartesian;
+GMAT Python.X = 9000;
+GMAT Python.Y = 0;
+GMAT Python.Z = 1300;
+GMAT Python.VX = 0;
+GMAT Python.VY = 7.35;
+GMAT Python.VZ = 1;
+GMAT Python.DryMass = 850;
+GMAT Python.Cd = 2.2;
+GMAT Python.Cr = 1.8;
+GMAT Python.DragArea = 15;
+GMAT Python.SRPArea = 1;
+GMAT Python.SPADDragScaleFactor = 1;
+GMAT Python.SPADSRPScaleFactor = 1;
+GMAT Python.AtmosDensityScaleFactor = 1;
+GMAT Python.ExtendedMassPropertiesModel = 'None';
+GMAT Python.NAIFId = -10004001;
+GMAT Python.NAIFIdReferenceFrame = -9004001;
+GMAT Python.OrbitColor = Green;
+GMAT Python.TargetColor = LightGray;
+GMAT Python.OrbitErrorCovariance = [ 1e+70 0 0 0 0 0 ; 0 1e+70 0 0 0 0 ; 0 0 1e+70 0 0 0 ; 0 0 0 1e+70 0 0 ; 0 0 0 0 1e+70 0 ; 0 0 0 0 0 1e+70 ];
+GMAT Python.CdSigma = 1e+70;
+GMAT Python.CrSigma = 1e+70;
+GMAT Python.Id = 'SatId';
+GMAT Python.Attitude = CoordinateSystemFixed;
+GMAT Python.SPADSRPInterpolationMethod = Bilinear;
+GMAT Python.SPADSRPScaleFactorSigma = 1e+70;
+GMAT Python.SPADDragInterpolationMethod = Bilinear;
+GMAT Python.SPADDragScaleFactorSigma = 1e+70;
+GMAT Python.AtmosDensityScaleFactorSigma = 1e+70;
+GMAT Python.ModelFile = 'aura.3ds';
+GMAT Python.ModelOffsetX = 0;
+GMAT Python.ModelOffsetY = 0;
+GMAT Python.ModelOffsetZ = 0;
+GMAT Python.ModelRotationX = 0;
+GMAT Python.ModelRotationY = 0;
+GMAT Python.ModelRotationZ = 0;
+GMAT Python.ModelScale = 1;
+GMAT Python.AttitudeDisplayStateType = 'Quaternion';
+GMAT Python.AttitudeRateDisplayStateType = 'AngularVelocity';
+GMAT Python.AttitudeCoordinateSystem = EarthMJ2000Eq;
+GMAT Python.EulerAngleSequence = '321';
 
 %----------------------------------------
 %---------- Hardware Components
@@ -123,6 +177,9 @@ GMAT ChemicalThruster1.K13 = 0;
 GMAT ChemicalThruster1.K14 = 0;
 GMAT ChemicalThruster1.K15 = 0;
 GMAT ChemicalThruster1.K16 = 0;
+
+
+
 
 
 
@@ -205,45 +262,13 @@ Create DifferentialCorrector DefaultDC;
 GMAT DefaultDC.ShowProgress = true;
 GMAT DefaultDC.ReportStyle = Normal;
 GMAT DefaultDC.ReportFile = 'DifferentialCorrectorDefaultDC.data';
-GMAT DefaultDC.MaximumIterations = 200;
+GMAT DefaultDC.MaximumIterations = 50;
 GMAT DefaultDC.DerivativeMethod = ForwardDifference;
 GMAT DefaultDC.Algorithm = NewtonRaphson;
 
 %----------------------------------------
 %---------- Subscribers
 %----------------------------------------
-
-Create OrbitView Inertial;
-GMAT Inertial.SolverIterations = Current;
-GMAT Inertial.UpperLeft = [ -0.07057340894770006 -37.44914285714286 ];
-GMAT Inertial.Size = [ 1.223062381852552 1.259428571428571 ];
-GMAT Inertial.RelativeZOrder = 107;
-GMAT Inertial.Maximized = true;
-GMAT Inertial.Add = {SC1, Earth, Luna};
-GMAT Inertial.CoordinateSystem = EMInert;
-GMAT Inertial.DrawObject = [ true true true ];
-GMAT Inertial.DataCollectFrequency = 1;
-GMAT Inertial.UpdatePlotFrequency = 50;
-GMAT Inertial.NumPointsToRedraw = 0;
-GMAT Inertial.ShowPlot = false;
-GMAT Inertial.MaxPlotPoints = 20000;
-GMAT Inertial.ShowLabels = true;
-GMAT Inertial.ViewPointReference = Earth;
-GMAT Inertial.ViewPointVector = [ 0 0 5000000 ];
-GMAT Inertial.ViewDirection = Earth;
-GMAT Inertial.ViewScaleFactor = 1;
-GMAT Inertial.ViewUpCoordinateSystem = EMInert;
-GMAT Inertial.ViewUpAxis = Z;
-GMAT Inertial.EclipticPlane = Off;
-GMAT Inertial.XYPlane = Off;
-GMAT Inertial.WireFrame = Off;
-GMAT Inertial.Axes = Off;
-GMAT Inertial.Grid = Off;
-GMAT Inertial.SunLine = Off;
-GMAT Inertial.UseInitialView = On;
-GMAT Inertial.StarCount = 7000;
-GMAT Inertial.EnableStars = Off;
-GMAT Inertial.EnableConstellations = Off;
 
 Create ReportFile CRTBP_rot_diffcorr;
 GMAT CRTBP_rot_diffcorr.SolverIterations = Current;
@@ -279,43 +304,43 @@ GMAT CRTBP_inert.Delimiter = ' ';
 GMAT CRTBP_inert.ColumnWidth = 23;
 GMAT CRTBP_inert.WriteReport = true;
 
-Create OrbitView Rotating;
-GMAT Rotating.SolverIterations = Current;
-GMAT Rotating.UpperLeft = [ 0.01449275362318841 0.1485714285714286 ];
-GMAT Rotating.Size = [ 0.426591052299937 0.4502857142857143 ];
-GMAT Rotating.RelativeZOrder = 111;
-GMAT Rotating.Maximized = true;
-GMAT Rotating.Add = {SC1, Earth, Luna};
-GMAT Rotating.CoordinateSystem = EMBaryRot;
-GMAT Rotating.DrawObject = [ true true true ];
-GMAT Rotating.DataCollectFrequency = 1;
-GMAT Rotating.UpdatePlotFrequency = 50;
-GMAT Rotating.NumPointsToRedraw = 0;
-GMAT Rotating.ShowPlot = false;
-GMAT Rotating.MaxPlotPoints = 20000;
-GMAT Rotating.ShowLabels = true;
-GMAT Rotating.ViewPointReference = Earth;
-GMAT Rotating.ViewPointVector = [ 0 0 500000 ];
-GMAT Rotating.ViewDirection = Earth;
-GMAT Rotating.ViewScaleFactor = 1;
-GMAT Rotating.ViewUpCoordinateSystem = EMBaryRot;
-GMAT Rotating.ViewUpAxis = Z;
-GMAT Rotating.EclipticPlane = Off;
-GMAT Rotating.XYPlane = On;
-GMAT Rotating.WireFrame = Off;
-GMAT Rotating.Axes = On;
-GMAT Rotating.Grid = Off;
-GMAT Rotating.SunLine = Off;
-GMAT Rotating.UseInitialView = On;
-GMAT Rotating.StarCount = 7000;
-GMAT Rotating.EnableStars = On;
-GMAT Rotating.EnableConstellations = On;
+Create OrbitView Moon_rotview;
+GMAT Moon_rotview.SolverIterations = Current;
+GMAT Moon_rotview.UpperLeft = [ 0.03909205548549811 0.1264501160092807 ];
+GMAT Moon_rotview.Size = [ 0.4268600252206809 0.4501160092807425 ];
+GMAT Moon_rotview.RelativeZOrder = 734;
+GMAT Moon_rotview.Maximized = false;
+GMAT Moon_rotview.Add = {SC1, Luna};
+GMAT Moon_rotview.CoordinateSystem = EMBaryRot;
+GMAT Moon_rotview.DrawObject = [ false true ];
+GMAT Moon_rotview.DataCollectFrequency = 1;
+GMAT Moon_rotview.UpdatePlotFrequency = 50;
+GMAT Moon_rotview.NumPointsToRedraw = 0;
+GMAT Moon_rotview.ShowPlot = true;
+GMAT Moon_rotview.MaxPlotPoints = 20000;
+GMAT Moon_rotview.ShowLabels = true;
+GMAT Moon_rotview.ViewPointReference = Earth;
+GMAT Moon_rotview.ViewPointVector = [ 0 0 500000 ];
+GMAT Moon_rotview.ViewDirection = Earth;
+GMAT Moon_rotview.ViewScaleFactor = 1;
+GMAT Moon_rotview.ViewUpCoordinateSystem = EMBaryRot;
+GMAT Moon_rotview.ViewUpAxis = Z;
+GMAT Moon_rotview.EclipticPlane = Off;
+GMAT Moon_rotview.XYPlane = On;
+GMAT Moon_rotview.WireFrame = Off;
+GMAT Moon_rotview.Axes = On;
+GMAT Moon_rotview.Grid = Off;
+GMAT Moon_rotview.SunLine = Off;
+GMAT Moon_rotview.UseInitialView = On;
+GMAT Moon_rotview.StarCount = 7000;
+GMAT Moon_rotview.EnableStars = On;
+GMAT Moon_rotview.EnableConstellations = On;
 
 Create ReportFile Moon_inert;
 GMAT Moon_inert.SolverIterations = Current;
-GMAT Moon_inert.UpperLeft = [ 0.1163502755664421 0.236318407960199 ];
-GMAT Moon_inert.Size = [ 0.5982853643600735 0.7960199004975125 ];
-GMAT Moon_inert.RelativeZOrder = 221;
+GMAT Moon_inert.UpperLeft = [ 0.1160049627791563 0.2358757062146893 ];
+GMAT Moon_inert.Size = [ 0.597394540942928 0.7937853107344632 ];
+GMAT Moon_inert.RelativeZOrder = 642;
 GMAT Moon_inert.Maximized = true;
 GMAT Moon_inert.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\Moon_inert.txt';
 GMAT Moon_inert.Precision = 16;
@@ -357,7 +382,7 @@ GMAT ICRF.DrawObject = [ true true ];
 GMAT ICRF.DataCollectFrequency = 1;
 GMAT ICRF.UpdatePlotFrequency = 50;
 GMAT ICRF.NumPointsToRedraw = 0;
-GMAT ICRF.ShowPlot = false;
+GMAT ICRF.ShowPlot = true;
 GMAT ICRF.MaxPlotPoints = 20000;
 GMAT ICRF.ShowLabels = true;
 GMAT ICRF.ViewPointReference = Earth;
@@ -379,10 +404,10 @@ GMAT ICRF.EnableConstellations = On;
 
 Create OrbitView MainView;
 GMAT MainView.SolverIterations = Current;
-GMAT MainView.UpperLeft = [ 0 0 ];
-GMAT MainView.Size = [ 0.9669000636537237 1.0703125 ];
-GMAT MainView.RelativeZOrder = 2873;
-GMAT MainView.Maximized = false;
+GMAT MainView.UpperLeft = [ 0.03530895334174023 0.02900232018561485 ];
+GMAT MainView.Size = [ 0.8366960907944514 0.8271461716937355 ];
+GMAT MainView.RelativeZOrder = 701;
+GMAT MainView.Maximized = true;
 GMAT MainView.Add = {SC1, Earth, Luna};
 GMAT MainView.CoordinateSystem = EMInert;
 GMAT MainView.DrawObject = [ true true true ];
@@ -394,7 +419,7 @@ GMAT MainView.MaxPlotPoints = 20000;
 GMAT MainView.ShowLabels = true;
 GMAT MainView.ViewPointReference = Earth;
 GMAT MainView.ViewPointVector = [ 0 0 5000000 ];
-GMAT MainView.ViewDirection = Earth;
+GMAT MainView.ViewDirection = Mars;
 GMAT MainView.ViewScaleFactor = 1;
 GMAT MainView.ViewUpCoordinateSystem = EMInert;
 GMAT MainView.ViewUpAxis = Z;
@@ -409,11 +434,48 @@ GMAT MainView.StarCount = 7000;
 GMAT MainView.EnableStars = Off;
 GMAT MainView.EnableConstellations = On;
 
+Create ReportFile Moon_EMInert;
+GMAT Moon_EMInert.SolverIterations = Current;
+GMAT Moon_EMInert.UpperLeft = [ 0.07975077881619938 0.1807909604519774 ];
+GMAT Moon_EMInert.Size = [ 0.5993769470404985 0.7980225988700564 ];
+GMAT Moon_EMInert.RelativeZOrder = 706;
+GMAT Moon_EMInert.Maximized = false;
+GMAT Moon_EMInert.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\Moon_EMInert.txt';
+GMAT Moon_EMInert.Precision = 16;
+GMAT Moon_EMInert.Add = {Luna.EMInert.X, Luna.EMInert.Y, Luna.EMInert.Z, Luna.UTCModJulian};
+GMAT Moon_EMInert.WriteHeaders = false;
+GMAT Moon_EMInert.LeftJustify = On;
+GMAT Moon_EMInert.ZeroFill = Off;
+GMAT Moon_EMInert.FixedWidth = true;
+GMAT Moon_EMInert.Delimiter = ' ';
+GMAT Moon_EMInert.ColumnWidth = 23;
+GMAT Moon_EMInert.WriteReport = true;
+
+Create ReportFile Moon_EMRot;
+GMAT Moon_EMRot.SolverIterations = Current;
+GMAT Moon_EMRot.UpperLeft = [ 0 0 ];
+GMAT Moon_EMRot.Size = [ 0 0 ];
+GMAT Moon_EMRot.RelativeZOrder = 0;
+GMAT Moon_EMRot.Maximized = false;
+GMAT Moon_EMRot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\Moon_EMRot.txt';
+GMAT Moon_EMRot.Precision = 16;
+GMAT Moon_EMRot.Add = {Luna.EMBaryRot.X, Luna.EMBaryRot.Y, Luna.EMBaryRot.Z, Luna.UTCModJulian};
+GMAT Moon_EMRot.WriteHeaders = false;
+GMAT Moon_EMRot.LeftJustify = On;
+GMAT Moon_EMRot.ZeroFill = Off;
+GMAT Moon_EMRot.FixedWidth = true;
+GMAT Moon_EMRot.Delimiter = ' ';
+GMAT Moon_EMRot.ColumnWidth = 23;
+GMAT Moon_EMRot.WriteReport = true;
+
 %----------------------------------------
 %---------- Arrays, Variables, Strings
 %----------------------------------------
 Create Variable BurnDuration;
 GMAT BurnDuration = 0;
+
+
+
 
 
 
@@ -427,23 +489,23 @@ BeginMissionSequence;
 Propagate 'Prop to apoapsis' DefaultProp(SC1) {SC1.Luna.Apoapsis, OrbitColor = [255 255 0]};
 % While SC1.ElapsedDays < 30
 Target 'TargetPosition' DefaultDC {SolveMode = Solve, ExitMode = DiscardAndContinue, ShowProgressWindow = true};
-   Vary 'Vary burn duration' DefaultDC(BurnDuration = 100.9985665878606, {Perturbation = 0.0001, Lower = 0.0, Upper = 10000, MaxStep = 50, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
-   Vary 'Vary X thrust direction' DefaultDC(SC1.ChemicalThruster1.ThrustDirection1 = 0.5325081570600083, {Perturbation = 0.0001, Lower = 0.0, Upper = 500, MaxStep = 0.01, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
-   Vary 'Vary Y thrust direction' DefaultDC(SC1.ChemicalThruster1.ThrustDirection2 = 0.2, {Perturbation = 0.0001, Lower = 0.0, Upper = 500, MaxStep = 0.01, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
-   Vary 'Vary Z thrust direction' DefaultDC(SC1.ChemicalThruster1.ThrustDirection3 = 0, {Perturbation = 0.0001, Lower = 0.0, Upper = 500, MaxStep = 0.01, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
+   Vary 'Vary burn duration' DefaultDC(BurnDuration = 100.9985665878606, {Perturbation = 0.000000001, Lower = 0.0, Upper = 10000, MaxStep = 0.1, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
+   Vary 'Vary X thrust direction' DefaultDC(SC1.ChemicalThruster1.ThrustDirection1 = 0.5531389785608934, {Perturbation = 0.000000001, Lower = 0.0, Upper = 500, MaxStep = 0.01, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
+   Vary 'Vary Y thrust direction' DefaultDC(SC1.ChemicalThruster1.ThrustDirection2 = 0.1815230655826842, {Perturbation = 0.000000001, Lower = 0.0, Upper = 500, MaxStep = 0.01, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
+   Vary 'Vary Z thrust direction' DefaultDC(SC1.ChemicalThruster1.ThrustDirection3 = 0, {Perturbation = 0.000000001, Lower = 0.0, Upper = 500, MaxStep = 0.01, AdditiveScaleFactor = 0.0, MultiplicativeScaleFactor = 1.0});
    BeginFiniteBurn 'Turn thruster on' DefaultFB(SC1);
    Propagate 'Prop burn duration' DefaultProp(SC1) {SC1.ElapsedSecs = BurnDuration, OrbitColor = [255 128 64]};
    EndFiniteBurn 'Turn thruster off' DefaultFB(SC1);
    Propagate 'Prop to apoapsis' DefaultProp(SC1) {SC1.Luna.Apoapsis, OrbitColor = [0 255 0]};
-   Achieve 'Achieve X pos' DefaultDC(SC1.EMBaryRot.X = 388641.8766523507, {Tolerance = 3000});
-   Achieve 'Achieve Y pos' DefaultDC(SC1.EMBaryRot.Y = 0, {Tolerance = 3000});
-   Achieve 'Achieve Z pos' DefaultDC(SC1.EMBaryRot.Z = -66558.85993853999, {Tolerance = 3000});
-   Achieve 'Achieve X vel' DefaultDC(SC1.EMBaryRot.VX = 0, {Tolerance = 0.125});
-   Achieve 'Achieve Y vel' DefaultDC(SC1.EMBaryRot.VY = -0.07982110999999981, {Tolerance = 0.125});
-   Achieve 'Achieve Z vel' DefaultDC(SC1.EMBaryRot.VZ = 0, {Tolerance = 0.125});
+   Achieve 'Achieve X pos' DefaultDC(SC1.EMBaryRot.X = 388641.8766523507, {Tolerance = 2660});
+   Achieve 'Achieve Y pos' DefaultDC(SC1.EMBaryRot.Y = 0, {Tolerance = 2660});
+   Achieve 'Achieve Z pos' DefaultDC(SC1.EMBaryRot.Z = -66558.85993853999, {Tolerance = 2660});
 EndTarget;  % For targeter DefaultDC
 Propagate DefaultProp(SC1) {SC1.ElapsedDays = 24};
 % EndWhile;
+
+
+
 
 
 
