@@ -131,14 +131,14 @@ T_final = 2.085034838884136
 exponent = 8
 t_step = T_final/2.**exponent
 
-
 # Set file name to save data on first run
-FileName_state = "./EnergyOptimal_state_EarthMoon_L2nrho.mat"
-FileName_STM = "./EnergyOptimal_STM_EarthMoon_L2nrho.mat"
-FileName_STT = "./EnergyOptimal_STT_EarthMoon_L2nrho.mat"
+FileName_state = "./EnergyOptimal_state_EarthMoon_L2nrho_prime.mat"
+FileName_STM = "./EnergyOptimal_STM_EarthMoon_L2nrho_prime.mat"
+FileName_STT = "./EnergyOptimal_STT_EarthMoon_L2nrho_prime.mat"
+FileName_time = "./EnergyOptimal_time_EarthMoon_L2nrho_prime.mat"
 
 # Run if the file does not exist
-if not os.path.isfile(FileName_state):
+if not os.path.isfile(FileName_time):
     variables, dynamics = optControlDynamics()
     threeBodyInt = STMint(variables, dynamics, variational_order=2)
 
@@ -147,19 +147,404 @@ if not os.path.isfile(FileName_state):
     scipy.io.savemat(FileName_state, {"state": state})
     scipy.io.savemat(FileName_STM, {"STM": STM})
     scipy.io.savemat(FileName_STT, {"STT": STT})
+    scipy.io.savemat(FileName_time, {"time": time})
     
-
 # load data
 state_full = list(scipy.io.loadmat(FileName_state).values())[-1]
-STM_full = list(scipy.io.loadmat(FileName_STM).values())[-1]
+STM_full = list(scipy.io.loadmat(FileName_STM).values())[-1] # state transition matrix at every time
 STT_full = list(scipy.io.loadmat(FileName_STT).values())[-1]
+time_full = list(scipy.io.loadmat(FileName_time).values())[-1]
 
-state = state_full[-1,:]
+
+
+##### ACQUIRE STMS AND STTS FOR PERIOD STARTING AT SECOND HALF OF ORBIT #####
+# Set file name to save data on first run
+ics_halfway = [0.988309034135378,  -0.011056863643638, 0.029955671878931, -0.020221296056888, 0.816370643713805, 0.160733352222188, 0, 0, 0, 0, 0, 0, 0]
+
+FileName_state = "./EnergyOptimal_state_EarthMoon_L2nrho_prime_HALFWAY.mat"
+FileName_STM = "./EnergyOptimal_STM_EarthMoon_L2nrho_prime_HALFWAY.mat"
+FileName_STT = "./EnergyOptimal_STT_EarthMoon_L2nrho_prime_HALFWAY.mat"
+FileName_time = "./EnergyOptimal_time_EarthMoon_L2nrho_prime_HALFWAY.mat"
+
+# Run if the file does not exist
+if not os.path.isfile(FileName_state):
+    variables, dynamics = optControlDynamics()
+    threeBodyInt = STMint(variables, dynamics, variational_order=2)
+ 
+    [state, STM, STT, time] = threeBodyInt.dynVar_int2([0,T_final], ics_halfway, output='all', max_step=t_step)
+
+    scipy.io.savemat(FileName_state, {"state": state})
+    scipy.io.savemat(FileName_STM, {"STM": STM})
+    scipy.io.savemat(FileName_STT, {"STT": STT})
+    scipy.io.savemat(FileName_time, {"time": time})
+    
+# load data
+state_full_halfway = list(scipy.io.loadmat(FileName_state).values())[-1]
+STM_full_halfway = list(scipy.io.loadmat(FileName_STM).values())[-1] # state transition matrix at every time
+STT_full_halfway = list(scipy.io.loadmat(FileName_STT).values())[-1]
+time_full_halfway = list(scipy.io.loadmat(FileName_time).values())[-1]
+
+##### BACK TO NORMAL STUFF #####
+# state_full = state_full_halfway
+# STM_full = STM_full_halfway
+# STT_full = STT_full_halfway
+# time_full = time_full_halfway
+
+J_max = 3.514110698664422E-04 # set any reasonable value for J_max but make sure it can be validated
+[rows,columns,depth] = STM_full.shape
+C = np.array([[1, 0],[0, 1],[0, 0],[0, 0],[0, 0],[0, 0]]) 
+A = np.array([[1, 0, 0, 0, 0, 0],[0, 1, 0, 0, 0, 0]])
+Ayz = np.array([[0, 1, 0, 0, 0, 0],[0, 0, 1, 0, 0, 0]])
+
+fig, ax = plt.subplots()
+ax = plt.gca()
+xmin = 0.95
+xmax = 1.15
+ymin = -0.1
+ymax = 0.1
+ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+
+# ax = plt.gca()
+# xmin = -0.1
+# xmax = 0.1
+# ymin = -0.23
+# ymax = 0.07
+# ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+
+start = 10
+tipsright = np.zeros((2,rows))
+tipsleft = np.zeros((2,rows))
+pos = np.zeros((2,rows))
+xypos = np.transpose(state_full[:,0:2])
+yzpos = np.transpose(state_full[:,1:3])
+
+tipsright_halfway = np.zeros((2,rows))
+tipsleft_halfway = np.zeros((2,rows))
+pos_halfway = np.zeros((2,rows))
+xypos_halfway = np.transpose(state_full_halfway[:,0:2])
+yzpos_halfway = np.transpose(state_full_halfway[:,1:3])
+
+
+for i in range(0,rows):
+
+    STM = STM_full[i,:,:] @ STM_full[-1,:,:] @ la.inv(STM_full[i,:,:])
+    STT = STT_full[i,:,:,:]
+    STT1 = STT_full[i,:,:,:]
+    STT2 = STT_full[-1,:,:,:]
+
+    STM_halfway = STM_full_halfway[i,:,:] @ STM_full_halfway[-1,:,:] @ la.inv(STM_full_halfway[i,:,:])
+    STT_halfway = STT_full_halfway[i,:,:,:]
+    STT1_halfway = STT_full_halfway[i,:,:,:]
+    STT2_halfway = STT_full_halfway[-1,:,:,:]
+
+    Matrix1 = np.block([[np.identity(6), np.zeros((6,6))],
+    [-la.solve(STM[:6, 6:12], STM[:6, :6]), la.inv(STM[:6, 6:12])]])
+
+    Matrix1_halfway = np.block([[np.identity(6), np.zeros((6,6))],
+    [-la.solve(STM_halfway[:6, 6:12], STM_halfway[:6, :6]), la.inv(STM_halfway[:6, 6:12])]])
+
+    # work with 13 x  13 matrices:
+    # TempMatrix1 = la.inv(np.transpose(STM_full[i,:,:])) @ (STT_full[-1,12,:,:] - STT_full[i,12,:,:]) @ la.inv(STM_full[i,:,:])
+    # TempMatrix2 = np.transpose(STM_full[-1,:,:]@la.inv(STM_full[i,:,:]))@STT_full[i,12,:,:]@(STM_full[-1,:,:]@la.inv(STM_full[i,:,:]))+TempMatrix1
+
+    # work with 12 x 12 matrices:
+    TempMatrix1 = la.inv(np.transpose(STM_full[i,:12,:12])) @ (STT_full[-1,12,:12,:12] - STT_full[i,12,:12,:12]) @ la.inv(STM_full[i,:12,:12])
+    TempMatrix2 = np.transpose(STM_full[-1,:12,:12]@la.inv(STM_full[i,:12,:12]))@STT_full[i,12,:12,:12]@(STM_full[-1,:12,:12]@la.inv(STM_full[i,:12,:12]))+TempMatrix1
+    Matrix2 = TempMatrix2[:12,:12]
+
+    TempMatrix1_halfway = la.inv(np.transpose(STM_full_halfway[i,:12,:12])) @ (STT_full_halfway[-1,12,:12,:12] - STT_full_halfway[i,12,:12,:12]) @ la.inv(STM_full_halfway[i,:12,:12])
+    TempMatrix2_halfway = np.transpose(STM_full_halfway[-1,:12,:12]@la.inv(STM_full_halfway[i,:12,:12]))@STT_full_halfway[i,12,:12,:12]@(STM_full_halfway[-1,:12,:12]@la.inv(STM_full_halfway[i,:12,:12]))+TempMatrix1_halfway
+    Matrix2_halfway = TempMatrix2_halfway[:12,:12]
+
+    # eigh returns eigenvalues in ascending order with eigenvectors in their corresponding positions
+    E = np.transpose(Matrix1) @ Matrix2 @ Matrix1  # establish E-matrix
+    E_star = np.block([[np.identity(6), np.identity(6)]]) @ E @ np.transpose(np.block([[np.identity(6), np.identity(6)]])) # establish Estar matrix
+    gamma, w = eigh(E_star) # get eigenvalues and eigenvectors of E_star
+
+    E_halfway = np.transpose(Matrix1_halfway) @ Matrix2_halfway @ Matrix1_halfway  # establish E-matrix
+    E_star_halfway = np.block([[np.identity(6), np.identity(6)]]) @ E_halfway @ np.transpose(np.block([[np.identity(6), np.identity(6)]])) # establish Estar matrix
+    gamma_halfway, w_halfway = eigh(E_star_halfway) # get eigenvalues and eigenvectors of E_star
+    
+    # Adjustments to compensate for degeneracy:
+    w_adj = w[:,1:6] # remove first eigenvector (the one with infinite extent)
+    gamma_adj = gamma[1:6] # remove first eigenvalue (the one with infinite extent)
+    Qprime = np.transpose(w_adj) # establish Q matrix with row-vectors corresponding to eigenvectors 
+    Eprime = np.diag(gamma_adj) # form adjusted eigenvalue matrix
+
+    w_adj_halfway = w_halfway[:,1:6] # remove first eigenvector (the one with infinite extent)
+    gamma_adj_halfway = gamma_halfway[1:6] # remove first eigenvalue (the one with infinite extent)
+    Qprime_halfway = np.transpose(w_adj_halfway) # establish Q matrix with row-vectors corresponding to eigenvectors 
+    Eprime_halfway = np.diag(gamma_adj_halfway) # form adjusted eigenvalue matrix
+
+    lam, z = eigh(Qprime @ np.transpose(A) @ A @ np.transpose(Qprime), Eprime) # solve adjusted problem for new eigenvalues and eigenvectors
+    lamyz, zyz = eigh(Qprime @ np.transpose(Ayz) @ Ayz @ np.transpose(Qprime), Eprime) # solve adjusted problem for new eigenvalues and eigenvectors
+
+    lam_halfway, z_halfway = eigh(Qprime_halfway @ np.transpose(A) @ A @ np.transpose(Qprime_halfway), Eprime_halfway) # solve adjusted problem for new eigenvalues and eigenvectors
+    lamyz_halfway, zyz_halfway = eigh(Qprime_halfway @ np.transpose(Ayz) @ Ayz @ np.transpose(Qprime_halfway), Eprime_halfway) # solve adjusted problem for new eigenvalues and eigenvectors
+    
+    # normalize eigenvectors
+    z1 = z[:,3] / la.norm(z[:,3]) 
+    z2 = z[:,4] / la.norm(z[:,4])
+
+    z1_halfway = z_halfway[:,3] / la.norm(z_halfway[:,3]) 
+    z2_halfway = z_halfway[:,4] / la.norm(z_halfway[:,4])
+
+    zyz1 = zyz[:,3] / la.norm(zyz[:,3]) 
+    zyz2 = zyz[:,4] / la.norm(zyz[:,4])
+
+    zyz1_halfway = zyz_halfway[:,3] / la.norm(zyz_halfway[:,3]) 
+    zyz2_halfway = zyz_halfway[:,4] / la.norm(zyz_halfway[:,4])
+
+    # get directions of projected energy ellipsoid
+    dir1 = A @ (np.transpose(Qprime)) @ z1 
+    dir2 = A @ (np.transpose(Qprime)) @ z2
+    angle = np.arctan2(dir1[1],dir1[0]) # radians, angle of ellipse rotation
+
+    dir1_halfway = A @ (np.transpose(Qprime_halfway)) @ z1_halfway 
+    dir2_halfway = A @ (np.transpose(Qprime_halfway)) @ z2_halfway
+    angle_halfway = np.arctan2(dir1_halfway[1],dir1_halfway[0]) # radians, angle of ellipse rotation
+
+    # get directions of projected energy ellipsoid
+    diryz1 = Ayz @ (np.transpose(Qprime)) @ zyz1 
+    diryz2 = Ayz @ (np.transpose(Qprime)) @ zyz2
+    angleyz = np.arctan2(diryz1[1],diryz1[0]) # radians, angle of ellipse rotation
+
+    # get directions of projected energy ellipsoid
+    diryz1_halfway = Ayz @ (np.transpose(Qprime_halfway)) @ zyz1_halfway
+    diryz2_halfway = Ayz @ (np.transpose(Qprime_halfway)) @ zyz2_halfway
+    angleyz_halfway = np.arctan2(diryz1_halfway[1],diryz1_halfway[0]) # radians, angle of ellipse rotation
+
+    ext1 = 2*np.sqrt(2*J_max*lam[3]) #  width of ellipse projection
+    ext2 = 2*np.sqrt(2*J_max*lam[4]) # height of ellipse projection
+    extyz1 = 2*np.sqrt(2*J_max*lamyz[3]) #  width of ellipse projection
+    extyz2 = 2*np.sqrt(2*J_max*lamyz[4]) # height of ellipse projection
+
+    ext1_halfway = 2*np.sqrt(2*J_max*lam_halfway[3]) #  width of ellipse projection
+    ext2_halfway = 2*np.sqrt(2*J_max*lam_halfway[4]) # height of ellipse projection
+    extyz1_halfway = 2*np.sqrt(2*J_max*lamyz_halfway[3]) #  width of ellipse projection
+    extyz2_halfway = 2*np.sqrt(2*J_max*lamyz_halfway[4]) # height of ellipse projection
+
+    rotation = angle*180/np.pi
+    rotationyz = angleyz*180/np.pi
+
+    rotation_halfway = angle_halfway*180/np.pi
+    rotationyz_halfway = angleyz_halfway*180/np.pi
+
+    position = state_full[i,0:3] # center of ellipse for current timestep
+    pos[:,i] = np.transpose(state_full[i,0:2])
+
+    position_halfway = state_full_halfway[i,0:3] # center of ellipse for current timestep
+    pos_halfway[:,i] = np.transpose(state_full_halfway[i,0:2])
+
+    plotangle = angle
+    tipsright[:,i] = xypos[:,i] + np.array([ext2/2*np.cos(plotangle+np.pi/2),ext2/2*np.sin(plotangle+np.pi/2)])
+    tipsleft[:,i] = xypos[:,i] - np.array([ext2/2*np.cos(plotangle+np.pi/2),ext2/2*np.sin(plotangle+np.pi/2)])
+
+    plotangle_halfway = angle_halfway
+    tipsright_halfway[:,i] = xypos_halfway[:,i] + np.array([ext2_halfway/2*np.cos(plotangle_halfway+np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway+np.pi/2)])
+    tipsleft_halfway[:,i] = xypos_halfway[:,i] - np.array([ext2_halfway/2*np.cos(plotangle_halfway+np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway+np.pi/2)])
+
+    
+
+    # ellipse plotting:
+    ellipse = matplotlib.patches.Ellipse(xy=(position[0],[position[1]]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotation)
+    # ellipse = matplotlib.patches.Ellipse(xy=(position[1],position[2]), width=extyz1, height=extyz2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotationyz)
+
+    ax.add_patch(ellipse)
+
+
+tipsoutside = np.zeros((2,rows))
+tipsinside = np.zeros((2,rows))
+
+center = np.array([np.average(state_full[:,0]),np.average(state_full[:,1])])
+
+for i in range(0,rows):
+    if la.norm(tipsright[:,i] - center) > la.norm(pos[:,i] - center):
+        tipsoutside[:,i] = tipsright[:,i]
+        tipsinside[:,i] = tipsleft[:,i]
+    else:
+        tipsoutside[:,i] = tipsleft[:,i]
+        tipsinside[:,i] = tipsright[:,i]
+
+tipsoutside_halfway = np.zeros((2,rows))
+tipsinside_halfway = np.zeros((2,rows))
+
+center_halfway = np.array([np.average(state_full_halfway[:,0]),np.average(state_full_halfway[:,1])])
+
+for i in range(0,rows):
+    if la.norm(tipsright_halfway[:,i] - center_halfway) > la.norm(pos_halfway[:,i] - center_halfway):
+        tipsoutside_halfway[:,i] = tipsright_halfway[:,i]
+        tipsinside_halfway[:,i] = tipsleft_halfway[:,i]
+    else:
+        tipsoutside_halfway[:,i] = tipsleft_halfway[:,i]
+        tipsinside_halfway[:,i] = tipsright_halfway[:,i]
+
+
+
+ref_trajectory, = ax.plot(state_full[:,0], state_full[:,1], color=[0,0,0], label='Reference Trajectory')
+
+
+bounds, = ax.plot(tipsoutside[0,:],tipsoutside[1,:], label='Bounds from Start Point 1', color = 'b', linewidth=3)
+bounds_halfway, = ax.plot(tipsoutside_halfway[0,:],tipsoutside_halfway[1,:], label='Bounds from Start Point 2',color = 'r', linestyle='dashed')
+ax.plot(tipsinside[0,:],tipsinside[1,:], color = 'b', linewidth=3)
+ax.plot(tipsinside_halfway[0,:],tipsinside_halfway[1,:], color = 'r', linestyle='dashed')
+SP1, = ax.plot(state_full[0,0], state_full[0,1],'bo', markersize=8, label='Start Point 1') 
+SP2, = ax.plot(state_full_halfway[0,0], state_full_halfway[0,1],'ro', markersize=8, label='Start Point 2') 
+ax.legend(handles=[ref_trajectory,bounds, bounds_halfway,SP1,SP2],loc='upper right')
+plt.title('Hyperellipsoid Projections in XY-Plane')
+plt.xlabel("X [DU]")
+plt.ylabel("Y [DU]")
+
+# plt.plot(state_full[:,1], state_full[:,2], color=[0,0,0])
+# plt.xlabel("Y [DU]")
+# plt.ylabel("Z [DU]")
+plt.show()
+
+##### CONVERSION TO FUNCTION #####
+def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
+    # STM_full is the set of state transition matrices starting from t = 0 to t = end
+    # STT_full is the set of state transition tensors starting from t = 0 to t = end
+    # state_full is the set of states starting from t = 0 to t = end
+    # J_max is the max energy cost associated with the orbit
+    # dim1 and dim2 are strings describing the plot dimensions on the x-axis and y-axis, respectively
+    # options for dim1 and dim2 are 'x', 'y', 'z', 'xdot', 'ydot', and 'zdot'
+
+    fig, ax = plt.subplots()
+    ax = plt.gca()
+    plt.title('Hyperellipsoid Projections in 2D Plane')
+    ellipses = []
+
+    # establish projection matrix and relevant indices for plotting
+    A = np.zeros((2,6)) 
+    if dim1 == 'x':
+        s1 = 0
+        plt.xlabel("X [DU]")
+    elif dim1 == 'y':
+        s1 = 1
+        plt.xlabel("Y [DU]")
+    elif dim1 == 'z':
+        s1 = 2
+        plt.xlabel("Z [DU]")
+    elif dim1 == 'xdot':
+        s1 = 3
+        plt.xlabel("Xdot [DU/TU]")
+    elif dim1 == 'ydot':
+        s1 = 4
+        plt.xlabel("Ydot [DU/TU]")
+    elif dim1 == 'zdot':
+        s1 = 5
+        plt.xlabel('Zdot [DU/TU]')
+
+    if dim2 == 'x':
+        s2 = 0
+        plt.ylabel("X [DU]")
+    elif dim2 == 'y':
+        s2 = 1
+        plt.ylabel("Y [DU]")
+    elif dim2 == 'z':
+        s2 = 2
+        plt.ylabel("Z [DU]")
+    elif dim2 == 'xdot':
+        s2 = 3
+        plt.ylabel("Xdot [DU/TU]")
+    elif dim2 == 'ydot':
+        s2 = 4
+        plt.ylabel("Ydot [DU/TU]")
+    elif dim2 == 'zdot':
+        s2 = 5
+        plt.ylabel("Zdot [DU/TU]")
+
+    A[0,s1] = 1
+    A[1,s2] = 1
+
+    ref_trajectory, = plt.plot(state_full[:,s1], state_full[:,s2], color=[0,0,0], label='Reference Trajectory')
+
+    [rows,columns,depth] = STM_full.shape # dimensions of STM_full
+    
+    for i in range(0,rows):
+
+        STM = STM_full[i,:,:] @ STM_full[-1,:,:] @ la.inv(STM_full[i,:,:]) # STM for current timestep
+        STT = STT_full[i,:,:,:] # STT for current timestep
+
+        Matrix1 = np.block([[np.identity(6), np.zeros((6,6))],
+        [-la.solve(STM[:6, 6:12], STM[:6, :6]), la.inv(STM[:6, 6:12])]]) # construct Matrix1 from STMS
+
+        # work with 13 x  13 matrices:
+        # TempMatrix1 = la.inv(np.transpose(STM_full[i,:,:])) @ (STT_full[-1,12,:,:] - STT_full[i,12,:,:]) @ la.inv(STM_full[i,:,:])
+        # TempMatrix2 = np.transpose(STM_full[-1,:,:]@la.inv(STM_full[i,:,:]))@STT_full[i,12,:,:]@(STM_full[-1,:,:]@la.inv(STM_full[i,:,:]))+TempMatrix1
+
+        # work with 12 x 12 matrices:
+        TempMatrix1 = la.inv(np.transpose(STM_full[i,:12,:12])) @ (STT_full[-1,12,:12,:12] - STT_full[i,12,:12,:12]) @ la.inv(STM_full[i,:12,:12])
+        TempMatrix2 = np.transpose(STM_full[-1,:12,:12]@la.inv(STM_full[i,:12,:12]))@STT_full[i,12,:12,:12]@(STM_full[-1,:12,:12]@la.inv(STM_full[i,:12,:12]))+TempMatrix1
+        Matrix2 = TempMatrix2[:12,:12]
+
+        # eigh returns eigenvalues in ascending order with eigenvectors in their corresponding positions
+        E = np.transpose(Matrix1) @ Matrix2 @ Matrix1  # establish E-matrix
+        E_star = np.block([[np.identity(6), np.identity(6)]]) @ E @ np.transpose(np.block([[np.identity(6), np.identity(6)]])) # establish Estar matrix
+        gamma, w = eigh(E_star) # get eigenvalues and eigenvectors of E_star
+        
+        # Adjustments to compensate for degeneracy:
+        w_adj = w[:,1:6] # remove first eigenvector (the one with infinite extent)
+        gamma_adj = gamma[1:6] # remove first eigenvalue (the one with infinite extent)
+        Qprime = np.transpose(w_adj) # establish Q matrix with row-vectors corresponding to eigenvectors 
+        Eprime = np.diag(gamma_adj) # form adjusted eigenvalue matrix
+
+        lam, z = eigh(Qprime @ np.transpose(A) @ A @ np.transpose(Qprime), Eprime) # solve adjusted problem for new eigenvalues and eigenvectors
+        
+        # normalize eigenvectors
+        z1 = z[:,3] / la.norm(z[:,3]) 
+        z2 = z[:,4] / la.norm(z[:,4])
+
+        # get directions of projected energy ellipsoid
+        dir1 = A @ (np.transpose(Qprime)) @ z1 
+        dir2 = A @ (np.transpose(Qprime)) @ z2
+        angle = np.arctan2(dir1[1],dir1[0]) # radians, angle of ellipse rotation
+
+
+        ext1 = 2*np.sqrt(2*J_max*lam[3]) #  width of ellipse projection
+        ext2 = 2*np.sqrt(2*J_max*lam[4]) # height of ellipse projection
+
+        rotation = angle*180/np.pi
+
+        position = np.array([state_full[i,s1],state_full[i,s2]])
+        # position[0] = state_full[i,s1]
+        # position[1] = state_full[i,s2]
+
+        # ext = np.zeros((2,1))
+        # ext[0] = ext2/2*np.cos(angle+np.pi/2)
+        # ext[1] = ext2/2*np.sin(angle+np.pi/2)
+
+        # tipsright[:,i] = position  + ext
+        # tipsleft[:,i] = position - ext
+
+        # tipsright[:,i] = position + np.array([ext2/2*np.cos(angle+np.pi/2),ext2/2*np.sin(angle+np.pi/2)])
+        # tipsleft[:,i] = position - np.array([ext2/2*np.cos(angle+np.pi/2),ext2/2*np.sin(angle+np.pi/2)])
+        
+        # ellipse plotting:
+        ellipse = matplotlib.patches.Ellipse(xy=(position[0],position[1]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotation)
+
+        ax.add_patch(ellipse)
+        ellipses.append(ellipse)
+
+    
+    plt.legend(["Reference","Reachable Bounds"], loc="upper right")
+
+    plt.show()
+
+    return ellipses
+
+projection(STM_full_halfway,STT_full_halfway,state_full_halfway,J_max,'y','z')
+
+
+############################
 STM = STM_full[-1,:,:]
 STT = STT_full[-1,:,:,:]
+
 time = []
-for i in range(len(state)):
-    time.append(i/len(state))
+for i in range(len(state_full)):
+    time.append(i/len(state_full))
+
+# conduct E-matrix computation below, but do it in for-loop above to compute E-matrix at every time
 
 
 # Compute the E matrix 
@@ -175,39 +560,34 @@ E_star = np.block([[np.identity(6), np.identity(6)]]) @ E @ np.transpose(np.bloc
 # The normalized eigenvector corresponding to the eigenvalue gamma[i] is the column w[:,i]
 gamma, w = eigh(E_star)
 
+
 # To check eigenstuff, uncomment these lines
 #print("Eigenvalue-Eigenvector pairs of E* are:")
 #for i in range(6):
 #    print(str(gamma[i]) + ", " + str(w[:,i]) + ", " + str(np.linalg.norm(w[:,i])))
 
-J_max = 3.514110698664422E-04 # set any reasonable value for J_max but make sure it can be validated
+
+a = w
+
+
 for i in range(6):
     print("The extent is " + str(la.norm(np.sqrt(2*J_max/gamma[i])*w[:,i])) + " and the direction is " + str(w[:,i]))
+    a[:,i] = np.sqrt(2*J_max/gamma[i])*w[:,i]
 
-
-
-
-
-
-
-
-
-
-
-
+print(a[:,0])
 
 
 ################################
 ###### OBTAIN STATE DATA #######
 ################################
 # Improvement: Make this a function that can just be called rather than commenting in/out
-"""
+
 FileName_data = "./state_dataset.mat"
 
-x_dataset = np.zeros((6,260,100000))
+x_dataset = np.zeros((6,260,1000))
 # Run if the file does not exist
 if not os.path.isfile(FileName_data):
-    for i in range(100000):
+    for i in range(1000):
         rand_vec = np.reshape(np.hstack((np.array(w[:,1]), np.array(w[:,2]), np.array(w[:,3]), np.array(w[:,4]), np.array(w[:,5]))), (6,5)) @ np.random.standard_normal(5)
         rand_vec = np.reshape(rand_vec,(6,1))
         rand_vec = rand_vec/la.norm(rand_vec) #normalizes the vector
@@ -225,7 +605,7 @@ if not os.path.isfile(FileName_data):
 
 # load data
 x_dataset = list(scipy.io.loadmat(FileName_data).values())[-1]
-"""
+
 
 
 
@@ -244,36 +624,39 @@ x_dataset = list(scipy.io.loadmat(FileName_data).values())[-1]
 # load data
 FileName_data = "./state_dataset.mat"
 x_dataset = list(scipy.io.loadmat(FileName_data).values())[-1]
-
 fig = plt.figure()
 # for 3d plot
-ax = fig.add_subplot(projection="3d")
-plt.plot(state_full[:,0], state_full[:,1], state_full[:,2], color=[0,0,0])
+# ax = fig.add_subplot(projection="3d")
+# plt.plot(state_full[:,0], state_full[:,1], state_full[:,2], color=[0,0,0])
 # for 2d plot
-#plt.plot(state_full[:,1], state_full[:,2], color=[0,0,0])
+plt.plot(state_full[:,0], state_full[:,1], color=[0,0,0])
 for i in range(1000):
     x = x_dataset[:,:,i]
     #color_random = list(np.random.choice(range(256), size=3)/256)
     color_random = [252/255, 227/255, 3/255]
 
     # For a 3d orbit plot
-    plt.plot(x[0,:], x[1,:], x[2,:], color=color_random)
+    #plt.plot(x[0,:], x[1,:], x[2,:], color=color_random)
 
     # For a 2d orbit plot
-    #plt.plot(x[1,:], x[2,:],color=color_random, alpha=1)
+    plt.plot(x[0,:], x[1,:],color=color_random, alpha=1)
 
 # for 2d orbit
-#plt.plot(state_full[:,1], state_full[:,2], color=[0,0,0])
+plt.plot(state_full[:,0], state_full[:,1], color=[0,0,0])
+plt.plot(tipsoutside[0,:],tipsoutside[1,:], color = 'b')
+plt.plot(tipsinside[0,:],tipsinside[1,:], color = 'b')
 plt.legend(["Reference", "Reachable Bounds"], loc="upper right")
-#plt.xlabel("Y [DU]")
-#plt.ylabel("Z [DU]")
+# plt.plot(tipsright[:,0],tipsright[0:,1])
+# plt.plot(tipsleft[:,0],tipsleft[0:,1])
+plt.xlabel("X [DU]")
+plt.ylabel("Y [DU]")
 # for 3d orbit
-plt.plot(state_full[:,0], state_full[:,1], state_full[:,2], color=[0,0,0])
-ax.set(
-    xlabel='X [DU]',
-    ylabel='Y [DU]',
-    zlabel='Z [DU]',
-)
+#plt.plot(state_full[:,0], state_full[:,1], state_full[:,2], color=[0,0,0])
+#ax.set(
+#    xlabel='X [DU]',
+#    ylabel='Y [DU]',
+#    zlabel='Z [DU]',
+#)
 #plt.savefig('3d_trajectories.png', dpi=500)
 plt.show()
 
@@ -281,6 +664,7 @@ plt.show()
 
 
 
+# DELETE STARTING HERE
 
 
 
@@ -291,14 +675,14 @@ plt.show()
 
 
 
-
-
+""""
 
 ##################################
 ###### ELLIPSE YELLOWPLOTS #######
 ##################################
 # Improvement: make this work based on method that Jackson wrote up
-""" # Does not work currently - VERY close but not quite there
+# Does not work currently - VERY close but not quite there
+
 plt.figure()
 #plt.xlim(0.985, 1.075)
 #plt.ylim(-0.1, 0.1)
@@ -308,14 +692,13 @@ plt.plot(state_full[:,0], state_full[:,1], color=[0,0,0])
 #for index in range(len(state_full)):
 for index in range(1):
     A = STM_full[index, (0, 1), :6] + STM_full[index, (0, 1), 6:12] @ la.inv(STM[:6, 6:12]) @ (np.identity(6) - STM[:6, :6])
-
     # gamma is the list of eigenvalues in ascending order
     # The normalized eigenvector corresponding to the eigenvalue gamma[i] is the column w[:,i]
     gamma_A, w_A = eigh(A.T @ A, E_star)
     semiaxes = np.zeros((2,2))
     k=0
 
-    for i in range(6):
+    for i in range(2): # Matt adjusted this from 6 to 2 to get it to run
         w_A[:,i] = w_A[:,i]/la.norm(w_A[:,i]) # normalize the eigenvectors
 
         
@@ -324,6 +707,7 @@ for index in range(1):
             # This line will scale alpha so it is a semi-axis
             scaling_factor = np.sqrt(2*J_max/(np.transpose(w_A[:,i]) @ E_star @ w_A[:,i]))
             alpha = scaling_factor * A @ w_A[:,i]
+
             semiaxes[k,:] = alpha
             k+=1
 
@@ -339,24 +723,24 @@ plt.xlabel("X [DU]")
 plt.ylabel("Y [DU]")
 #plt.savefig('Ellipse_XY.pdf', format='pdf')
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #################################
@@ -445,9 +829,9 @@ plt.show()
 
 
 
+# DELETE UP TO HERE
 
-
-
+"""
 
 
 
@@ -455,7 +839,7 @@ plt.show()
 ###### EIGENPLOT #######
 ########################
 # Improvement: Just clean up a bit
-"""
+
 fig = plt.figure()
 # for 3d plot
 #ax = fig.add_subplot(projection="3d")
@@ -548,10 +932,21 @@ plt.ylabel("Thrust [DU/TU^2]")
 #)
 #plt.savefig('Eigen_Thrust.pdf', format='pdf')
 plt.show()
+
+
+fig = plt.figure()
+ax = plt.gca()
+xmin = -20
+xmax = 20
+ymin = -20
+ymax = 20
+ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+ellipse = matplotlib.patches.Ellipse(xy=[2,0], width=10, height=5, angle=30)
+ax.add_patch(ellipse)
+ellipse = matplotlib.patches.Ellipse(xy=[-6,-6], width=10, height=5, angle=30)
+ax.add_patch(ellipse)
+plt.show()
 """
-
-
-
 
 
 
@@ -663,10 +1058,11 @@ plt.show()
 ###### VALIDATION #######
 #########################
 # Improvement: Create a more robist continuation scheme
-"""
+
 # iterate the state to improve accuracy (doesn't improve accuracy currently)
 #state_ics = state_iterate(np.array(ics[:6],ndmin=2).T, 1E-3, 0.001, T_final)
 #print(str(state_ics))
+"""
 costates_guess = np.array([[0.000000000000000000], [0.000000000000000000], [0.000000000000000000], [0.000000000000000000], [0.000000000000000000], [0.000000000000000000]])
 cost_inherent, unused_parameter_costates = true_cost(np.array(ics[:6],ndmin=2).T, 0, 1E-13, 0.01, T_final, costates_guess)
 u_inherent = np.sqrt(2*cost_inherent/T_final)
