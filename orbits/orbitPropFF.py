@@ -26,7 +26,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
-t_veq = t_equinox + 79.3125*u.d # + 1*u.yr/4
+t_veq = t_equinox + 79.3125*u.d  # + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
 days = 200
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
@@ -36,6 +36,7 @@ m2 = mu_star
 
 # Initial condition in canonical units in rotating frame R [pos, vel]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
+# IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO, 0.9697497-day period
 
 # Generate new ICs using the free variable and constraint method
 X = [IC[0], IC[2], IC[4], IC[6]]
@@ -114,6 +115,7 @@ pos_Sun = np.zeros([len(times_mjd), 3])
 pos_Earth = np.zeros([len(times_mjd), 3])
 pos_Moon = np.zeros([len(times_mjd), 3])
 pos_Sun_H = np.zeros([len(times_mjd), 3])
+pos_Earth_H = np.zeros([len(times_mjd), 3])
 pos_Moon_H = np.zeros([len(times_mjd), 3])
 
 # Obtain celestial body positions in the I frame [AU] and convert state to I frame
@@ -121,6 +123,7 @@ for ii in np.arange(len(times_mjd)):
     pos_SC[ii, :], vel_SC[ii, :] = frameConversion.convertSC_H2I(pos_can[ii, :], vel_can[ii, :], times_mjd[ii], C_I2G)
     pos_Sun[ii, :], pos_Earth[ii, :], pos_Moon[ii, :] = frameConversion.getSunEarthMoon(times_mjd[ii], C_I2G)
     pos_Sun_H[ii, :] = get_body_barycentric_posvel('Sun', times_mjd[ii])[0].get_xyz().to('AU').value
+    pos_Earth_H[ii, :] = get_body_barycentric_posvel('Earth', times_mjd[ii])[0].get_xyz().to('AU').value
     pos_Moon_H[ii, :] = get_body_barycentric_posvel('Moon', times_mjd[ii])[0].get_xyz().to('AU').value
 
 
@@ -140,20 +143,18 @@ for ii in np.arange(len(gmat_time)):
 
 
 # ~~~~~PLOT~~~~
+
 title = 'Full Force Model in the I Frame'
-body_names = ['FF', 'Earth', 'Moon', 'Sun', 'GMAT Orbit']
+body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun', 'GMAT Orbit']
 fig_I, ax_I = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, pos_Sun, gmat_posinert, body_names=body_names, title=title)
 
 title = 'Full Force Model in the I Frame (Sun not visible)'
-body_names = ['FF', 'Earth', 'Moon']
-fig_I, ax_I = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, body_names=body_names, title=title)
+body_names = ['Spacecraft', 'Earth', 'Moon']
+fig_InoS, ax_InoS = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, body_names=body_names, title=title)
 
 title = 'Full Force Model in the H Frame'
-body_names = ['FF', 'Moon', 'Sun']
+body_names = ['Spacecraft', 'Moon', 'Sun']
 fig_H, ax_H = plot_tools.plot_bodies(pos, pos_Moon_H, pos_Sun_H, body_names=body_names, title=title)
-
-# Save
-fig_I.savefig('FF L2.png')
 
 
 # ~~~~~ANIMATION~~~~~
@@ -161,19 +162,33 @@ fig_I.savefig('FF L2.png')
 desired_duration = 3  # seconds
 title = 'Full Force Model in the I Frame'
 body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun']
-animate_func, ani_object = plot_tools.create_animation(times, days, desired_duration,
+animate_func_I, ani_object_I = plot_tools.create_animation(times, days, desired_duration,
                                                        [pos_SC, pos_Earth, pos_Moon, pos_Sun], body_names=body_names,
                                                        title=title)
 
 title = 'Full Force Model in the I Frame (Sun not visible)'
 body_names = ['Spacecraft', 'Earth', 'Moon']
-animate_func, ani_object = plot_tools.create_animation(times, days, desired_duration,
+animate_func_InoS, ani_object_InoS = plot_tools.create_animation(times, days, desired_duration,
                                                        [pos_SC, pos_Earth, pos_Moon], body_names=body_names,
                                                        title=title)
 
-# Save
-writergif = animation.PillowWriter(fps=30)
-ani_object.save('FF L2.gif', writer=writergif)
+title = 'Full Force Model in the H Frame'
+body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun']
+animate_func_H, ani_object_H = plot_tools.create_animation(times, days, desired_duration,
+                                                       [pos, pos_Earth_H, pos_Moon_H, pos_Sun_H], body_names=body_names,
+                                                       title=title)
+
+
+# # ~~~~~SAVE~~~~~
+#
+# fig_I.savefig('plotFigures/FF DRO I frame.png')
+# fig_InoS.savefig('plotFigures/FF DRO I frame no Sun.png')
+# fig_H.savefig('plotFigures/FF DRO H frame.png')
+#
+# writergif = animation.PillowWriter(fps=30)
+# ani_object_I.save('plotFigures/FF DRO I frame.gif', writer=writergif)
+# ani_object_InoS.save('plotFigures/FF DRO I no Sun frame.gif', writer=writergif)
+# ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)
 
 
 # # ~~~~~DEBUGGING WITH THE SUN~~~~~

@@ -70,7 +70,7 @@ for ii in np.arange(len(times)):
 # ~~~~~PLOT SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
 # Obtain CRTBP data from GMAT
-file_name = "gmatFiles/CRTBP_rot.txt"
+file_name = "gmatFiles/CRTBP_rot_diffcorr.txt"
 gmat_km, gmat_time = gmatTools.extract_pos(file_name)
 gmat_posrot = np.array((gmat_km * u.km).to('AU'))
 
@@ -86,8 +86,9 @@ title = 'CRTBP Model in the Inertial (I) Frame'
 body_names = ['Propagated CRTBP', 'Earth', 'Moon', 'GMAT Orbit']
 fig, ax = plot_tools.plot_bodies(pos_au, pos_earth, pos_moon, gmat_posinert, body_names=body_names, title=title)
 
-# # Save
-# fig.savefig('CRTBP L2.png')
+# title = 'GMAT CRTBP orbit in the Inertial (I) Frame'
+# body_names = ['Earth', 'Moon', 'GMAT Orbit']
+# fig, ax = plot_tools.plot_bodies(pos_earth, pos_moon, gmat_posinert, body_names=body_names, title=title)
 
 
 # ~~~~~ANIMATION~~~~~
@@ -97,6 +98,11 @@ body_names = ['Spacecraft', 'Earth', 'Moon']
 animate_func, ani_object = plot_tools.create_animation(times, days, desired_duration,
                                                        [pos_au, pos_earth, pos_moon], body_names=body_names,
                                                        title=title)
-# # Save
+
+
+# # ~~~~~SAVE~~~~~
+#
+# fig.savefig('plotFigures/CRTBP L2 I frame.png')
+#
 # writergif = animation.PillowWriter(fps=30)
-# ani_object.save('CRTBP L2.gif', writer=writergif)
+# ani_object.save('plotFigures/CRTBP L2 I frame.gif', writer=writergif)
