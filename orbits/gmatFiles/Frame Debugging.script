@@ -20,12 +20,12 @@ GMAT DefaultSC.DateFormat = UTCModJulian;
 GMAT DefaultSC.Epoch = '57727';
 GMAT DefaultSC.CoordinateSystem = EarthICRF;
 GMAT DefaultSC.DisplayStateType = Cartesian;
-GMAT DefaultSC.X = -6.836059309983691e-13;
+GMAT DefaultSC.X = -9.570483025591624e-13;
 GMAT DefaultSC.Y = 9000;
-GMAT DefaultSC.Z = -4.443277343280094e-15;
-GMAT DefaultSC.VX = -7.595621459369495e-16;
+GMAT DefaultSC.Z = -6.220609964635582e-15;
+GMAT DefaultSC.VX = -1.063387004719786e-15;
 GMAT DefaultSC.VY = 10;
-GMAT DefaultSC.VZ = -4.935449225413995e-18;
+GMAT DefaultSC.VZ = -6.909671267226955e-18;
 GMAT DefaultSC.DryMass = 850;
 GMAT DefaultSC.Cd = 2.2;
 GMAT DefaultSC.Cr = 1.8;
@@ -71,6 +71,8 @@ GMAT DefaultSC.EulerAngleSequence = '321';
 
 
 
+
+
 %----------------------------------------
 %---------- ForceModels
 %----------------------------------------
@@ -105,7 +107,7 @@ Create CoordinateSystem EMBaryRot;
 GMAT EMBaryRot.Origin = EMBarycenter;
 GMAT EMBaryRot.Axes = ObjectReferenced;
 GMAT EMBaryRot.XAxis = R;
-GMAT EMBaryRot.YAxis = V;
+GMAT EMBaryRot.ZAxis = N;
 GMAT EMBaryRot.Primary = EMBarycenter;
 GMAT EMBaryRot.Secondary = Luna;
 
@@ -127,10 +129,10 @@ GMAT GMEc.Axes = GSE;
 
 Create OrbitView EMInertView;
 GMAT EMInertView.SolverIterations = Current;
-GMAT EMInertView.UpperLeft = [ 0.1917293233082707 0.5523917995444191 ];
-GMAT EMInertView.Size = [ 0.8395989974937343 0.7995444191343963 ];
-GMAT EMInertView.RelativeZOrder = 567;
-GMAT EMInertView.Maximized = true;
+GMAT EMInertView.UpperLeft = [ 0.05723472668810289 0.02114427860696518 ];
+GMAT EMInertView.Size = [ 0.8926045016077171 0.7985074626865671 ];
+GMAT EMInertView.RelativeZOrder = 68;
+GMAT EMInertView.Maximized = false;
 GMAT EMInertView.Add = {DefaultSC, Earth, Luna};
 GMAT EMInertView.CoordinateSystem = EMInert;
 GMAT EMInertView.DrawObject = [ false true true ];
@@ -159,9 +161,9 @@ GMAT EMInertView.EnableConstellations = On;
 
 Create OrbitView Rot_mooncenter;
 GMAT Rot_mooncenter.SolverIterations = Current;
-GMAT Rot_mooncenter.UpperLeft = [ 0.3978696741854637 0.2152619589977221 ];
-GMAT Rot_mooncenter.Size = [ 0.5294486215538847 0.4464692482915718 ];
-GMAT Rot_mooncenter.RelativeZOrder = 571;
+GMAT Rot_mooncenter.UpperLeft = [ 0.3157556270096463 0.277363184079602 ];
+GMAT Rot_mooncenter.Size = [ 0.5627009646302251 0.4241293532338308 ];
+GMAT Rot_mooncenter.RelativeZOrder = 111;
 GMAT Rot_mooncenter.Maximized = true;
 GMAT Rot_mooncenter.Add = {DefaultSC, Luna, Earth};
 GMAT Rot_mooncenter.CoordinateSystem = EMBaryRot;
@@ -191,10 +193,10 @@ GMAT Rot_mooncenter.EnableConstellations = On;
 
 Create OrbitView Rot_earthcenter;
 GMAT Rot_earthcenter.SolverIterations = Current;
-GMAT Rot_earthcenter.UpperLeft = [ 0.3815789473684211 0.1753986332574032 ];
-GMAT Rot_earthcenter.Size = [ 0.5 0.4510250569476082 ];
-GMAT Rot_earthcenter.RelativeZOrder = 563;
-GMAT Rot_earthcenter.Maximized = true;
+GMAT Rot_earthcenter.UpperLeft = [ 0.4038585209003215 0.1728855721393035 ];
+GMAT Rot_earthcenter.Size = [ 0.5318327974276528 0.4514925373134329 ];
+GMAT Rot_earthcenter.RelativeZOrder = 73;
+GMAT Rot_earthcenter.Maximized = false;
 GMAT Rot_earthcenter.Add = {DefaultSC, Earth, Luna};
 GMAT Rot_earthcenter.CoordinateSystem = EMBaryRot;
 GMAT Rot_earthcenter.DrawObject = [ false true true ];
@@ -223,9 +225,9 @@ GMAT Rot_earthcenter.EnableConstellations = On;
 
 Create ReportFile Moon_EMInert;
 GMAT Moon_EMInert.SolverIterations = Current;
-GMAT Moon_EMInert.UpperLeft = [ 0 0 ];
-GMAT Moon_EMInert.Size = [ 0 0 ];
-GMAT Moon_EMInert.RelativeZOrder = 0;
+GMAT Moon_EMInert.UpperLeft = [ 0.06662515566625156 0.1009549795361528 ];
+GMAT Moon_EMInert.Size = [ 0.599626400996264 0.7980900409276944 ];
+GMAT Moon_EMInert.RelativeZOrder = 108;
 GMAT Moon_EMInert.Maximized = false;
 GMAT Moon_EMInert.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\Moon_EMInert.txt';
 GMAT Moon_EMInert.Precision = 16;
@@ -257,10 +259,10 @@ GMAT Moon_EMRot.WriteReport = true;
 
 Create OrbitView GMEc_View;
 GMAT GMEc_View.SolverIterations = Current;
-GMAT GMEc_View.UpperLeft = [ 0.003132832080200501 0 ];
-GMAT GMEc_View.Size = [ 0.5 0.4498861047835991 ];
-GMAT GMEc_View.RelativeZOrder = 559;
-GMAT GMEc_View.Maximized = true;
+GMAT GMEc_View.UpperLeft = [ 0.002572347266881029 0 ];
+GMAT GMEc_View.Size = [ 0.5318327974276528 0.4502487562189055 ];
+GMAT GMEc_View.RelativeZOrder = 63;
+GMAT GMEc_View.Maximized = false;
 GMAT GMEc_View.Add = {DefaultSC, Earth, Luna};
 GMAT GMEc_View.CoordinateSystem = GMEc;
 GMAT GMEc_View.DrawObject = [ true true true ];
@@ -304,10 +306,44 @@ GMAT Moon_GMEc.Delimiter = ' ';
 GMAT Moon_GMEc.ColumnWidth = 23;
 GMAT Moon_GMEc.WriteReport = true;
 
+Create ReportFile SC_EMRot;
+GMAT SC_EMRot.SolverIterations = Current;
+GMAT SC_EMRot.UpperLeft = [ 0 0 ];
+GMAT SC_EMRot.Size = [ 0 0 ];
+GMAT SC_EMRot.RelativeZOrder = 0;
+GMAT SC_EMRot.Maximized = false;
+GMAT SC_EMRot.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\SC_EMRot.txt';
+GMAT SC_EMRot.Precision = 16;
+GMAT SC_EMRot.Add = {DefaultSC.EMBaryRot.X, DefaultSC.EMBaryRot.Y, DefaultSC.EMBaryRot.Z, DefaultSC.UTCModJulian};
+GMAT SC_EMRot.WriteHeaders = false;
+GMAT SC_EMRot.LeftJustify = On;
+GMAT SC_EMRot.ZeroFill = Off;
+GMAT SC_EMRot.FixedWidth = true;
+GMAT SC_EMRot.Delimiter = ' ';
+GMAT SC_EMRot.ColumnWidth = 23;
+GMAT SC_EMRot.WriteReport = true;
+
+Create ReportFile SC_EMInert;
+GMAT SC_EMInert.SolverIterations = Current;
+GMAT SC_EMInert.UpperLeft = [ 0 0 ];
+GMAT SC_EMInert.Size = [ 0 0 ];
+GMAT SC_EMInert.RelativeZOrder = 0;
+GMAT SC_EMInert.Maximized = false;
+GMAT SC_EMInert.Filename = 'C:\Users\aeboe\Documents\Starlift\starlift\orbits\gmatFiles\SC_EMInert.txt';
+GMAT SC_EMInert.Precision = 16;
+GMAT SC_EMInert.Add = {DefaultSC.EMInert.X, DefaultSC.EMInert.Y, DefaultSC.EMInert.Z, DefaultSC.UTCModJulian};
+GMAT SC_EMInert.WriteHeaders = true;
+GMAT SC_EMInert.LeftJustify = On;
+GMAT SC_EMInert.ZeroFill = Off;
+GMAT SC_EMInert.FixedWidth = true;
+GMAT SC_EMInert.Delimiter = ' ';
+GMAT SC_EMInert.ColumnWidth = 23;
+GMAT SC_EMInert.WriteReport = true;
+
 
 %----------------------------------------
 %---------- Mission Sequence
 %----------------------------------------
 
 BeginMissionSequence;
-Propagate DefaultProp(DefaultSC) {DefaultSC.ElapsedDays = 200};
+Propagate DefaultProp(DefaultSC) {DefaultSC.ElapsedDays = 30};
