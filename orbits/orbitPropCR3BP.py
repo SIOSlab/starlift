@@ -5,12 +5,13 @@ from astropy.time import Time
 import astropy.units as u
 from matplotlib import pyplot as plt
 from matplotlib import animation
+from scipy.interpolate import interp1d
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
 import orbitEOMProp
 import plot_tools
-import gmatTools
+import extractTools
 import pdb
 
 
@@ -20,7 +21,7 @@ import pdb
 coord.solar_system.solar_system_ephemeris.set('de440')
 
 # Parameters
-t_mjd = Time(57727, format='mjd', scale='utc')
+t_start = Time(57727, format='mjd', scale='utc')
 days = 30
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
@@ -35,7 +36,7 @@ earth_r = (unitConversion.convertPos_to_dim(earth_r_can)).to('AU')
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
 # IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO, 0.9697497-day period
 
-# Convert ICs to dimensional, rotating frame (for GMAT)
+# Convert ICs to dimensional, rotating frame
 pos_dim = unitConversion.convertPos_to_dim(np.array(IC[0:3])).to('km')
 vel_dim = unitConversion.convertVel_to_dim(np.array(IC[3:6])).to('km/s')
 print('Dimensional [km] position IC in the rotating frame: ', pos_dim)
@@ -51,6 +52,7 @@ freeVar = np.array([IC[0], IC[2], vI[1], days_can])
 states, times = orbitEOMProp.statePropCRTBP(freeVar, mu_star)  # Canonical
 pos = states[:, 0:3]
 vel = states[:, 3:6]
+times_mjd = unitConversion.convertTime_to_dim(times) + t_start
 
 # Convert to AU
 pos_au = np.array(unitConversion.convertPos_to_dim(pos).to('AU'))
@@ -70,34 +72,50 @@ for ii in np.arange(len(times)):
 # ~~~~~PLOT SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
 
 # Obtain CRTBP data from GMAT
-file_name = "gmatFiles/CRTBP_rot_diffcorr.txt"
-gmat_km, gmat_time = gmatTools.extract_pos(file_name)
-gmat_posrot = np.array((gmat_km * u.km).to('AU'))
+file_path = "gmatSTKFiles/L2Orbit_Position_Data_2.txt"
+stk_posrot, stk_times = extractTools.extractSTK(file_path)
 
 # Convert to I frame from R frame
-gmat_posinert = np.zeros([len(gmat_time), 3])
-for ii in np.arange(len(gmat_time)):
-    C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
+stk_posinert = np.zeros([len(stk_times), 3])
+for ii in np.arange(len(stk_times)):
+    C_I2R = frameConversion.inert2rot(stk_times[ii], stk_times[0])
     C_R2I = C_I2R.T
-    gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
+    stk_posinert[ii, :] = C_R2I @ stk_posrot[ii, :]
 
 # Plot
 title = 'CRTBP Model in the Inertial (I) Frame'
-body_names = ['Propagated CRTBP', 'Earth', 'Moon', 'GMAT Orbit']
-fig, ax = plot_tools.plot_bodies(pos_au, pos_earth, pos_moon, gmat_posinert, body_names=body_names, title=title)
-
-# title = 'GMAT CRTBP orbit in the Inertial (I) Frame'
-# body_names = ['Earth', 'Moon', 'GMAT Orbit']
-# fig, ax = plot_tools.plot_bodies(pos_earth, pos_moon, gmat_posinert, body_names=body_names, title=title)
+body_names = ['Propagated CRTBP', 'Earth', 'Moon', 'STK Orbit']
+fig, ax = plot_tools.plot_bodies(pos_au, pos_earth, pos_moon, stk_posinert, body_names=body_names, title=title)
 
 
 # ~~~~~ANIMATION~~~~~
 
+
+def interpolate_positions(stk_pos, stk_times, target_times):
+    # Create interpolation functions for each position component (x, y, z)
+    interp_func_x = interp1d(stk_times.value, stk_pos[:, 0], kind='linear', fill_value="extrapolate")
+    interp_func_y = interp1d(stk_times.value, stk_pos[:, 1], kind='linear', fill_value="extrapolate")
+    interp_func_z = interp1d(stk_times.value, stk_pos[:, 2], kind='linear', fill_value="extrapolate")
+
+    # Interpolate stk_posrot to match target_times
+    interp_x = interp_func_x(target_times.value)
+    interp_y = interp_func_y(target_times.value)
+    interp_z = interp_func_z(target_times.value)
+
+    # Combine interpolated components into a new position array
+    interpolated_posrot = np.vstack((interp_x, interp_y, interp_z)).T
+
+    return interpolated_posrot
+
+
+interp_stk_posinert = interpolate_positions(stk_posinert, stk_times, times_mjd)
+
 desired_duration = 3  # seconds
-body_names = ['Spacecraft', 'Earth', 'Moon']
+title = 'CRTBP Model in the Inertial (I) Frame'
+body_names = ['Propagated CRTBP', 'Earth', 'Moon', 'STK Orbit']
 animate_func, ani_object = plot_tools.create_animation(times, days, desired_duration,
-                                                       [pos_au, pos_earth, pos_moon], body_names=body_names,
-                                                       title=title)
+                                                       [pos_au, pos_earth, pos_moon, interp_stk_posinert],
+                                                       body_names=body_names, title=title)
 
 
 # # ~~~~~SAVE~~~~~
