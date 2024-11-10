@@ -10,6 +10,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pdb
 import dill #use dill to save lambda-fied class
+from scipy.optimize import fsolve
+from scipy.optimize import minimize
+from scipy.optimize import NonlinearConstraint
         
 #symbolically define the dynamics for energy optimal control in the cr3bp
 #this will be used by the STMInt package for numerically integrating the STM and STT
@@ -203,6 +206,7 @@ xmax = 1.15
 ymin = -0.1
 ymax = 0.1
 ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+ax.set_aspect('equal', adjustable='box')
 
 # ax = plt.gca()
 # xmin = -0.1
@@ -337,20 +341,42 @@ for i in range(0,rows):
     pos_halfway[:,i] = np.transpose(state_full_halfway[i,0:2])
 
     plotangle = angle
-    tipsright[:,i] = xypos[:,i] + np.array([ext2/2*np.cos(plotangle+np.pi/2),ext2/2*np.sin(plotangle+np.pi/2)])
-    tipsleft[:,i] = xypos[:,i] - np.array([ext2/2*np.cos(plotangle+np.pi/2),ext2/2*np.sin(plotangle+np.pi/2)])
+    tipsright[:,i] = xypos[:,i] + np.array([ext2/2*np.cos(plotangle-np.pi/2),ext2/2*np.sin(plotangle-np.pi/2)])
+    tipsleft[:,i] = xypos[:,i] - np.array([ext2/2*np.cos(plotangle-np.pi/2),ext2/2*np.sin(plotangle-np.pi/2)])
+
+    # tipsright[:,i] = xypos[:,i] + (dir2 / la.norm(dir2))*ext2/2
+    # tipsleft[:,i] = xypos[:,i] - (dir2 / la.norm(dir2))*ext2/2
 
     plotangle_halfway = angle_halfway
-    tipsright_halfway[:,i] = xypos_halfway[:,i] + np.array([ext2_halfway/2*np.cos(plotangle_halfway+np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway+np.pi/2)])
-    tipsleft_halfway[:,i] = xypos_halfway[:,i] - np.array([ext2_halfway/2*np.cos(plotangle_halfway+np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway+np.pi/2)])
+    tipsright_halfway[:,i] = xypos_halfway[:,i] + np.array([ext2_halfway/2*np.cos(plotangle_halfway-np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway-np.pi/2)])
+    tipsleft_halfway[:,i] = xypos_halfway[:,i] - np.array([ext2_halfway/2*np.cos(plotangle_halfway-np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway-np.pi/2)])
 
-    
+    # if i == 20:
+    #     print("CHECK OF THING: ")
+    #     print("x-coordinate of center: " + str(position[0]))
+    #     print("y-coordinate of center: " + str(position[1]))
+    #     print("Extent 1 of ellipse: " + str(ext1))
+    #     print("Extent 2 of ellipse: " + str(ext2))
+    #     print("Ellipse angle (deg): " + str(rotation))
+    #     print(" ")
+    #     print("x-center of tip-line: " + str(xypos[0,i]))
+    #     print("y-center of tip-line: " + str(xypos[1,i]))
+    #     print("x-coordinate of tip: " + str(tipsright[0,i]))
+    #     print("y-coordinate of tip: " + str(tipsright[1,i]))
+    #     print(" ")
+
+
 
     # ellipse plotting:
-    ellipse = matplotlib.patches.Ellipse(xy=(position[0],[position[1]]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotation)
+    if i % 10 == 0:
+        if i == 0:
+            ellipse = matplotlib.patches.Ellipse(xy=(position[0],[position[1]]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc='r', angle=rotation, linewidth= 0)
+
+        else:
+            ellipse = matplotlib.patches.Ellipse(xy=(position[0],[position[1]]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotation, linewidth= 0)
     # ellipse = matplotlib.patches.Ellipse(xy=(position[1],position[2]), width=extyz1, height=extyz2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotationyz)
 
-    ax.add_patch(ellipse)
+        ax.add_patch(ellipse)
 
 
 tipsoutside = np.zeros((2,rows))
@@ -365,6 +391,7 @@ for i in range(0,rows):
     else:
         tipsoutside[:,i] = tipsleft[:,i]
         tipsinside[:,i] = tipsright[:,i]
+
 
 tipsoutside_halfway = np.zeros((2,rows))
 tipsinside_halfway = np.zeros((2,rows))
@@ -391,6 +418,11 @@ ax.plot(tipsinside_halfway[0,:],tipsinside_halfway[1,:], color = 'r', linestyle=
 SP1, = ax.plot(state_full[0,0], state_full[0,1],'bo', markersize=8, label='Start Point 1') 
 SP2, = ax.plot(state_full_halfway[0,0], state_full_halfway[0,1],'ro', markersize=8, label='Start Point 2') 
 ax.legend(handles=[ref_trajectory,bounds, bounds_halfway,SP1,SP2],loc='upper right')
+for i in range(0,rows):
+    if i % 10 == 0:
+        ax.scatter(tipsoutside[0,i],tipsoutside[1,i], color = 'g')
+        ax.scatter(tipsinside[0,i],tipsinside[1,i], color = 'g')
+    
 plt.title('Hyperellipsoid Projections in XY-Plane')
 plt.xlabel("X [DU]")
 plt.ylabel("Y [DU]")
@@ -399,6 +431,7 @@ plt.ylabel("Y [DU]")
 # plt.xlabel("Y [DU]")
 # plt.ylabel("Z [DU]")
 plt.show()
+
 
 ##### CONVERSION TO FUNCTION #####
 def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
@@ -460,7 +493,8 @@ def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
     ref_trajectory, = plt.plot(state_full[:,s1], state_full[:,s2], color=[0,0,0], label='Reference Trajectory')
 
     [rows,columns,depth] = STM_full.shape # dimensions of STM_full
-    
+    ellipse_info = np.zeros((rows,5)) # contains x-center, y-center, ext1, ext2, and angle
+
     for i in range(0,rows):
 
         STM = STM_full[i,:,:] @ STM_full[-1,:,:] @ la.inv(STM_full[i,:,:]) # STM for current timestep
@@ -517,24 +551,257 @@ def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
         # tipsright[:,i] = position  + ext
         # tipsleft[:,i] = position - ext
 
-        # tipsright[:,i] = position + np.array([ext2/2*np.cos(angle+np.pi/2),ext2/2*np.sin(angle+np.pi/2)])
-        # tipsleft[:,i] = position - np.array([ext2/2*np.cos(angle+np.pi/2),ext2/2*np.sin(angle+np.pi/2)])
+        # tipsright[:,i] = position + np.array([ext2/2*np.cos(angle-np.pi/2),ext2/2*np.sin(angle-np.pi/2)])
+        # tipsleft[:,i] = position - np.array([ext2/2*np.cos(angle-np.pi/2),ext2/2*np.sin(angle-np.pi/2)])
         
         # ellipse plotting:
         ellipse = matplotlib.patches.Ellipse(xy=(position[0],position[1]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotation)
 
         ax.add_patch(ellipse)
         ellipses.append(ellipse)
+            
 
-    
+        # ellipse_info is n x 5 array storing the x-coordinate of center, y-coordinate of center, semi-major axis, semi-minor axis, and rotation angle
+        ellipse_info[i,0] = position[0]
+        ellipse_info[i,1] = position[1]
+
+        if ext1 > ext2: # extent 1 is semi-major axis
+            ellipse_info[i,2] = ext1
+            ellipse_info[i,3] = ext2
+            ellipse_info[i,4] = np.arctan2(dir1[1],dir1[0])
+        else: # extent 2 is semi-major axis
+            ellipse_info[i,2] = ext2
+            ellipse_info[i,3] = ext1
+            ellipse_info[i,4] = np.arctan2(dir2[1],dir2[0])
+
+        if ellipse_info[i,4] < 0:
+            ellipse_info[i,4] = ellipse_info[i,4] + np.pi # correction so that ellipse rotation angle is between 0 and pi
+            
+        
     plt.legend(["Reference","Reachable Bounds"], loc="upper right")
 
     plt.show()
 
-    return ellipses
 
-projection(STM_full_halfway,STT_full_halfway,state_full_halfway,J_max,'y','z')
+    return ellipses, ellipse_info
 
+
+[ellipses,ellipse_info] = projection(STM_full,STT_full,state_full,J_max,'x','y')
+
+
+[rows,columns] = ellipse_info.shape
+
+def ellipse_tangent(ell1,ell2):
+    h1 = ell1[0]
+    k1 = ell1[1]
+    a1 = ell1[2] / 2
+    b1 = ell1[3] / 2
+    r1 = ell1[4]
+
+    h2 = ell2[0]
+    k2 = ell2[1]
+    a2 = ell2[2] / 2
+    b2 = ell2[3] / 2
+    r2 = ell2[4]
+    
+    def func(x):
+
+        p1 = x[0]
+        p2 = x[1]
+        x1 = x[2]
+        x2 = x[3]
+        y1 = x[4]
+        y2 = x[5]
+        m = x[6]
+
+        x[0] = (h1 + a1*np.cos(p1)*np.cos(r1) - b1*np.sin(p1)*np.sin(r1)) - x1
+        x[1] = (k1 + a1*np.cos(p1)*np.sin(r1) + b1*np.sin(p1)*np.cos(r1)) - y1
+        x[2] = (h2 + a2*np.cos(p2)*np.cos(r2) - b2*np.sin(p2)*np.sin(r2)) - x2
+        x[3] = (k2 + a2*np.cos(p2)*np.sin(r2) + b2*np.sin(p2)*np.cos(r2)) - y2
+        x[4] = m*(x2-x1) - (y2-y1)
+        x[5] = ((-b1/a1)*(1/np.tan(p1)) + np.tan(r1)) / (1 + (b1/a1)*(1/np.tan(p1))*np.tan(r1)) - m
+        x[6] = ((-b2/a2)*(1/np.tan(p2)) + np.tan(r2)) / (1 + (b2/a2)*(1/np.tan(p2))*np.tan(r2)) - m
+
+        return x
+    
+
+    slope_guess = (k2 - k1) / (h2 - h1)
+    guess = [0.2,0.2,h1,k1,h2,k2,0.1]
+    solution = fsolve(func,guess)
+
+    return solution
+
+
+def tangent_lines(ell1,ell2,index):
+    print(index)
+    C = 10000
+    pi = np.pi
+    h1 = ell1[0] *C
+    k1 = ell1[1] *C
+    a1 = ell1[2]/2 * C
+    b1 = ell1[3]/2 * C
+    r1 = ell1[4]
+
+    h2 = ell2[0] * C
+    k2 = ell2[1] * C
+    a2 = ell2[2]/2 * C
+    b2 = ell2[3]/2 * C
+    r2 = ell2[4]
+
+    # establish constrains with the x vector corresponding to the following quantities
+    # p1 = x[0]
+    # p2 = x[1]
+    # x1 = x[2]
+    # x2 = x[3]
+    # y1 = x[4]
+    # y2 = x[5]
+    # m = x[6]
+
+    def cot(theta):
+        return 1 / np.tan(theta)
+
+    con1 = lambda x: (h1 + a1*np.cos(x[0])*np.cos(r1) - b1*np.sin(x[0])*np.sin(r1)) - x[2]
+    nlc1 = NonlinearConstraint(con1, 0, 0)
+
+    con2 = lambda x: (k1 + a1*np.cos(x[0])*np.sin(r1) + b1*np.sin(x[0])*np.cos(r1)) - x[4]
+    nlc2 = NonlinearConstraint(con2, 0, 0)
+
+    con3 = lambda x: (h2 + a2*np.cos(x[1])*np.cos(r2) - b2*np.sin(x[1])*np.sin(r2)) - x[3]
+    nlc3 = NonlinearConstraint(con3, 0, 0)
+
+    con4 = lambda x: (k2 + a2*np.cos(x[1])*np.sin(r2) + b2*np.sin(x[1])*np.cos(r2)) - x[5]
+    nlc4 = NonlinearConstraint(con4, 0, 0)
+
+    con5 = lambda x: x[6]*(x[3]-x[2]) - (x[5]-x[4])
+    nlc5 = NonlinearConstraint(con5, 0, 0)
+
+    con6 = lambda x: ((-b1/a1)*(cot(x[0])) + np.tan(r1)) / (1 + (b1/a1)*(cot(x[0]))*np.tan(r1)) - x[6]
+    nlc6 = NonlinearConstraint(con6, 0, 0)
+
+    con7 = lambda x: ((-b2/a2)*(cot(x[1])) + np.tan(r2)) / (1 + (b2/a2)*(cot(x[1]))*np.tan(r2)) - x[6]
+    nlc7 = NonlinearConstraint(con7, 0, 0)
+
+    nonlinear_constraints = ({'type': 'eq', 'fun': con1},
+        {'type': 'eq', 'fun': con2},
+        {'type': 'eq', 'fun': con3},
+        {'type': 'eq', 'fun': con4},
+        {'type': 'eq', 'fun': con5},
+        {'type': 'eq', 'fun': con6},
+        {'type': 'eq', 'fun': con7},)
+    
+    def objective_fun(x):
+        return 0
+    
+    two_solutions_found = False
+    one_solution_found = False
+    jump = 1
+
+
+    while two_solutions_found == False:
+        two_solutions_found = True
+        while one_solution_found == False:
+            one_solution_found = True
+
+            p10 = 3*pi/4
+            p20 = 3*pi/4
+            x10 = (h1-a1*np.cos(r1))
+            x20 = (h2-a2*np.cos(r2))
+            y10 = (k1 + a1*np.sin(r1))
+            y20 = (k2 + a2*np.sin(r1))
+            m0 = (k2 - k1) / (h2 - h1)
+
+            p1bnds = (pi/2,pi)
+            p2bnds = (pi/2,pi)
+            x1bnds = (h1-a1,h1)
+            x2bnds = (h2-a2,h2)
+            y1bnds = (k1-a1,k1+a1)
+            y2bnds = (k2-a2,k2+a2)
+            mbnds = (-100,100)
+
+            # bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
+
+            x0 = np.array([p10,p20,x10,x20,y10,y20,m0])
+
+            solution1 = minimize(objective_fun,x0, method='SLSQP',tol=1e-10,constraints=nonlinear_constraints,options={'maxiter': 500})
+            solution1.success = True
+            if solution1.success == True:
+                one_solution_found = True
+                solution1 = solution1.x
+                for j in range(2,7):
+                    solution1[j] = solution1[j] / C
+
+
+        # p10 = pi/4
+        # p20 = pi/4
+        # x10 = (h1+a1*np.cos(r1))
+        # x20 = (h2+a2*np.cos(r2))
+        # y10 = (k1 + a1*np.sin(r1))
+        # y20 = (k2 + a2*np.sin(r1))
+        # m0 = (k2 - k1) / (h2 - h1)
+
+        # p1bnds = (pi/2,pi)
+        # p2bnds = (pi/2,pi)
+        # x1bnds = (h1-a1,h1)
+        # x2bnds = (h2-a2,h2)
+        # y1bnds = (k1-a1,k1+a1)
+        # y2bnds = (k2-a2,k2+a2)
+        # mbnds = (-100,100)
+
+        # bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
+        # solution2 = minimize(objective_fun,x0, method='SLSQP',tol=1e-10,bounds = bnds, constraints=nonlinear_constraints,options={'maxiter': 500})
+        # if solution2.success == True:
+        #     two_solutions_found == True
+        #     solution2 = solution.x
+        #     for j in range(2,7):
+        #         solution2[j] = solution2[j] / C
+
+        print("Finished")
+    
+    print(solution1)
+    solution2 = solution1 # COMMENT OUT THIS LINE WHEN TRYING TO SEARCH FOR SOLUTION 2
+
+
+
+        
+    return solution1,solution2
+    
+fig, ax = plt.subplots()
+ax = plt.gca()
+ax.set_xlim([0.95, 1.15])
+ax.set_ylim([-0.1, 0.1])
+ax.set_aspect('equal', adjustable='box')
+
+# limits = [120,122]
+limits = [0,259]
+solution = np.zeros((limits[1]-limits[0],7))
+
+for i in range(limits[0],limits[1]):
+    ell1 = ellipse_info[i,:]
+    ell2 = ellipse_info[i+1,:]
+
+    if i == limits[0]:
+        print("ELLIPSES: ")
+        print(ell1)
+        print(" ")
+        print(ell2)
+
+    solution[i-limits[0],:],solution2 = tangent_lines(ell1,ell2,i)
+
+    ellipse = matplotlib.patches.Ellipse(xy=(ellipse_info[i,0],ellipse_info[i,1]), width=ellipse_info[i,2], height=ellipse_info[i,3], edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=ellipse_info[i,4]*180/np.pi)
+    ax.add_patch(ellipse)
+
+[rows,columns] = solution.shape
+
+for i in range(0,rows):
+    x_points = np.array([solution[i,2],solution[i,3]])
+    y_points = np.array([solution[i,4],solution[i,5]])
+    plt.plot(x_points,y_points,linewidth= 2.5)
+
+
+plt.xlabel("X [DU]")
+plt.ylabel("Y [DU]")
+plt.title("Projections with Tangent Lines")
+plt.show()
 
 ############################
 STM = STM_full[-1,:,:]
@@ -571,10 +838,10 @@ a = w
 
 
 for i in range(6):
-    print("The extent is " + str(la.norm(np.sqrt(2*J_max/gamma[i])*w[:,i])) + " and the direction is " + str(w[:,i]))
+    # print("The extent is " + str(la.norm(np.sqrt(2*J_max/gamma[i])*w[:,i])) + " and the direction is " + str(w[:,i]))
     a[:,i] = np.sqrt(2*J_max/gamma[i])*w[:,i]
 
-print(a[:,0])
+# print(a[:,0])
 
 
 ################################
