@@ -137,7 +137,7 @@ gmat_posrot = np.array((gmat_km * u.km).to('AU'))
 # Convert to I frame from R frame (NOTE: GMAT doesn't like inert2rot)
 gmat_posinert = np.zeros([len(gmat_time), 3])
 for ii in np.arange(len(gmat_time)):
-    C_I2R = frameConversion.inert2rot(gmat_time[ii], gmat_time[0])
+    C_I2R = frameConversion.inert2rot_GMAT(gmat_time[ii], gmat_time[0], C_I2G)
     C_R2I = C_I2R.T
     gmat_posinert[ii, :] = C_R2I @ gmat_posrot[ii, :]
 
@@ -148,13 +148,13 @@ title = 'Full Force Model in the I Frame'
 body_names = ['Spacecraft', 'Earth', 'Moon', 'Sun', 'GMAT Orbit']
 fig_I, ax_I = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, pos_Sun, gmat_posinert, body_names=body_names, title=title)
 
-title = 'Full Force Model in the I Frame (Sun not visible)'
-body_names = ['Spacecraft', 'Earth', 'Moon']
-fig_InoS, ax_InoS = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, body_names=body_names, title=title)
-
-title = 'Full Force Model in the H Frame'
-body_names = ['Spacecraft', 'Moon', 'Sun']
-fig_H, ax_H = plot_tools.plot_bodies(pos, pos_Moon_H, pos_Sun_H, body_names=body_names, title=title)
+# title = 'Full Force Model in the I Frame (Sun not visible)'
+# body_names = ['Spacecraft', 'Earth', 'Moon']
+# fig_InoS, ax_InoS = plot_tools.plot_bodies(pos_SC, pos_Earth, pos_Moon, body_names=body_names, title=title)
+#
+# title = 'Full Force Model in the H Frame'
+# body_names = ['Spacecraft', 'Moon', 'Sun']
+# fig_H, ax_H = plot_tools.plot_bodies(pos, pos_Moon_H, pos_Sun_H, body_names=body_names, title=title)
 
 
 # ~~~~~ANIMATION~~~~~

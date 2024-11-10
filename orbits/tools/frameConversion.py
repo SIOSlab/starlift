@@ -382,6 +382,40 @@ def inert2rot(currentTime, startTime):
     return C_I2R
 
 
+def inert2rot_GMAT(currentTime, startTime, C_I2G):
+    """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
+    perifocal frame (I) to the Earth-Moon CR3BP rotating frame (R) using
+    real-time ephemeris data.
+
+    Args:
+        currentTime (astropy Time array):
+            Current mission time in MJD
+        startTime (astropy Time array):
+            Mission start time in MJD
+        ephemeris_data (array):
+            Array containing real-time Moon position data
+
+    Returns:
+        C_I2R (float n array):
+            3x3 Array for the directional cosine matrix
+    """
+
+    # Get the real-time angle using ephemeris data
+    _, _, moon_pos_current = getSunEarthMoon(currentTime, C_I2G)  # Get Moon's position at current time
+    _, _, moon_pos_start = getSunEarthMoon(startTime, C_I2G)  # Get Moon's position at start time
+
+    # Calculate the angle between these two positions  (angle at current time - angle at start time)
+    theta = np.arctan2(moon_pos_current[1].value, moon_pos_current[0].value) - np.arctan2(moon_pos_start[1].value, moon_pos_start[0].value)
+
+    # Normalize theta to 0-2*pi range
+    theta = np.mod(theta, 2*np.pi)
+
+    # Create the directional cosine matrix
+    C_I2R = rot(theta, 3)
+
+    return C_I2R
+
+
 def icrs2rot(pos, currentTime, startTime, C_G2I):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
