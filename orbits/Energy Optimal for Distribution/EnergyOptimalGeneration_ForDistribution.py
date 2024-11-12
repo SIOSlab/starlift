@@ -13,6 +13,8 @@ import dill #use dill to save lambda-fied class
 from scipy.optimize import fsolve
 from scipy.optimize import minimize
 from scipy.optimize import NonlinearConstraint
+from shapely.geometry import Point, Polygon
+import itertools
         
 #symbolically define the dynamics for energy optimal control in the cr3bp
 #this will be used by the STMInt package for numerically integrating the STM and STT
@@ -634,52 +636,34 @@ def ellipse_tangent(ell1,ell2):
 
 def tangent_lines(ell1,ell2,index):
     print(index)
-    C = 10000
+    C = 10000 # scaling factor for ellipse
     pi = np.pi
+
+    # ellipse 1 constants
     h1 = ell1[0] *C
     k1 = ell1[1] *C
     a1 = ell1[2]/2 * C
     b1 = ell1[3]/2 * C
     r1 = ell1[4]
 
+    # ellipse 2 constants
     h2 = ell2[0] * C
     k2 = ell2[1] * C
     a2 = ell2[2]/2 * C
     b2 = ell2[3]/2 * C
     r2 = ell2[4]
 
-    # establish constrains with the x vector corresponding to the following quantities
-    # p1 = x[0]
-    # p2 = x[1]
-    # x1 = x[2]
-    # x2 = x[3]
-    # y1 = x[4]
-    # y2 = x[5]
-    # m = x[6]
-
     def cot(theta):
         return 1 / np.tan(theta)
-
+    
+    # define constraints for tangent line connecting two ellipses:
     con1 = lambda x: (h1 + a1*np.cos(x[0])*np.cos(r1) - b1*np.sin(x[0])*np.sin(r1)) - x[2]
-    nlc1 = NonlinearConstraint(con1, 0, 0)
-
     con2 = lambda x: (k1 + a1*np.cos(x[0])*np.sin(r1) + b1*np.sin(x[0])*np.cos(r1)) - x[4]
-    nlc2 = NonlinearConstraint(con2, 0, 0)
-
     con3 = lambda x: (h2 + a2*np.cos(x[1])*np.cos(r2) - b2*np.sin(x[1])*np.sin(r2)) - x[3]
-    nlc3 = NonlinearConstraint(con3, 0, 0)
-
     con4 = lambda x: (k2 + a2*np.cos(x[1])*np.sin(r2) + b2*np.sin(x[1])*np.cos(r2)) - x[5]
-    nlc4 = NonlinearConstraint(con4, 0, 0)
-
     con5 = lambda x: x[6]*(x[3]-x[2]) - (x[5]-x[4])
-    nlc5 = NonlinearConstraint(con5, 0, 0)
-
     con6 = lambda x: ((-b1/a1)*(cot(x[0])) + np.tan(r1)) / (1 + (b1/a1)*(cot(x[0]))*np.tan(r1)) - x[6]
-    nlc6 = NonlinearConstraint(con6, 0, 0)
-
     con7 = lambda x: ((-b2/a2)*(cot(x[1])) + np.tan(r2)) / (1 + (b2/a2)*(cot(x[1]))*np.tan(r2)) - x[6]
-    nlc7 = NonlinearConstraint(con7, 0, 0)
 
     nonlinear_constraints = ({'type': 'eq', 'fun': con1},
         {'type': 'eq', 'fun': con2},
@@ -696,69 +680,184 @@ def tangent_lines(ell1,ell2,index):
     one_solution_found = False
     jump = 1
 
+    # ELLIPSE 1 PHI CALCULATIONS
+    phi_ell1 = np.arctan(-b1/a1*np.tan(r1))
 
-    while two_solutions_found == False:
-        two_solutions_found = True
-        while one_solution_found == False:
-            one_solution_found = True
+    if phi_ell1 < 0:
+        phi1_ell1 = phi_ell1 + np.pi # make phi1_ell1 between 0 and pi
+    else:
+        phi1_ell1 = phi_ell1
 
-            p10 = 3*pi/4
-            p20 = 3*pi/4
-            x10 = (h1-a1*np.cos(r1))
-            x20 = (h2-a2*np.cos(r2))
-            y10 = (k1 + a1*np.sin(r1))
-            y20 = (k2 + a2*np.sin(r1))
-            m0 = (k2 - k1) / (h2 - h1)
+    phi2_ell1 = phi1_ell1 + np.pi # make phi2_ell1 between pi and 2pi
 
-            p1bnds = (pi/2,pi)
-            p2bnds = (pi/2,pi)
-            x1bnds = (h1-a1,h1)
-            x2bnds = (h2-a2,h2)
-            y1bnds = (k1-a1,k1+a1)
-            y2bnds = (k2-a2,k2+a2)
-            mbnds = (-100,100)
+    # ELLIPSE 2 PHI CALCULATIONS
+    phi_ell2 = np.arctan(-b2/a2*np.tan(r2))
+    if phi_ell2 < 0:
+        phi1_ell2 = phi_ell2 + np.pi # make phi1_ell1 between 0 and pi
+    else:
+        phi1_ell2 = phi_ell2
 
-            # bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
+    phi2_ell2 = phi1_ell2 + np.pi # make phi2_ell1 between pi and 2pi
 
-            x0 = np.array([p10,p20,x10,x20,y10,y20,m0])
+    A = [
+        (0, phi1_ell1),
+        (phi1_ell1, np.pi),
+        (np.pi, phi2_ell1),
+        (phi2_ell1, 2 * np.pi)
+    ]
 
-            solution1 = minimize(objective_fun,x0, method='SLSQP',tol=1e-10,constraints=nonlinear_constraints,options={'maxiter': 500})
-            solution1.success = True
-            if solution1.success == True:
-                one_solution_found = True
-                solution1 = solution1.x
-                for j in range(2,7):
-                    solution1[j] = solution1[j] / C
+    B = [
+        (0, phi1_ell2),
+        (phi1_ell2, np.pi),
+        (np.pi, phi2_ell2),
+        (phi2_ell2, 2 * np.pi)
+    ]
+
+    # Generate all combinations of one interval from A and one from B
+    combinations = list(itertools.product(A, B))
+
+    # rearrange so more likely combinations are in front
+    int2 = combinations[15]
+    int_replace = combinations[1]
+
+    combinations[1] = int2
+    combinations[15] = int_replace
+
+    int2 = combinations[5]
+    int_replace = combinations[2]
+
+    combinations[2] = int2
+    combinations[5] = int_replace
+
+    int2 = combinations[10]
+    int_replace = combinations[1]
+
+    combinations[1] = int2
+    combinations[10] = int_replace
+
+    int2 = combinations[10]
+    int_replace = combinations[3]
+
+    combinations[3] = int2
+    combinations[10] = int_replace
 
 
-        # p10 = pi/4
-        # p20 = pi/4
-        # x10 = (h1+a1*np.cos(r1))
-        # x20 = (h2+a2*np.cos(r2))
-        # y10 = (k1 + a1*np.sin(r1))
-        # y20 = (k2 + a2*np.sin(r1))
-        # m0 = (k2 - k1) / (h2 - h1)
+    solutions_found = 0
+    i = 0
 
-        # p1bnds = (pi/2,pi)
-        # p2bnds = (pi/2,pi)
-        # x1bnds = (h1-a1,h1)
-        # x2bnds = (h2-a2,h2)
-        # y1bnds = (k1-a1,k1+a1)
-        # y2bnds = (k2-a2,k2+a2)
-        # mbnds = (-100,100)
+    while (solutions_found < 2) and (i < 16):
+        p10 = (combinations[i][0][0] + combinations[i][0][1]) / 2
+        p20 = (combinations[i][1][0] + combinations[i][1][1]) / 2
+        x10 = (h1+a1*np.cos(r1))+0.05
+        x20 = (h2+a2*np.cos(r2))+0.05
+        y10 = (k1 + a1*np.sin(r1))+0.05
+        y20 = (k2 + a2*np.sin(r1))+0.05
+        m0 = (k2 - k1) / (h2 - h1)
 
-        # bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
-        # solution2 = minimize(objective_fun,x0, method='SLSQP',tol=1e-10,bounds = bnds, constraints=nonlinear_constraints,options={'maxiter': 500})
-        # if solution2.success == True:
-        #     two_solutions_found == True
-        #     solution2 = solution.x
-        #     for j in range(2,7):
-        #         solution2[j] = solution2[j] / C
+        p1bnds = combinations[i][0]
+        p2bnds = combinations[i][1]
+        x1bnds = (None,None)
+        x2bnds = (None,None)
+        y1bnds = (None,None)
+        y2bnds = (None,None)
+        mbnds = (None,None)
+        bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
 
-        print("Finished")
-    
-    print(solution1)
-    solution2 = solution1 # COMMENT OUT THIS LINE WHEN TRYING TO SEARCH FOR SOLUTION 2
+        X0 = [p10, p20, x10, x20, y10, y20, m0]
+        solution = minimize(objective_fun,X0, method='SLSQP',bounds = bnds, tol=1e-10,constraints=nonlinear_constraints,options={'maxiter': 100})
+
+        # find way to change solution.success to false if tangent line crosses line connecting (h1,k1) and (h2,k2)
+        if solution.success == True:
+            print("BOUND INDEX: " + str(i))
+            solutions_found = solutions_found + 1
+            solution = solution.x
+            for j in range(2,7):
+                solution[j] = solution[j] / C
+
+            if solutions_found == 1:
+                solution1 = solution
+            elif solutions_found == 2:
+                solution2 = solution
+
+        i = i + 1
+
+    if solutions_found == 0: # no solutions found, just say both are most recent solution
+        solution1 = solution.x
+        solution2 = solution1
+    elif solutions_found == 1: # one solution found, just say second solution is same as first
+        solution2 = solution1
+
+
+    # while two_solutions_found == False:
+    #     two_solutions_found = True
+    #     while one_solution_found == False:
+    #         one_solution_found = True
+
+    #         p10 = 3*pi/4
+    #         p20 = 3*pi/4
+    #         x10 = (h1-a1*np.cos(r1))
+    #         x20 = (h2-a2*np.cos(r2))
+    #         y10 = (k1 + a1*np.sin(r1))
+    #         y20 = (k2 + a2*np.sin(r1))
+    #         m0 = (k2 - k1) / (h2 - h1)
+
+    #         p1bnds = (pi/2,pi)
+    #         p2bnds = (pi/2,pi)
+    #         x1bnds = (h1-a1,h1)
+    #         x2bnds = (h2-a2,h2)
+    #         y1bnds = (k1-a1,k1+a1)
+    #         y2bnds = (k2-a2,k2+a2)
+    #         mbnds = (-100,100)
+
+    #         # bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
+
+    #         x0 = np.array([p10,p20,x10,x20,y10,y20,m0])
+
+    #         solution1 = minimize(objective_fun,x0, method='SLSQP',tol=1e-10,constraints=nonlinear_constraints,options={'maxiter': 250})
+    #         solution1.success = True
+    #         if solution1.success == True:
+    #             one_solution_found = True
+    #             solution1 = solution1.x
+    #             for j in range(2,7):
+    #                 solution1[j] = solution1[j] / C
+
+    #     if solution1[2] > h1: # x connector is to the right of the center
+    #         p10 = pi/4
+    #         p20 = pi/4
+    #         x10 = (h1 - a1*np.cos(r1))
+    #         x20 = (h2 - a2*np.cos(r2))
+    #         y10 = (k1 - a1*np.sin(r1))
+    #         y20 = (k2 - a2*np.sin(r1))
+    #         m0 = m0 = (k2 - k1) / (h2 - h1)
+    #     else:
+    #         p10 = pi/4
+    #         p20 = pi/4
+    #         x10 = (h1+a1*np.cos(r1))
+    #         x20 = (h2+a2*np.cos(r2))
+    #         y10 = (k1 + a1*np.sin(r1))
+    #         y20 = (k2 + a2*np.sin(r1))
+    #         m0 = (k2 - k1) / (h2 - h1)
+        
+    #     x0 = np.array([p10,p20,x10,x20,y10,y20,m0])
+
+    #     p1bnds = (0.01,pi-0.01)
+    #     p2bnds = (0.01,pi-0.01)
+    #     x1bnds = (h1-a1,h1+a1)
+    #     x2bnds = (h2-a2,h2+a2)
+    #     y1bnds = (k1,k1+a1)
+    #     y2bnds = (k2,k2+a2)
+    #     mbnds = (-100,100)
+
+    #     bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
+    #     # solution2 = minimize(objective_fun,x0, method='SLSQP',tol=1e-10,bounds = bnds, constraints=nonlinear_constraints,options={'maxiter': 500})
+    #     # solution2 = solution2.x
+
+
+    #     # for j in range(2,7):
+    #     #     solution2[j] = solution2[j] / C
+
+     
+    # # solution2 = solution1 # COMMENT OUT THIS LINE WHEN TRYING TO SEARCH FOR SOLUTION 2
 
 
 
@@ -773,7 +872,8 @@ ax.set_aspect('equal', adjustable='box')
 
 # limits = [120,122]
 limits = [0,259]
-solution = np.zeros((limits[1]-limits[0],7))
+solution1 = np.zeros((limits[1]-limits[0],7))
+solution2 = np.zeros((limits[1]-limits[0],7))
 
 for i in range(limits[0],limits[1]):
     ell1 = ellipse_info[i,:]
@@ -785,17 +885,21 @@ for i in range(limits[0],limits[1]):
         print(" ")
         print(ell2)
 
-    solution[i-limits[0],:],solution2 = tangent_lines(ell1,ell2,i)
+    solution1[i-limits[0],:],solution2[i-limits[0],:] = tangent_lines(ell1,ell2,i)
 
     ellipse = matplotlib.patches.Ellipse(xy=(ellipse_info[i,0],ellipse_info[i,1]), width=ellipse_info[i,2], height=ellipse_info[i,3], edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=ellipse_info[i,4]*180/np.pi)
     ax.add_patch(ellipse)
 
-[rows,columns] = solution.shape
+[rows,columns] = solution1.shape
 
 for i in range(0,rows):
-    x_points = np.array([solution[i,2],solution[i,3]])
-    y_points = np.array([solution[i,4],solution[i,5]])
-    plt.plot(x_points,y_points,linewidth= 2.5)
+    x_points1 = np.array([solution1[i,2],solution1[i,3]])
+    y_points1 = np.array([solution1[i,4],solution1[i,5]])
+    plt.plot(x_points1,y_points1,linewidth= 2.5)
+
+    x_points2 = np.array([solution2[i,2],solution2[i,3]])
+    y_points2 = np.array([solution2[i,4],solution2[i,5]])
+    plt.plot(x_points2,y_points2,linewidth= 2.5)
 
 
 plt.xlabel("X [DU]")
