@@ -69,9 +69,9 @@ for ii in np.arange(len(times)):
     pos_earth[ii, :] = [np.array(earth_r*np.cos(times[ii]+phi_earth)), np.array(earth_r*np.sin(times[ii]+phi_earth)), 0]
 
 
-# ~~~~~PLOT SOLUTION AND GMAT FILE IN THE INERTIAL FRAME~~~~
+# ~~~~~PLOT SOLUTION AND STK FILE IN THE INERTIAL FRAME~~~~
 
-# Obtain CRTBP data from GMAT
+# Obtain CRTBP data from STK
 file_path = "gmatSTKFiles/L2Orbit_Position_Data_2.txt"
 stk_posrot, stk_times = extractTools.extractSTK(file_path)
 
