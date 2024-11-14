@@ -77,7 +77,7 @@ if theta > np.pi/2:
 rot_matrix = frameConversion.rot(theta, 3)
 IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
-# Convert IC to dimensional, rotating frame (for GMAT)
+# Convert IC to dimensional, rotating frame (for STK) (THIS MIGHT BE WRONG)
 pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame
 vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame
 C_I2R = frameConversion.inert2rot(t_start, t_start)
@@ -171,8 +171,8 @@ def interpolate_positions(stk_pos, stk_times, target_times):
 interp_stk_posinert = interpolate_positions(stk_posinert, stk_times, times_mjd)
 
 desired_duration = 5  # seconds
-title = 'CRTBP Model in the Inertial (I) Frame'
-body_names = ['Propagated CRTBP', 'Earth', 'Moon', 'STK Orbit']
+title = 'Full Force Model in the Inertial (I) Frame'
+body_names = ['Propagated FF', 'Earth', 'Moon', 'STK Orbit']
 animate_func_I, ani_object_I = plot_tools.create_animation(times, days, desired_duration,
                                                        [pos_SC, pos_Earth, pos_Moon, interp_stk_posinert],
                                                        body_names=body_names, title=title)
@@ -184,11 +184,11 @@ animate_func_I, ani_object_I = plot_tools.create_animation(times, days, desired_
 #                                                            body_names=body_names, title=title)
 
 
-# # ~~~~~SAVE~~~~~
-#
-# fig_I.savefig('plotFigures/FF STK.png')
-# # fig_H.savefig('plotFigures/FF DRO H frame.png')
-#
-# writergif = animation.PillowWriter(fps=30)
-# ani_object_I.save('plotFigures/FF STK.gif', writer=writergif)
-# # ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)
+# ~~~~~SAVE~~~~~
+
+fig_I.savefig('plotFigures/FF STK.png')
+# fig_H.savefig('plotFigures/FF DRO H frame.png')
+
+writergif = animation.PillowWriter(fps=30)
+ani_object_I.save('plotFigures/FF STK.gif', writer=writergif)
+# ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)
