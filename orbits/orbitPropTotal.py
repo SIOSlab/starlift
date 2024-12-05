@@ -17,7 +17,7 @@ import unitConversion
 import frameConversion
 import orbitEOMProp
 import plot_tools
-import gmatTools
+import extractTools
 import pdb
 
 
@@ -96,6 +96,7 @@ vel_dimrot = C_I2R @ vel_dim  # R frame
 print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
 print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
 
+breakpoint()
 
 # ~~~~~PROPAGATE THE DYNAMICS IN THE CRTBP MODEL~~~~~
 

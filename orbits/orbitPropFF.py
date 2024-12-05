@@ -78,13 +78,16 @@ rot_matrix = frameConversion.rot(theta, 3)
 IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
 # Convert IC to dimensional, rotating frame (for STK) (THIS MIGHT BE WRONG)
-pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame
-vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame
+pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame, dimensional
+vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame, dimensional
 C_I2R = frameConversion.inert2rot(t_start, t_start)
 pos_dimrot = C_I2R @ pos_dim  # R frame
-vel_dimrot = C_I2R @ vel_dim  # R frame
+# vel_dimrot = C_I2R @ vel_dim  # R frame
+vel_dimrot = frameConversion.inert2rotV(pos_dim, vel_dim, 0)  # R frame
 print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
 print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
+
+breakpoint()
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
 pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
@@ -184,11 +187,11 @@ animate_func_I, ani_object_I = plot_tools.create_animation(times, days, desired_
 #                                                            body_names=body_names, title=title)
 
 
-# ~~~~~SAVE~~~~~
-
-fig_I.savefig('plotFigures/FF STK.png')
-# fig_H.savefig('plotFigures/FF DRO H frame.png')
-
-writergif = animation.PillowWriter(fps=30)
-ani_object_I.save('plotFigures/FF STK.gif', writer=writergif)
-# ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)
+# # ~~~~~SAVE~~~~~
+#
+# fig_I.savefig('plotFigures/FF STK.png')
+# # fig_H.savefig('plotFigures/FF DRO H frame.png')
+#
+# writergif = animation.PillowWriter(fps=30)
+# ani_object_I.save('plotFigures/FF STK.gif', writer=writergif)
+# # ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)

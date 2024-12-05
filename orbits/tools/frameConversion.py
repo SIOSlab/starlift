@@ -382,40 +382,6 @@ def inert2rot(currentTime, startTime):
     return C_I2R
 
 
-def inert2rot_GMAT(currentTime, startTime, C_I2G):
-    """Compute the directional cosine matrix to go from the Earth-Moon CR3BP
-    perifocal frame (I) to the Earth-Moon CR3BP rotating frame (R) using
-    real-time ephemeris data.
-
-    Args:
-        currentTime (astropy Time array):
-            Current mission time in MJD
-        startTime (astropy Time array):
-            Mission start time in MJD
-        ephemeris_data (array):
-            Array containing real-time Moon position data
-
-    Returns:
-        C_I2R (float n array):
-            3x3 Array for the directional cosine matrix
-    """
-
-    # Get the real-time angle using ephemeris data
-    _, _, moon_pos_current = getSunEarthMoon(currentTime, C_I2G)  # Get Moon's position at current time
-    _, _, moon_pos_start = getSunEarthMoon(startTime, C_I2G)  # Get Moon's position at start time
-
-    # Calculate the angle between these two positions  (angle at current time - angle at start time)
-    theta = np.arctan2(moon_pos_current[1].value, moon_pos_current[0].value) - np.arctan2(moon_pos_start[1].value, moon_pos_start[0].value)
-
-    # Normalize theta to 0-2*pi range
-    theta = np.mod(theta, 2*np.pi)
-
-    # Create the directional cosine matrix
-    C_I2R = rot(theta, 3)
-
-    return C_I2R
-
-
 def icrs2rot(pos, currentTime, startTime, C_G2I):
     """Convert position vector in ICRS coordinate frame to rotating coordinate frame
     
@@ -554,22 +520,34 @@ def inert2rotV(rR, vI, t_norm):
 
     Args:
         rR (float nx3 array):
-            Rotating frame position vectors
+            Rotating frame position vector
         vI (float nx3 array):
-            Inertial frame velocity vectors
+            Inertial frame velocity vector
         t_norm (float):
             Normalized time units for current epoch
     Returns:
         float nx3 array:
             Rotating frame velocity vectors
     """
-    
-    if t_norm.size == 1:
-        t_norm = np.array([t_norm])
-    vR = np.zeros([len(t_norm), 3])
-    for t in range(len(t_norm)):
-        At = rot(t_norm[t], 3)
-        vR[t, :] = np.dot(At, vI[t, :].T) + np.array([rR[t, 1], -rR[t, 0], 0]).T
+
+    # if t_norm.size == 1:
+    #     t_norm = np.array([t_norm])
+    # vR = np.zeros([len(t_norm), 3])
+    # for t in range(len(t_norm)):
+    #     At = rot(t_norm[t], 3)
+    #     vR[t, :] = np.dot(At, vI[t, :].T) + np.array([rR[t, 1], -rR[t, 0], 0]).T
+
+    if rR.shape[0] == 3 and len(rR.shape) == 1:
+        At = rot(t_norm, 3).T
+        drI = np.array([rR[1].value, -rR[0].value, 0])
+        vR = np.dot(At, vI.value.T) + np.dot(At, drI.T)
+    else:
+        vR = np.zeros([len(rR), 3])
+        for t in range(len(rR)):
+            At = rot(t_norm, 3).T
+            drI = np.array([rR[t, 1].value, -rR[t, 0].value, 0])
+            vR[t, :] = np.dot(At, vI[t, :].value.T) + np.dot(At, drI.T)
+
     return vR
 
 
