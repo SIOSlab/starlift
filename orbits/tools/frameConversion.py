@@ -491,62 +491,51 @@ def rot2inertV(rR, vR, t_norm):
     """Convert velocity from rotating frame to inertial frame
 
     Args:
-        rR (float nx3 array):
-            Rotating frame position vectors
-        vR (float nx3 array):
-            Rotating frame velocity vectors
-        t_norm (float):
-            Normalized time units for current epoch
+      rR (float nx3 array):
+        Rotating frame position vectors in canonical units
+      vR (float nx3 array):
+        Rotating frame velocity vectors in canonical units
+      t_norm (float):
+        Normalized time units for current epoch
+
     Returns:
-        float nx3 array:
-            Inertial frame velocity vectors
+      float nx3 array:
+        Inertial frame velocity vectors in canonical units
     """
 
+    e3 = np.array([0, 0, 1])
     if rR.shape[0] == 3 and len(rR.shape) == 1:
-        At = rot(t_norm, 3).T
-        drR = np.array([-rR[1], rR[0], 0])
-        vI = np.dot(At, vR.T) + np.dot(At, drR.T)
+        vI = vR + np.cross(e3, rR)
     else:
-        vI = np.zeros([len(rR), 3])
-        for t in range(len(rR)):
-            At = rot(t_norm, 3).T
-            drR = np.array([-rR[t, 1], rR[t, 0], 0])
-            vI[t, :] = np.dot(At, vR[t, :].T) + np.dot(At, drR.T)
+        vR = np.zeros([len(t_norm), 3])
+        for t in range(len(t_norm)):
+            vI[t, :] = vR[t, :] + np.cross(e3, rR[t, :])
+
     return vI
-    
 
 def inert2rotV(rR, vI, t_norm):
     """Convert velocity from inertial frame to rotating frame
 
     Args:
-        rR (float nx3 array):
-            Rotating frame position vector
-        vI (float nx3 array):
-            Inertial frame velocity vector
-        t_norm (float):
-            Normalized time units for current epoch
+      rR (float nx3 array):
+        Rotating frame position vectors in canonical units
+      vI (float nx3 array):
+        Inertial frame velocity vectors in canonical units
+      t_norm (float):
+        Normalized time units for current epoch
+
     Returns:
-        float nx3 array:
-            Rotating frame velocity vectors
+      float nx3 array:
+        Rotating frame velocity vectors in canonical units
     """
 
-    # if t_norm.size == 1:
-    #     t_norm = np.array([t_norm])
-    # vR = np.zeros([len(t_norm), 3])
-    # for t in range(len(t_norm)):
-    #     At = rot(t_norm[t], 3)
-    #     vR[t, :] = np.dot(At, vI[t, :].T) + np.array([rR[t, 1], -rR[t, 0], 0]).T
-
+    e3 = np.array([0, 0, 1])
     if rR.shape[0] == 3 and len(rR.shape) == 1:
-        At = rot(t_norm, 3).T
-        drI = np.array([rR[1].value, -rR[0].value, 0])
-        vR = np.dot(At, vI.value.T) + np.dot(At, drI.T)
+        vR = vI - np.cross(e3, rR)
     else:
-        vR = np.zeros([len(rR), 3])
-        for t in range(len(rR)):
-            At = rot(t_norm, 3).T
-            drI = np.array([rR[t, 1].value, -rR[t, 0].value, 0])
-            vR[t, :] = np.dot(At, vI[t, :].value.T) + np.dot(At, drI.T)
+        vR = np.zeros([len(t_norm), 3])
+        for t in range(len(t_norm)):
+            vR[t, :] = vI[t, :] - np.cross(e3, rR[t, :])
 
     return vR
 

@@ -77,17 +77,14 @@ if theta > np.pi/2:
 rot_matrix = frameConversion.rot(theta, 3)
 IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
-# Convert IC to dimensional, rotating frame (for STK) (THIS MIGHT BE WRONG)
-pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame, dimensional
-vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame, dimensional
+# Convert IC to dimensional, rotating frame (for STK)
 C_I2R = frameConversion.inert2rot(t_start, t_start)
-pos_dimrot = C_I2R @ pos_dim  # R frame
-# vel_dimrot = C_I2R @ vel_dim  # R frame
-vel_dimrot = frameConversion.inert2rotV(pos_dim, vel_dim, 0)  # R frame
+pos_canrot = C_I2R @ IC[0:3]  # Canonical, R frame
+vel_canrot = frameConversion.inert2rotV(pos_canrot, IC[3:6], 0)  # Canonical, R frame
+pos_dimrot = unitConversion.convertPos_to_dim(pos_canrot).to('km')  # R frame, dimensional
+vel_dimrot = unitConversion.convertVel_to_dim(vel_canrot).to('km/s')  # R frame, dimensional
 print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
 print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
-
-breakpoint()
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
 pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
