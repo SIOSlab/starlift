@@ -184,17 +184,15 @@ if not os.path.isfile(FileName_state):
     scipy.io.savemat(FileName_STT, {"STT": STT})
     scipy.io.savemat(FileName_time, {"time": time})
     
-# load data
+##### VALIDATION OF COCYCLE METHOD BY USING ICs FROM OTHER SIDE OF ORBIT TO GENERATE ELLIPSES #####
+    
+# generate STMs and STTs starting from halfway point of reference trajectory
 state_full_halfway = list(scipy.io.loadmat(FileName_state).values())[-1]
 STM_full_halfway = list(scipy.io.loadmat(FileName_STM).values())[-1] # state transition matrix at every time
 STT_full_halfway = list(scipy.io.loadmat(FileName_STT).values())[-1]
 time_full_halfway = list(scipy.io.loadmat(FileName_time).values())[-1]
 
-##### BACK TO NORMAL STUFF #####
-# state_full = state_full_halfway
-# STM_full = STM_full_halfway
-# STT_full = STT_full_halfway
-# time_full = time_full_halfway
+
 
 J_max = 3.514110698664422E-04 # set any reasonable value for J_max but make sure it can be validated
 [rows,columns,depth] = STM_full.shape
@@ -354,20 +352,6 @@ for i in range(0,rows):
     tipsright_halfway[:,i] = xypos_halfway[:,i] + np.array([ext2_halfway/2*np.cos(plotangle_halfway-np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway-np.pi/2)])
     tipsleft_halfway[:,i] = xypos_halfway[:,i] - np.array([ext2_halfway/2*np.cos(plotangle_halfway-np.pi/2),ext2_halfway/2*np.sin(plotangle_halfway-np.pi/2)])
 
-    # if i == 20:
-    #     print("CHECK OF THING: ")
-    #     print("x-coordinate of center: " + str(position[0]))
-    #     print("y-coordinate of center: " + str(position[1]))
-    #     print("Extent 1 of ellipse: " + str(ext1))
-    #     print("Extent 2 of ellipse: " + str(ext2))
-    #     print("Ellipse angle (deg): " + str(rotation))
-    #     print(" ")
-    #     print("x-center of tip-line: " + str(xypos[0,i]))
-    #     print("y-center of tip-line: " + str(xypos[1,i]))
-    #     print("x-coordinate of tip: " + str(tipsright[0,i]))
-    #     print("y-coordinate of tip: " + str(tipsright[1,i]))
-    #     print(" ")
-
 
 
     # ellipse plotting:
@@ -436,67 +420,88 @@ plt.ylabel("Y [DU]")
 plt.show()
 
 
-##### CONVERSION TO FUNCTION #####
 def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
-    # STM_full is the set of state transition matrices starting from t = 0 to t = end
-    # STT_full is the set of state transition tensors starting from t = 0 to t = end
-    # state_full is the set of states starting from t = 0 to t = end
+    # This function takes STMs and STTs for a particular initial condition and makes a
+    # projection plot in dim1,dim2 space of the hyperellipsoids for each sampled point.
+
+    # INPUTS: 
+    # STM_full is the set of state transition matrices starting from t = 0 to t = end time
+    # STT_full is the set of state transition tensors starting from t = 0 to t = end time
+    # state_full is the set of states starting from t = 0 to t = end time
     # J_max is the max energy cost associated with the orbit
     # dim1 and dim2 are strings describing the plot dimensions on the x-axis and y-axis, respectively
-    # options for dim1 and dim2 are 'x', 'y', 'z', 'xdot', 'ydot', and 'zdot'
+        # dim1 MUST be either 'X', 'Y', 'Z', 'Xdot', 'Ydot', and 'Zdot'. Same goes for dim2. 
+    
+    # OUTPUT:
+    # ellipse_info is an array of size [rows of state_full x 5] containing info for ellipses. Columns (in order) are :
+        # dim1-coordinate center (ex: x-coordinate center, xdot coordinate center, zdot coordinate center)
+        # dim2-coordinate center
+        # width (so 2 times the semi-major axis)
+        # height (so 2 times the semi-minor axis)
+        # rotation angle (radians) from x-axis to semi-major axis. Bounded between 0 and pi.
 
     fig, ax = plt.subplots()
     ax = plt.gca()
-    plt.title('Hyperellipsoid Projections in 2D Plane')
+    # plt.title('Hyperellipsoid Projections in 2D Plane')
     ellipses = []
 
-    # establish projection matrix and relevant indices for plotting
+    # establish projection matrix and relevant indices for plotting based on dim1 and dim2
     A = np.zeros((2,6)) 
-    if dim1 == 'x':
+    if dim1 == 'X':
         s1 = 0
-        plt.xlabel("X [DU]")
-    elif dim1 == 'y':
+    elif dim1 == 'Y':
         s1 = 1
-        plt.xlabel("Y [DU]")
-    elif dim1 == 'z':
+    elif dim1 == 'Z':
         s1 = 2
-        plt.xlabel("Z [DU]")
-    elif dim1 == 'xdot':
+    elif dim1 == 'Xdot':
         s1 = 3
-        plt.xlabel("Xdot [DU/TU]")
-    elif dim1 == 'ydot':
+    elif dim1 == 'Ydot':
         s1 = 4
-        plt.xlabel("Ydot [DU/TU]")
-    elif dim1 == 'zdot':
+    elif dim1 == 'Zdot':
         s1 = 5
-        plt.xlabel('Zdot [DU/TU]')
 
-    if dim2 == 'x':
+    if dim2 == 'X':
         s2 = 0
-        plt.ylabel("X [DU]")
-    elif dim2 == 'y':
+    elif dim2 == 'Y':
         s2 = 1
-        plt.ylabel("Y [DU]")
-    elif dim2 == 'z':
+    elif dim2 == 'Z':
         s2 = 2
-        plt.ylabel("Z [DU]")
-    elif dim2 == 'xdot':
+    elif dim2 == 'Xdot':
         s2 = 3
-        plt.ylabel("Xdot [DU/TU]")
-    elif dim2 == 'ydot':
+    elif dim2 == 'Ydot':
         s2 = 4
-        plt.ylabel("Ydot [DU/TU]")
-    elif dim2 == 'zdot':
+    elif dim2 == 'Zdot':
         s2 = 5
-        plt.ylabel("Zdot [DU/TU]")
 
+    # establish axes labels based on specified projection space
+    if dim1 == 'X' or dim1 == 'Y' or dim1 == 'Z':
+        plt.xlabel(dim1 + " [DU]")
+    else:
+        if dim1 == 'Xdot':
+            plt.xlabel(r"$\overset{\bullet}{X}$ [DU/TU]")
+        elif dim1 == 'Ydot':
+            plt.xlabel(r"$\overset{\bullet}{Y}$ [DU/TU]")
+        else:
+            plt.xlabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
+
+    if dim2 == 'X' or dim2 == 'Y' or dim2 == 'Z':
+        plt.ylabel(dim2 + " [DU]")
+    else:
+        if dim2 == 'Xdot':
+            plt.ylabel(r"$\overset{\bullet}{X}$ [DU/TU]")
+        elif dim2 == 'Ydot':
+            plt.ylabel(r"$\overset{\bullet}{Y}$ [DU/TU]")
+        else:
+            plt.ylabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
+
+    # place 1's in relevant positions of projection matrix A:
     A[0,s1] = 1
     A[1,s2] = 1
 
-    ref_trajectory, = plt.plot(state_full[:,s1], state_full[:,s2], color=[0,0,0], label='Reference Trajectory')
+    ref_trajectory, = plt.plot(state_full[:,s1], state_full[:,s2], color=[0,0,0], label='Reference Trajectory') # plot the reference trajectory in black
 
     [rows,columns,depth] = STM_full.shape # dimensions of STM_full
-    ellipse_info = np.zeros((rows,5)) # contains x-center, y-center, ext1, ext2, and angle
+    ellipse_info = np.zeros((rows,5)) # initialize ellipse_info matrix
 
     for i in range(0,rows):
 
@@ -544,18 +549,6 @@ def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
         rotation = angle*180/np.pi
 
         position = np.array([state_full[i,s1],state_full[i,s2]])
-        # position[0] = state_full[i,s1]
-        # position[1] = state_full[i,s2]
-
-        # ext = np.zeros((2,1))
-        # ext[0] = ext2/2*np.cos(angle+np.pi/2)
-        # ext[1] = ext2/2*np.sin(angle+np.pi/2)
-
-        # tipsright[:,i] = position  + ext
-        # tipsleft[:,i] = position - ext
-
-        # tipsright[:,i] = position + np.array([ext2/2*np.cos(angle-np.pi/2),ext2/2*np.sin(angle-np.pi/2)])
-        # tipsleft[:,i] = position - np.array([ext2/2*np.cos(angle-np.pi/2),ext2/2*np.sin(angle-np.pi/2)])
         
         # ellipse plotting:
         ellipse = matplotlib.patches.Ellipse(xy=(position[0],position[1]), width=ext1, height=ext2, edgecolor=[252/255, 227/255, 3/255], fc=[252/255, 227/255, 3/255], angle=rotation)
@@ -568,34 +561,53 @@ def projection(STM_full,STT_full,state_full,J_max,dim1,dim2):
         ellipse_info[i,0] = position[0]
         ellipse_info[i,1] = position[1]
 
-        if ext1 > ext2: # extent 1 is semi-major axis
+        # Ensure larger extent is included in column 2 of ellipse_info:
+        if ext1 > ext2: # extent 1 is larger extent
             ellipse_info[i,2] = ext1
             ellipse_info[i,3] = ext2
-            ellipse_info[i,4] = np.arctan2(dir1[1],dir1[0])
-        else: # extent 2 is semi-major axis
+            ellipse_info[i,4] = np.arctan2(dir1[1],dir1[0]) # rad, rotation angle from x-axis to semi-major axis
+        else: # extent 2 is larger extent
             ellipse_info[i,2] = ext2
             ellipse_info[i,3] = ext1
-            ellipse_info[i,4] = np.arctan2(dir2[1],dir2[0])
+            ellipse_info[i,4] = np.arctan2(dir2[1],dir2[0]) # rad, rotation angle from x-axis so semi-major axis
 
         if ellipse_info[i,4] < 0:
             ellipse_info[i,4] = ellipse_info[i,4] + np.pi # correction so that ellipse rotation angle is between 0 and pi
             
         
-    plt.legend(["Reference","Reachable Bounds"], loc="upper right")
+    plt.legend(["Reference","Reachable Bounds"], loc="upper right") # create legend
 
+    plt.savefig('sampled_projection.pdf', format='pdf')
     plt.show()
 
 
-    return ellipses, ellipse_info
+    return ellipse_info
 
 
 
 
 def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
-    
-    def cot(theta):
+    # This function utilizes scipy.optimize to determine solutions for the tangent-line problem between two rotated ellipses
+    # for the ellipses in ellipse_info.
+    # Every time the word "problem" is used in comments, it refers to the problem of finding the two tangent lines for a set of two ellipses.
+    # "Version" refers to the problem-type being attempted, which will either be the unrotated version or rotated version
+        # Rotating the problem prevents large-sloping tangent lines from complicating the nonlinear solver, increasing the chances of solutions being found.
+        # This entails rotating the characteristics of the two ellipses in a problem such that the line connecting their centers has a certain slope (which you can specify). The best slope was 0 by inspection. 
 
-        return 1 / np.tan(theta)
+    # INPUTS:
+    # ellipse_info is a [rows x 5] numpy array of ellipses. Columns (in order contain):
+        # first-axis coordinate center
+        # second-axis coordinate center
+        # 2*semi-major axis
+        # 2*semi-minor axis
+        # rotation angle (rad) from x-axis to semi-major axis
+    # limits is a list describing the first and last index of ellipse_info you'd like to create sets of tangent lines for. It should look like [first_index,second_index].
+        # Ex: For an ellipse_info array of size 260x5, limits is [0,259] if you want to solve every problem in the array. 
+    # first_axis_label is a string describing the x-axis label on your outputted plot
+    # second_axis_labek is a string describing the y-axis label on your outputted plot
+
+    def cot(theta): # basic cotangent function created
+        return 1 / np.tan(theta) 
 
     needed_solutions = (limits[1] - limits[0])*2
     total_solutions = 0
@@ -611,38 +623,40 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
     # set up graph parameters
     fig, ax = plt.subplots()
     ax = plt.gca()
-    ax.set_xlim([hmin-amax, hmax+amax]) # 
+    ax.set_xlim([hmin-amax, hmax+amax]) 
     ax.set_ylim([kmin-amax, kmax+amax])
     ax.set_aspect('equal', adjustable='box') 
+
+    plt.plot(ellipse_info[:,0],ellipse_info[:,1],linewidth=1.5,color='k',label = 'Reference')
 
     solution1_array = np.zeros((limits[1]-limits[0],7))
     solution2_array = np.zeros((limits[1]-limits[0],7))
 
-    C = 1000 # scaling factor for ellipse
+    C = 1000 # scaling factor for ellipses (center-coordinates and axes lengths are multiplied by this number and scaled back down at end)
     pi = np.pi
-    rotation_angle = 0
-    last_successful = "unrotated"
+    rotation_angle = 0 # rad, slope of line between ellipses' centers if attempting rotated problem
+    last_successful = "unrotated" # last version of the problem that was successful (either "unrotated" or "rotated"). Initialized as unrotated.
     
 
     for i in range(limits[0],limits[1]):
         
-        solutions_found = 0
+        solutions_found = 0 # no solutions found initially
         k = 0
-        runthroughs = 0
+        runthroughs = 0 # number of attempts at current problem. If current problem (either rotated or unrotated problem) fails, runthroughs increases to 1 and either rotated or unrotated prob is attempted
         print(" ")
-        print("My current iteration is " + str(i))
+        print("Current iteration: " + str(i))
 
-        ell1 = ellipse_info[i,:]
-        ell2 = ellipse_info[i+1,:]
+        ell1 = ellipse_info[i,:] # characteristics of current ellipse
+        ell2 = ellipse_info[i+1,:] # characteristics of next ellipse
 
-        # ellipse 1 constants
-        h1 = ell1[0] * C
-        k1 = ell1[1] * C
-        a1 = ell1[2]/2 * C
-        b1 = ell1[3]/2 * C
-        r1 = ell1[4]
+        # ellipse 1 constants (with relevant scaling)
+        h1 = ell1[0] * C # x-coordinate center
+        k1 = ell1[1] * C # y-coordinate center
+        a1 = ell1[2]/2 * C # semi-major axis
+        b1 = ell1[3]/2 * C # semi-minor axis
+        r1 = ell1[4] # rotation angle to semi-major axis (rad)
 
-        # ellipse 2 constants
+        # ellipse 2 constants (same characteristics described above but for second ellipse)
         h2 = ell2[0] * C
         k2 = ell2[1] * C
         a2 = ell2[2]/2 * C
@@ -654,19 +668,20 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
         ax.add_patch(ellipse)
 
 
-
         while (solutions_found < 2) and (k < 16) and (runthroughs < 2):
-
-
-
+            # solutions_found is the number of solutions found for the current problem. Every problem has two solutions, so if two are found the while loop is exited.
+            # k is the index of the attempted interval (explained later). All possible intervals are attempted before moving on to rotated or unrotated version of problem.
+            # runthroughs is described earlier. This function attempts whatever version of the problem was most recently successful (unrotated v. rotated) first,
+            # and then moves onto other version if it fails. This is meant to speed up the code.
 
             if (last_successful == "rotated" and runthroughs == 0) or (last_successful == "unrotated" and runthroughs > 0):
-                print("GONNA ROTATE")
-                # ROTATION CODE
-                m0 = (k2 - k1) / (h2 - h1)
+                # Rotated version of the prob is being attempted, either because rotation was successful in previous problem
+                # or unrotated version failed on the initial attempt of the current problem.
+
+                m0 = (k2 - k1) / (h2 - h1) # slope of line connecting ellipses' centers
                 slope_angle = np.arctan2(m0,1) # radians, angle of line connecting ellipses
 
-                supp_angle = rotation_angle - slope_angle # rotation angle that brings slope line to 45 degree line
+                supp_angle = rotation_angle - slope_angle # rotation angle that brings slope line to rotation_angle
 
                 # rotate center coordinates and rotation angles of ellipses
                 h1_rot = np.cos(supp_angle)*h1 - np.sin(supp_angle)*k1
@@ -686,9 +701,9 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                 k2 = k2_rot
                 r2 = r2_rot
 
+
             elif (last_successful == "rotated" and runthroughs > 0):
-                print("IN HERE")
-                # rotate center coordinates and rotation angles of ellipses
+                # Rotation attempt at problem failed. Use normal characteristics instead of rotated characteristics. 
                 # ellipse 1 constants
                 h1 = ell1[0] * C
                 k1 = ell1[1] * C
@@ -703,19 +718,9 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                 b2 = ell2[3]/2 * C
                 r2 = ell2[4]
 
-            # print(" ")
-            # print(h1/C)
-            # print(k1/C)
-            # print(a1/C)
-            # print(b1/C)
-            # print(r1)
-
-            # print(" ")
-            # print(h2/C)
-            # print(k2/C)
-            # print(a2/C)
-            # print(b2/C)
-            # print(r2)
+            # Another possibility besides the conditions in the if-elif statement above is last_successful == "unrotated" and runthroughts == 0,
+            # but ellipse characteristics don't need to be modified if this is the case because it just takes info directly from ellipse_info
+            # to attempt an unrotated problem. 
 
 
             # define constraints for tangent line connecting two ellipses:
@@ -736,6 +741,8 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                 {'type': 'eq', 'fun': con7},)
             
             def objective_fun(x):
+                # Can use trivial objective (return 0) or quadratic objective (results did not differ much as long as constraints between
+                # objectives are also used).  
                 eq1 = (h1 + a1*np.cos(x[0])*np.cos(r1) - b1*np.sin(x[0])*np.sin(r1)) - x[2]
                 eq2 = (k1 + a1*np.cos(x[0])*np.sin(r1) + b1*np.sin(x[0])*np.cos(r1)) - x[4]
                 eq3 = (h2 + a2*np.cos(x[1])*np.cos(r2) - b2*np.sin(x[1])*np.sin(r2)) - x[3]
@@ -744,15 +751,24 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                 eq6 = ((-b1/a1)*(cot(x[0])) + np.tan(r1)) / (1 + (b1/a1)*(cot(x[0]))*np.tan(r1)) - x[6]
                 eq7 = ((-b2/a2)*(cot(x[1])) + np.tan(r2)) / (1 + (b2/a2)*(cot(x[1]))*np.tan(r2)) - x[6]
 
-                return 0
                 # return eq1**2 + eq2**2 + eq3**2 + eq4**2 + eq5**2 + eq6**2 + eq7**2
-
+                return 0
             
-            two_solutions_found = False
-            one_solution_found = False
+            
+            two_solutions_found = False # boolean describing if 2 solutions are found
+            one_solution_found = False # boolean describing if 2 solutions are found
+            # two_solutions_found and one_solution_found are initialized as 0 because current version of the problem has not been attempted
             jump = 1
 
-            # ELLIPSE 1 PHI CALCULATIONS
+            # The code below identifies angles for which the tangent-line problem is undefined.
+            # This was done to create intervals over which the problem is attempted. Intervals are:
+            # (0,phi1),(phi1,pi),(pi,phi2),(phi2,2*pi)
+            # Each ellipse in the problem has its own intervals (so each ellipse has its own phi1 and phi2).
+            # These intervals are used to establish bounds on the problem. This resulted in more consistent identification
+            # of solutions for each problem, likely due to the fact that establishing bounds constrains the search-space.
+
+
+            # Ellipse 1 phi calculations:
             phi_ell1 = np.arctan(-b1/a1*np.tan(r1))
 
             if phi_ell1 < 0:
@@ -762,7 +778,7 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
 
             phi2_ell1 = phi1_ell1 + np.pi # make phi2_ell1 between pi and 2pi
 
-            # ELLIPSE 2 PHI CALCULATIONS
+            # Ellipse 2 phi calculations
             phi_ell2 = np.arctan(-b2/a2*np.tan(r2))
             if phi_ell2 < 0:
                 phi1_ell2 = phi_ell2 + np.pi # make phi1_ell1 between 0 and pi
@@ -771,6 +787,7 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
 
             phi2_ell2 = phi1_ell2 + np.pi # make phi2_ell1 between pi and 2pi
 
+            # Possible intervals for ellipse 1:
             A = [
                 (0, phi1_ell1),
                 (phi1_ell1, np.pi),
@@ -778,6 +795,7 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                 (phi2_ell1, 2 * np.pi)
             ]
 
+            # Possible intervals for ellipse 2:
             B = [
                 (0, phi1_ell2),
                 (phi1_ell2, np.pi),
@@ -786,11 +804,10 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
             ]
 
             # Generate all combinations of one interval from A and one from B
-            combinations = list(itertools.product(A, B))
+            combinations = list(itertools.product(A, B)) # combinations are always generated in specific order
 
-
-
-            # rearrange so more likely combinations are in front
+            # Rearrange combinations list so more likely combinations are attempted first. Rearrangement was determined by inspection. 
+            # This rearrangement is non-essential and is only meant to speed up the code:
             int2 = combinations[15]
             int_replace = combinations[1]
 
@@ -814,24 +831,43 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
 
             combinations[3] = int2
             combinations[10] = int_replace
+             # End of rearrangement.
             
-            solutions_found = 0
+            solutions_found = 0 # number of solutions found in current version of the problem (initialized at 0 because version has not been attempted).
 
-            d = 0
+            d = 0 # index for attempting the most recent successful combinations of intervals
+
+            # Note on the variable d: The code will attempt the successful boundary combinations of the most recent problem first. 
+            # For example, if the last problem was first successful at the combo ((0,phi1_ell1),(0,phi1_ell2)), it will attempt this 
+            # combo first at d = 0 index. Then if the second successful was ((phi1_ell1,pi),(phi1_ell2,pi)), it will attempt 
+            # this combo second at the d = 1 index. If it doesn't find two solutions, it will just move on to the list of bound
+            # combinations until finding 2 solutions. The combinations at d = 0 and d = 1 are most likely to succeed because the 
+            # previous problem succeeded at these combinations, so it is useful to attempt these first to speed up the code. 
 
             while (solutions_found < 2) and (k < len(combinations)):
-                # print(combinations[k])
-                p10 = (combinations[k][0][0] + combinations[k][0][1]) / 2
-                p20 = (combinations[k][1][0] + combinations[k][1][1]) / 2
 
+                # A solution consists of the following variables:
+                # p is the angle relative to the ellipse's major axis at which the tangent line collides with the ellipse.
+                # However, this angle actually corresponds to the angle if the ellipse were a circle (similar to eccentric anomaly).
+                # p1 and p2 are the angles p (in radians) for ellipse 1 and ellipse 2, respectively.
+                # (x1,y1) are coordinates of tangent line's collision with the first ellipse.
+                # (x2,y2) are coordinates o fthe tangent line's collision with the second ellipse.
+                # m is the slope of the tangent line.
+
+                # Initialize guesses for variables:
+                # Initialize p1 and p2 at center of bounds:
+                p10 = (combinations[k][0][0] + combinations[k][0][1]) / 2 
+                p20 = (combinations[k][1][0] + combinations[k][1][1]) / 2
+                # Initialize (x1,y1) and (x2,y2) at points on ellipses 1 and 2 corresponding to p1 and p2, respectively:
                 x10 = h1 + a1*np.cos(r1)*np.cos(p10) - b1*np.sin(r1)*np.sin(p10)
                 y10 = k1 + a1*np.sin(r1)*np.cos(p10) + b1*np.cos(r1)*np.sin(p10)
                 x20 = h2 + a2*np.cos(r2)*np.cos(p20) - b2*np.sin(r2)*np.sin(p20)
                 y20 = k2 + a2*np.sin(r2)*np.cos(p20) + b2*np.cos(r2)*np.sin(p20)
-                m0 = (k2 - k1) / (h2 - h1)
+
+                m0 = (k2 - k1) / (h2 - h1) # initialize slope of tangent line as line connecting ellipses' centers
                 # m0 = (y20 - y10) / (x20- x10)
 
-
+                # Select bounds based current iteration of combinations:
                 p1bnds = combinations[k][0]
                 p2bnds = combinations[k][1]
 
@@ -843,6 +879,9 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
 
 
                 if d == 0 and i > limits[0] and pair_found == True:
+                    # Override initial guesses and bounds if on index d = 0 in order to attempt most recent successful bounds first
+                    # If pair_found == true, then at least one pair of solutions has been found for at least one problem in the set of problems.
+                    # pair_found exists because it is only possible to attempt a most recent combination of bounds if one or more problems have been fully solved. 
                     p10 = (combinations[k_successful1][0][0] + combinations[k_successful1][0][1]) / 2
                     p20 = (combinations[k_successful1][1][0] + combinations[k_successful1][1][1]) / 2
                     x10 = h1 + a1*np.cos(r1)*np.cos(p10) - b1*np.sin(r1)*np.sin(p10)
@@ -863,6 +902,7 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                     p2high = combinations[k_successful1][1][1]
 
                 elif d == 1 and i > limits[0] and pair_found == True:
+                    # Override initial guesses for d = 1 index. Same logic as comments immediately following if statment. 
                     p10 = (combinations[k_successful2][0][0] + combinations[k_successful2][0][1]) / 2
                     p20 = (combinations[k_successful2][1][0] + combinations[k_successful2][1][1]) / 2
                     x10 = h1 + a1*np.cos(r1)*np.cos(p10) - b1*np.sin(r1)*np.sin(p10)
@@ -882,95 +922,79 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
                     p2low = combinations[k_successful2][1][0]
                     p2high = combinations[k_successful2][1][1]
 
-
+                # Establish x and y bounds based on length of major axes:
                 x1bnds = (h1-a1,h1+a1)
                 x2bnds = (h2-a2,h2+a2)
                 y1bnds = (k1-a1,k1+a1)
                 y2bnds = (k2-a2,k2+a2)
 
-
                 mbnds = (None,None)
-                bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds)
 
-                X0 = [p10, p20, x10, x20, y10, y20, m0]
-                solution = minimize(objective_fun,X0, method='SLSQP',bounds = bnds, tol=1e-10,constraints=nonlinear_constraints,options={'maxiter': 50})
+                bnds = (p1bnds,p2bnds,x1bnds,x2bnds,y1bnds,y2bnds,mbnds) # fill in bounds
+
+                X0 = [p10, p20, x10, x20, y10, y20, m0] # fill in initial guess
+                solution = minimize(objective_fun,X0, method='SLSQP',bounds = bnds, tol=1e-10,constraints=nonlinear_constraints,options={'maxiter': 50}) # attempt nonlinear system
 
                 # solution = minimize(objective_fun,X0, method='SLSQP',bounds = bnds, tol=1e-10,options={'maxiter': 50})
 
-                # check that lines don't cross:
+                # Check that tangent line does not cross line connecting ellipses' centers:
                 m_ell = (k2 - k1) / (h2 - h1) # slope connecting ellipse centers
-
                 x1 = solution.x[2]
                 x2 = solution.x[3]
                 y1 = solution.x[4]
                 m_tan = solution.x[6] # slope of the tangent line
-
                 x_cross = ((y1 - k1) + (m_ell*h1 - m_tan*x1)) / (m_ell - m_tan)
 
                 if x1 > x2:
                     if (x_cross > x2) and (x_cross < x1):
-                        solution.success = False
+                        solution.success = False  # throw solution away if lines cross
                 else:
                     if (x_cross > x1) and (x_cross < x2):
-                        solution.success = False
+                        solution.success = False # throw solution away if lines cross
 
 
-                if solutions_found > 0 and solution.success == True: # see if the second solution matches first solution. If yes, throw it away. 
-                    check = np.isclose(solution.x,solution1) 
-                    matching = 1 # assume the found solution is the same until verified
-                    for b in range(0,len(check)):
+                if solutions_found > 0 and solution.success == True:  
+                    check = np.isclose(solution.x,solution1) # See if the second solution matches first solution. If yes, throw it away because you want two unique solutions.
+
+                    for b in range(0,len(check)): 
                         if check[b] == False: # second solution is different from first (good)
                             matching = 0 
+                        else: # second solution is the same as the first (bad)
+                            matching = 1
                     
                     if matching == 1:
-                        solution.success = False # if second solution matches first, say a solution is not found
-
-
+                        solution.success = False # throw current solution away if it matches the first
 
                 if solution.success == True:
-                    solutions_found = solutions_found + 1
-                    solution = solution.x
-                    # for j in range(2,7):
-                    #     solution[j] = solution[j] / C
+                    solutions_found = solutions_found + 1 # add to number of unique solutions found for this version of the problem
+                    solution = solution.x # solution data
 
                     if solutions_found == 1:
-                        solution1 = solution
-                        successful_index1 = k
+                        solution1 = solution # identify solution as solution1 if it is the first solution found
                         if d > 1:
-                            k_successful1 = k # reassign k_successful1 if you enter combos phase
-                        # total_solutions = total_solutions + 1
+                            k_successful1 = k # reassign k_successful1 if you enter list of combos phase, which only happens if first two attempts fail (d>1)
                         
-
                     elif solutions_found == 2:
-                        solution2 = solution
-                        successful_index2 = k
+                        solution2 = solution # identify solution as solution2 if it is the second solution found
 
                         if d > 1: 
-                            k_successful2 = k # reassign k_successful1 if you enter combos phase
-                # print("d = " + str(d))
-                # print("k = " + str(k)) 
+                            k_successful2 = k # reassign k_successful2 if you enter list of combos phase, which only happens if first two attempts fail (d>
 
-                if d == 1 and solutions_found < 2:
-                    solutions_found = 0
+                if d == 1 and solutions_found < 2: 
+                    solutions_found = 0 # say no solutions are found if two solutions aren't found in the initial two attempts. Move to list phase.
                     
-                if d < 2:
-                    d = d + 1
-                else:
-                    k = k + 1
+                if d < 2: # If d < 2, you are in initial attempt phase
+                    d = d + 1 # Add only to index d
+                else: # If d>= 2, you are in list of combos phase
+                    k = k + 1 # Add only to index k
 
 
             if solutions_found == 0: # no solutions found, just say both are most recent solution
                 solution1 = solution.x
                 solution2 = solution1
-                successful_index1 = 0
-                successful_index2 = 1
 
             elif solutions_found == 1: # one solution found, just say second solution is same as first
                 solution2 = solution1
-                if successful_index1 < 15:
-                    successful_index2 = successful_index1 + 1
-                else:
-                    successful_index2 = 0
 
             else: # two solutions found
                 pair_found = True
@@ -1055,63 +1079,44 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
         # plot solution lines
         x_points1 = np.array([solution1[2],solution1[3]])
         y_points1 = np.array([solution1[4],solution1[5]])
-        plt.plot(x_points1,y_points1,linewidth= 2.5)
+        plt.plot(x_points1,y_points1,linewidth= 1.5,color = 'b')
 
         x_points2 = np.array([solution2[2],solution2[3]])
         y_points2 = np.array([solution2[4],solution2[5]])
-        plt.plot(x_points2,y_points2,linewidth= 2.5)
+        if i == limits[0]:
+            plt.plot(x_points2,y_points2,linewidth= 1.5,color = 'b',label='Reachable Set Boundary')
+        else:
+            plt.plot(x_points2,y_points2,linewidth= 1.5,color = 'b')
 
-    
-    plt.xlabel(first_axis_label + " [DU]")
-    plt.ylabel(second_axis_label + " [DU]")
-    plt.title("Projections with Tangent Lines")
+    if first_axis_label == 'X' or first_axis_label == 'Y' or first_axis_label == 'Z':
+        plt.xlabel(first_axis_label + " [DU]")
+    else:
+        if first_axis_label == 'Xdot':
+            plt.xlabel(r"$\overset{\bullet}{X}$ [DU/TU]")
+        elif first_axis_label == 'Ydot':
+            plt.xlabel(r"$\overset{\bullet}{Y}$ [DU/TU]")
+        else:
+            plt.xlabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
+
+    if second_axis_label == 'X' or second_axis_label == 'Y' or second_axis_label == 'Z':
+        plt.ylabel(second_axis_label + " [DU]")
+    else:
+        if second_axis_label == 'Xdot':
+            plt.ylabel(r"$\overset{\bullet}{X}$ [DU/TU]")
+        elif first_axis_label == 'Ydot':
+            plt.ylabel(r"$\overset{\bullet}{Y}$ [DU/TU]")
+        else:
+            plt.ylabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
+
+    plt.legend(loc="upper right")
+    # plt.title("Projections with Tangent Lines")
 
     if total_solutions < needed_solutions:
         print("MISSING SOLUTIONS, " + str(total_solutions) + " solutions found, " + str(needed_solutions) + " needed.")
     else:
         print("ALL SOLUTIONS FOUND.")
 
-    # spline plotter
-    [rows,columns] = ellipse_info.shape
-
-    mean_x = np.mean(ellipse_info[:,0])
-    mean_y = np.mean(ellipse_info[:,1])
-
-    inner_points = np.zeros(((limits[1]-limits[0])*2,2))
-    outer_points = np.zeros(((limits[1]-limits[0])*2,2))
-
-    for i in range(limits[0],limits[1]):
-        solution1_x1 = solution1_array[i,2]
-        solution1_y1 = solution1_array[i,3]
-
-        solution2_x1 = solution2_array[i,2]
-        solution2_y1 = solution2_array[i,3]
-
-        d_sol1 = ((solution1_x1-mean_x)**2 + (solution1_y1-mean_y)**2)**(1/2)
-        d_sol2 = ((solution2_x1-mean_x)**2 + (solution2_y1-mean_y)**2)**(1/2)
-
-        if d_sol1 < d_sol2:
-            inner_points[2*i,:] = np.array([solution1_array[i,2],solution1_array[i,4]])
-            inner_points[2*i+1,:] = np.array([solution1_array[i,3],solution1_array[i,4]])
-
-            outer_points[2*i,:] = np.array([solution2_array[i,2],solution2_array[i,4]])
-            outer_points[2*i+1,:] = np.array([solution2_array[i,3],solution2_array[i,4]])
-        else:
-            outer_points[2*i,:] = np.array([solution1_array[i,2],solution1_array[i,4]])
-            outer_points[2*i+1,:] = np.array([solution1_array[i,3],solution1_array[i,4]])
-
-            inner_points[2*i,:] = np.array([solution2_array[i,2],solution2_array[i,4]])
-            inner_points[2*i+1,:] = np.array([solution2_array[i,3],solution2_array[i,4]])
-
-        
-
-        
-
-
-    plt.show()
-
-    plt.plot(inner_points[:,0],inner_points[:,1])
-    plt.plot(outer_points[:,0],outer_points[:,1])
+    plt.savefig(first_axis_label + second_axis_label + '_tangent_lines.pdf', format='pdf')
     plt.show()
 
 
@@ -1121,7 +1126,10 @@ def tangent_lines(ellipse_info,limits,first_axis_label,second_axis_label):
 
 def interpolate_ellipses(ellipse_info,p1,p2):
     # This function takes an array containing information describing ellipses and creates an array of interpolated ellipses using CubicSpline.
-    # It will also make a plot containing the reference trajectory and the projections
+    # It will also make a plot containing the reference trajectory and the projections. 
+        # Ideally, enough interpolation should be performed so that individual ellipses
+        # are indistinguishable from each other in the unzoomed figure that is produced. 
+        # It should look like 1 continuous blob around the reference trajectory. 
 
     # ellipse_info is a rows x 5 numpy array containing ellipse characteristics
         # First column contains p1-coordinates of ellipses' centers
@@ -1146,20 +1154,24 @@ def interpolate_ellipses(ellipse_info,p1,p2):
     ext2 = ellipse_info[:,3] # second extent of ellipses
     r = ellipse_info[:,4] # rotation angle of ellipses
 
-    r_new = np.zeros((rows))
-    r_new[0] = r[0]
+    # Unwrapping-angles procedure (prevents huge drops or rises in angle in r vector):
+    r_new = np.zeros((rows)) # create empty vector
+    r_new[0] = r[0] # initialize r_new[0]
 
     for i in range(1,rows):
-        difference = r[i] - r_new[i-1]
+        difference = r[i] - r_new[i-1] # difference between current angle and previous angle
 
-        if difference > np.pi / 2:
-            r_new[i] = r[i] - np.pi
-        elif difference < -np.pi / 2:
-            r_new[i] = r[i] + np.pi
+        if difference > np.pi / 2: # check if difference is very large
+            r_new[i] = r[i] - np.pi # unwrap angle
+        elif difference < -np.pi / 2: # check if difference is very large (but negative this time)
+            r_new[i] = r[i] + np.pi # unwrap angle
         else:
-            r_new[i] = r[i]
+            r_new[i] = r[i] # keep angle if differnence is very small
 
-    r = r_new
+    r = r_new # reset r to r_new
+    # The above procedure is needed to prevent r vector (converted to degrees) from looking like, for example, [...,178,179.5,1,2,...].
+    # This would cause problems for interpolation. It would convert above example to [...178,179.5,181,182,...], which is now 
+    # interpreted (correctly) as a small angle difference between vector entries.
 
     # interpolate points using CubicSpline:
     h_ip = CubicSpline(x,h)(xs)
@@ -1188,10 +1200,10 @@ def interpolate_ellipses(ellipse_info,p1,p2):
     kmin = np.min(ellipse_info[:,1])
     amax = np.max(ellipse_info[:,2])
 
-    # set up axis characteristics
-    # ax.set_xlim([hmin-1.25*amax, hmax+1.25*amax]) 
-    # ax.set_ylim([kmin-1.25*amax, kmax+1.25*amax])
-    # # ax.set_aspect('equal', adjustable='box') 
+    # set up axis characteristics. (Uncomment if you want to fix axes and/or set axes equal)
+    ax.set_xlim([hmin-1.25*amax, hmax+1.25*amax]) 
+    ax.set_ylim([kmin-1.25*amax, kmax+1.25*amax])
+    ax.set_aspect('equal', adjustable='box') 
 
     ref_trajectory, = plt.plot(h, k, color=[0,0,0], label='Reference Trajectory') # reference trajectory points
 
@@ -1206,11 +1218,11 @@ def interpolate_ellipses(ellipse_info,p1,p2):
         plt.xlabel(p1 + " [DU]") # make units DU if p1 describes a position axis
     else:
         if p1 == 'Xdot':
-            plt.ylabel(r"$\overset{\bullet}{X}$ [DU/TU]")
+            plt.xlabel(r"$\overset{\bullet}{X}$ [DU/TU]")
         elif p1 == 'Ydot':
-            plt.ylabel(r"$\overset{\bullet}{Y}$ [DU/TU]")
+            plt.xlabel(r"$\overset{\bullet}{Y}$ [DU/TU]")
         else:
-            plt.ylabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
+            plt.xlabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
 
     # Do same process as above for p2 to create y-axis label
     if p2 == 'X' or p2 == 'Y' or p2 == 'Z':
@@ -1224,32 +1236,17 @@ def interpolate_ellipses(ellipse_info,p1,p2):
             plt.ylabel(r"$\overset{\bullet}{Z}$ [DU/TU]")
 
     plt.legend(["Reference", "Reachable Bounds"], loc="upper right") # create legend
+    plt.savefig(str(p1)+str(p2)+'_projection.pdf', format='pdf')
     plt.show()
-
-    # print("Rotations: ")
-
-
-
-        # print(str(r[i]*180/np.pi) + "    " + str(r_new[i]*180/np.pi))
-
-    
 
     return ellipse_info_ip
     
 
-    
 
-        
-
-
-[ellipses,ellipse_info] = projection(STM_full,STT_full,state_full,J_max,'x','y')
-[rows,columns] = ellipse_info.shape
+ellipse_info = projection(STM_full,STT_full,state_full,J_max,'X','Y')
 limits = [0,259]
-
-h_interpolated = interpolate_ellipses(ellipse_info,'X','Y')
-print("made it thru")
-
-# [solution1_array,solution2_array] = tangent_lines(ellipse_info,limits,"X","Y")
+[solution1_array,solution2_array] = tangent_lines(ellipse_info,limits,"X","Y")
+ellipse_info_interpolated = interpolate_ellipses(ellipse_info,'X','Y')
 
 ############################
 STM = STM_full[-1,:,:]
