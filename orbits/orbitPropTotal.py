@@ -30,7 +30,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d  # + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
-days = 200
+days = 100
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -87,16 +87,15 @@ if theta > np.pi/2:
 rot_matrix = frameConversion.rot(theta, 3)
 IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
-# Convert IC to dimensional, rotating frame (for GMAT)
-pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame
-vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame
+# Convert IC to dimensional, rotating frame (for STK)
 C_I2R = frameConversion.inert2rot(t_start, t_start)
-pos_dimrot = C_I2R @ pos_dim  # R frame
-vel_dimrot = C_I2R @ vel_dim  # R frame
+pos_canrot = C_I2R @ IC[0:3]  # Canonical, R frame
+vel_canrot = frameConversion.inert2rotV(pos_canrot, IC[3:6], 0)  # Canonical, R frame
+pos_dimrot = unitConversion.convertPos_to_dim(pos_canrot).to('km')  # R frame, dimensional
+vel_dimrot = unitConversion.convertVel_to_dim(vel_canrot).to('km/s')  # R frame, dimensional
 print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
 print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
 
-breakpoint()
 
 # ~~~~~PROPAGATE THE DYNAMICS IN THE CRTBP MODEL~~~~~
 
@@ -111,7 +110,7 @@ vel_CRTBP = states_CRTBP[:, 3:6]
 # Convert time to dimensional
 times_CRTBP_dim = (unitConversion.convertTime_to_dim(times_CRTBP_can)).value
 
-# Convert to AU
+# Convert position to AU
 pos_CRTBP_au = np.array(unitConversion.convertPos_to_dim(pos_CRTBP).to('AU'))
 
 
@@ -177,13 +176,9 @@ pos_FF_interp = interp_FF(times)
 
 # ~~~~~PLOT~~~~
 
-title = 'I Frame'
-body_names = ['CRTBP', 'FF', 'Earth', 'Moon', 'Sun']
-fig_I, ax_I = plot_tools.plot_bodies(pos_CRTBP_interp, pos_FF_interp, pos_Earth, pos_Moon, pos_Sun, body_names=body_names, title=title)
-
-title = 'I Frame, no Sun'
+title = 'CRTBP and FF in the I Frame'
 body_names = ['CRTBP', 'FF', 'Earth', 'Moon']
-fig_InoS, ax_InoS = plot_tools.plot_bodies(pos_CRTBP_interp, pos_FF_interp, pos_Earth, pos_Moon, body_names=body_names, title=title)
+fig_I, ax_I = plot_tools.plot_bodies(pos_CRTBP_interp, pos_FF_interp, pos_Earth, pos_Moonbody_names=body_names, title=title)
 
 
 # ~~~~~ANIMATE~~~~~
@@ -198,7 +193,7 @@ animate_func, ani_object = plot_tools.create_animation(times, days, desired_dura
 
 # # ~~~~~SAVE~~~~~
 #
-# fig_InoS.savefig('plotFigures/CRTBP and FF, L2 I frame, no Sun.png')
+# fig_InoS.savefig('plotFigures/CRTBP and FF, L2 I frame.png')
 #
 # writergif = animation.PillowWriter(fps=30)
-# ani_object.save('plotFigures/CRTBP and FF, L2 I frame, no Sun.gif', writer=writergif)
+# ani_object.save('plotFigures/CRTBP and FF, L2 I frame.gif', writer=writergif)

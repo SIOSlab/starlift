@@ -24,7 +24,7 @@ coord.solar_system.solar_system_ephemeris.set('de432s')
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d  # + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
-days = 200
+days = 100
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -126,7 +126,7 @@ for ii in np.arange(len(times_mjd)):
 # ~~~~~OBTAIN STK DATA~~~~
 
 # Obtain FF rotating data from STK
-file_path = "gmatSTKFiles/L2Orbit_Full_Force_State.txt"
+file_path = "gmatSTKFiles/L2Orbit_Full_Force_State_earthpoint100.txt"
 stk_posrot, stk_times = extractTools.extractSTK(file_path)
 
 # Convert to I frame from R frame
@@ -186,9 +186,9 @@ animate_func_I, ani_object_I = plot_tools.create_animation(times, days, desired_
 
 # # ~~~~~SAVE~~~~~
 #
-# fig_I.savefig('plotFigures/FF STK.png')
+# fig_I.savefig('plotFigures/FF STK earth point mass 100 days.png')
 # # fig_H.savefig('plotFigures/FF DRO H frame.png')
 #
 # writergif = animation.PillowWriter(fps=30)
-# ani_object_I.save('plotFigures/FF STK.gif', writer=writergif)
+# ani_object_I.save('plotFigures/FF STK earth point mass 100 days.gif', writer=writergif)
 # # ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)
