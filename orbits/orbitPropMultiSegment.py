@@ -26,7 +26,7 @@ import pdb
 # ~~~~~PROPAGATE THE DYNAMICS  ~~~~~
 
 # Initialize the kernel
-coord.solar_system.solar_system_ephemeris.set('de432s')
+coord.solar_system.solar_system_ephemeris.set("ftp://ssd.jpl.nasa.gov/pub/eph/planets/bsp/de441.bsp")
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
@@ -50,13 +50,12 @@ max_iter = 1000
 orbT = unitConversion.convertTime_to_dim(2*IC[6])
 step = 1E-2
 eps = 4E-6
-
-while orbT.value < 10:
+z = np.array([0, 0, 0, 1])
+while orbT.value < 6.1:
     print(orbT)
     error = 10
     ctr = 0
     
-    z = np.array([0, 0, 0, 1])
     while error > eps and ctr < max_iter:
         Fx = orbitEOMProp.calcFx_R(X, mu_star)
 
@@ -84,7 +83,7 @@ while orbT.value < 10:
 
     orbT = unitConversion.convertTime_to_dim(2*X[-1])
     
-IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])
+IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])   # Canonical, rotating frame
     
 # Convert the velocity to I frame from R frame
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
@@ -96,6 +95,7 @@ freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*IC[-1]])
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
 posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
+times_dim = unitConversion.convertTime_to_dim(timesCRTBP).to('d')
 
 # Preallocate space
 r_PO_CRTBP = np.zeros([len(timesCRTBP), 3])
@@ -113,7 +113,6 @@ r_PEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
-times_dim = unitConversion.convertTime_to_dim(timesCRTBP)
 timesCRTBP_mjd = Time(times_dim.value + t_start.value, format='mjd', scale='utc')
 
 # Rotate CRTBP to different frames
@@ -169,80 +168,79 @@ for ii in np.arange(N):
     vel_i = velCRTBP[index_i]
 
     pos_Hi, vel_Hi = frameConversion.convertSC_I2H(pos_i, vel_i, taus[ii], C_I2G)
-    
-    # Get position of the moon at the epoch in the inertial frame
-    _, _, moon_I = frameConversion.getSunEarthMoon(t_start, C_I2G)  # I frame [AU]
-    moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
-
-    # Transform position ICs to the epoch moon
-    ideal_moon = [1-mu_star, 0, 0]
-    IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
-    IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
-    IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
-    IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
-
-    # Rotate velocity vector to match the epoch moon (I frame)
-    theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
-    if theta > np.pi/2:
-        theta = -theta
-    rot_matrix = frameConversion.rot(theta, 3)
-    pos_Hi = rot_matrix @ pos_Hi
-    vel_Hi = rot_matrix @ vel_Hi  # Canonical, I frame
 
     posvel = np.append(posvel,np.append(pos_Hi.value, vel_Hi.value))
 
-tspan = np.linspace(0,dt_int,2)
-sG = np.array(
-            [
-                [posvel[0], posvel[6]],
-                [posvel[1], posvel[7]],
-                [posvel[2], posvel[8]],
-                [posvel[3], posvel[9]],
-                [posvel[4], posvel[10]],
-                [posvel[5], posvel[11]],
-            ]
-        )
-        
-print(posvel[0])
-print(posvel[1])
-print(posvel[2])
-
-print(posvel[6])
-print(posvel[7])
-print(posvel[8])
-breakpoint()
-
-sol = solve_bvp(orbitEOMProp.FF_EOM_bvp, orbitEOMProp.bc, tspan, sG)
-bvpState = sol.y
-diff = bvpState - sG
-b1 = diff[3:6,0]
-dv1 = (np.linalg.norm(b1)*u.AU/u.d).to('km/s')
-b2 = diff[3:6,1]
-dv2 = (np.linalg.norm(b2)*u.AU/u.d).to('km/s')
-print(dv1)
-print(dv2)
-breakpoint()
-
-eps = 1E-8
+eps = .05 #(((N-1)*100*u.m).to('AU')).value
 error = 10
 X = np.append(np.append(posvel,Ts.value),taus.value)
-#print(X)
+print(X)
 while error > eps:
     Fx = orbitEOMProp.calcFx_FF(posvel, taus, N, Ts)
     
-    error = np.linalg.norm(Fx)
+    ps = np.array([])
+    for ii in np.arange(N-1):
+        ps = np.append(ps,Fx[6*ii:6*ii+3])
+
+    error = np.linalg.norm(ps)
     print('Error is')
     print(error)
+    
     dFx = orbitEOMProp.calcdFx_FF(posvel, taus, N, Ts)
     Xold = X
     X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
+    print(X)
     posvel = X[0:6*N]
     Ts = Time(X[6*N:7*N-1], format='jd', scale='utc')
     taus = Time(X[7*N-1:], format='mjd', scale='utc')
     
-    diff = X - Xold
-    if np.any(diff > .1):
-        breakpoint()
+    states, timesT = orbitEOMProp.statePropFF(np.append(posvel[0:6],Ts[0].value), taus[0])
+    posH = states[:, 0:3]
+    
+    ii = 0
+    pos_msI = np.zeros([len(timesT), 3])
+    for jj in timesT:
+        tt = jj*u.d + t_start
+        state_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', tt)
+        r_EMG_icrs = state_EM[0].get_xyz().to('AU')
+        
+        r_PE_gcrs = frameConversion.icrs2gmec(posH[ii,:]*u.AU,tt)
+        r_EME_gcrs = frameConversion.icrs2gmec(r_EMG_icrs,tt)
+        r_PEM = r_PE_gcrs - r_EME_gcrs
+
+        C_I2R3 = frameConversion.inert2rot(tt,t_start)
+        
+        r_PEM_I = C_G2I@r_PEM
+        
+        ii = ii + 1
+    
+#    ax1 = plt.figure().add_subplot(projection='3d')
+#    ax1.plot(posH[:, 0], posH[:, 1], posH[:, 2], 'b', label='Multi Segment')
+#    ax1.plot(r_PO_CRTBP[:, 0], r_PO_CRTBP[:, 1], r_PO_CRTBP[:, 2], 'r-.', label='CRTBP')
+#    ax1.scatter(posH[0, 0], posH[0, 1], posH[0, 2])
+#    ax1.scatter(r_PO_CRTBP[0, 0], r_PO_CRTBP[0, 1], r_PO_CRTBP[0, 2])
+#    ax1.set_title('FF vs CRTBP in H frame (ICRS)')
+#    ax1.set_xlabel('X [AU]')
+#    ax1.set_ylabel('Y [AU]')
+#    ax1.set_zlabel('Z [AU]')
+#    plt.legend()
+#    
+#    ax3 = plt.figure().add_subplot(projection='3d')
+#    ax3.plot(pos_msI[:, 0], pos_msI[:, 1], pos_msI[:, 2], 'b', label='Multi Segment')
+#    ax3.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r', label='CRTBP')
+#    ax3.scatter(pos_msI[0, 0], pos_msI[0, 1], pos_msI[0, 2])
+#    ax3.scatter(r_CRTBP_I[0, 0], r_CRTBP_I[0, 1], r_CRTBP_I[0, 2])
+#    ax3.set_title('FF vs CRTBP in I frame (Inertial EM)')
+#    ax3.set_xlabel('X [AU]')
+#    ax3.set_ylabel('Y [AU]')
+#    ax3.set_zlabel('Z [AU]')
+#    plt.legend()
+#    
+#    plt.show()
+#    breakpoint()
+#    diff = X - Xold
+#    if np.any(diff > .1):
+#        breakpoint()
 
 ctr = 0
 posH = np.array([np.nan, np.nan, np.nan])

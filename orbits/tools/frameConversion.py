@@ -502,16 +502,24 @@ def rot2inertV(rR, vR, t_norm):
             Inertial frame velocity vectors
     """
 
+    e3 = np.array([0, 0, 1])
     if rR.shape[0] == 3 and len(rR.shape) == 1:
-        At = rot(t_norm, 3).T
-        drR = np.array([-rR[1], rR[0], 0])
-        vI = np.dot(At, vR.T) + np.dot(At, drR.T)
+        vI = vR + np.cross(e3, rR)
     else:
-        vI = np.zeros([len(rR), 3])
-        for t in range(len(rR)):
-            At = rot(t_norm, 3).T
-            drR = np.array([-rR[t, 1], rR[t, 0], 0])
-            vI[t, :] = np.dot(At, vR[t, :].T) + np.dot(At, drR.T)
+        vR = np.zeros([len(t_norm), 3])
+        for t in range(len(t_norm)):
+            vI[t, :] = vR[t, :] + np.cross(e3, rR[t, :])
+            
+#    if rR.shape[0] == 3 and len(rR.shape) == 1:
+#        At = rot(t_norm, 3).T
+#        drR = np.array([-rR[1], rR[0], 0])
+#        vI = np.dot(At, vR.T) + np.dot(At, drR.T)
+#    else:
+#        vI = np.zeros([len(rR), 3])
+#        for t in range(len(rR)):
+#            At = rot(t_norm, 3).T
+#            drR = np.array([-rR[t, 1], rR[t, 0], 0])
+#            vI[t, :] = np.dot(At, vR[t, :].T) + np.dot(At, drR.T)
     return vI
     
 
@@ -530,12 +538,22 @@ def inert2rotV(rR, vI, t_norm):
             Rotating frame velocity vectors
     """
     
+    e3 = np.array([0, 0, 1])
     if t_norm.size == 1:
-        t_norm = np.array([t_norm])
-    vR = np.zeros([len(t_norm), 3])
-    for t in range(len(t_norm)):
-        At = rot(t_norm[t], 3)
-        vR[t, :] = np.dot(At, vI[t, :].T) + np.array([rR[t, 1], -rR[t, 0], 0]).T
+        vR = vI - np.cross(e3, rR)
+    else:
+        vR = np.zeros([len(t_norm), 3])
+        for t in range(len(t_norm)):
+            vR[t, :] = vI[t, :] - np.cross(e3, rR[t, :])
+            
+#    if t_norm.size == 1:
+#        At = rot(t_norm[0], 3).T
+#        vR = At@vI + np.array([rR[1], -rR[0], 0]).T
+#    else:
+#        vR = np.zeros([len(t_norm), 3])
+#        for t in range(len(t_norm)):
+#            At = rot(t_norm[t], 3)
+#            vR[t, :] = At@vI[t, :] + np.array([rR[t, 1], -rR[t, 0], 0]).T
     return vR
 
 

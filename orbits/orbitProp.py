@@ -27,7 +27,7 @@ import pdb
 # ~~~~~PROPAGATE THE DYNAMICS  ~~~~~
 
 # Initialize the kernel
-coord.solar_system.solar_system_ephemeris.set('de432s')
+coord.solar_system.solar_system_ephemeris.set('de440')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
@@ -40,6 +40,42 @@ m2 = mu_star
 
 C_I2G = frameConversion.inert2geo(t_start, t_veq)
 C_G2I = C_I2G.T
+
+H1 = get_body_barycentric_posvel('Earth', t_veq)[0].get_xyz().to('AU').value
+h1 = H1/np.linalg.norm(H1)*1.5
+H2 = get_body_barycentric_posvel('Earth', t_veq + .25*u.yr)[0].get_xyz().to('AU').value
+h2 = H2/np.linalg.norm(H2)*1.5
+H3 = np.cross(h1,h2)
+h3 = H3/np.linalg.norm(H3)*1.5
+
+M1 = get_body_barycentric_posvel('Moon', t_veq)[0].get_xyz().to('AU').value
+S1 = get_body_barycentric_posvel('Sun', t_veq)[0].get_xyz().to('AU').value
+
+plt.rcParams.update({'font.size': 10})
+ax1 = plt.figure().add_subplot(projection='3d')
+ax1.scatter(H1[0], H1[1], H1[2], c='g', marker='o', s=100, label='Earth')
+#ax1.scatter(M1[0], M1[1], M1[2], c='b', marker='o', s=10, label='Moon')
+ax1.scatter(S1[0], S1[1], S1[2], c='y', marker='*', s=400, label='Sun')
+
+ax1.quiver([0],[0],[0],h1[0],h1[1],h1[2], colors='k', arrow_length_ratio=0.1)
+ax1.text(h1[0],h1[1],h1[2]+.1, '$\hat{h}_1$')
+ax1.quiver([0],[0],[0],h2[0],h2[1],h2[2], colors='k', arrow_length_ratio=0.1)
+ax1.text(h2[0],h2[1],h2[2]+.2, '$\hat{h}_2$')
+ax1.quiver([0],[0],[0],h3[0],h3[1],h3[2], colors='k', arrow_length_ratio=0.1)
+ax1.text(h3[0]+.1,h3[1],h3[2], '$\hat{h}_3$')
+#ax1.plot(np.array([0,h1[0]]), np.array([0,h1[1]]), np.array([0,h1[2]]), 'g')
+#ax1.plot(np.array([0,h2[0]]), np.array([0,h2[1]]), np.array([0,h2[2]]), 'g')
+#ax1.plot(np.array([0,h3[0]]), np.array([0,h3[1]]), np.array([0,h3[2]]), 'g')
+ax1.set_xlabel('X [AU]')
+ax1.set_ylabel('Y [AU]')
+ax1.set_zlabel('Z [AU]')
+ax1.set_xlim([-1.5, .5])
+ax1.set_ylim([-1.5, .5])
+ax1.set_zlim([-.5, 1.5])
+plt.legend()
+plt.show()
+
+
 
 # Initial condition in non-dimensional units in rotating frame R [pos, vel]
 IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]
@@ -70,17 +106,31 @@ print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dim)
     
 # Convert the velocity to I frame from R frame
 vI = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
-
+#vR = frameConversion.inert2rotV(np.array(IC[0:3]),vI,np.array([0]))
+#breakpoint()
 # Convert the period from TU to days
 Tp_dim = unitConversion.convertTime_to_dim(IC[-1]).value
 
 # Define the free variable array
-freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*Tp_dim])
+freeVar_CRTBP = np.array([IC[0], IC[2], vI[1], 1*IC[-1]])
 
 # Propagate the dynamics in the CRTBP model for 1 orbit
 statesCRTBP, timesCRTBP = orbitEOMProp.statePropCRTBP(freeVar_CRTBP, mu_star)
 posCRTBP = statesCRTBP[:, 0:3]
 velCRTBP = statesCRTBP[:, 3:6]
+times_dim = unitConversion.convertTime_to_dim(timesCRTBP).to('d').value
+
+for ii in np.arange(len(timesCRTBP)):
+    C_I2R = frameConversion.rot(timesCRTBP[ii], 3)
+    C_R2I = C_I2R.T
+    
+    rI = C_R2I@posCRTBP[ii,:]
+    vI = frameConversion.rot2inertV(posCRTBP[ii,:], velCRTBP[ii,:], timesCRTBP[ii])
+    vR = frameConversion.inert2rotV(posCRTBP[ii,:], vI, np.array([timesCRTBP[ii]]))
+    tmp = velCRTBP[ii,:] - vR
+    print(tmp)
+    breakpoint()
+
 
 # Preallocate space
 r_PO_CRTBP = np.zeros([len(timesCRTBP), 3])
@@ -98,7 +148,7 @@ r_PEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 r_MoonEM_CRTBP_R = np.zeros([len(timesCRTBP), 3])
 
 # sim time in mjd
-timesCRTBP_mjd = Time(timesCRTBP + t_start.value, format='mjd', scale='utc')
+timesCRTBP_mjd = Time(times_dim + t_start.value, format='mjd', scale='utc')
 
 # Rotate CRTBP to different frames
 for kk in np.arange(len(timesCRTBP_mjd)):
@@ -132,35 +182,17 @@ for kk in np.arange(len(timesCRTBP_mjd)):
 
 # Convert position from I frame (canonical) to H frame [AU]
 pos_H, vel_H = frameConversion.convertSC_I2H(posCRTBP[0], velCRTBP[0], t_start, C_I2G)
-
-## Get position of the moon at the epoch in the inertial frame
-#_, _, moon_I = frameConversion.getSunEarthMoon(t_start, C_I2G)  # I frame [AU]
-#moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
-#
-## Transform position ICs to the epoch moon
-#ideal_moon = [1-mu_star, 0, 0]
-#IC_x = (IC[0] - ideal_moon[0]) + moon_I_can[0]
-#IC_y = (IC[1] - ideal_moon[1]) + moon_I_can[1]
-#IC_z = (IC[2] - ideal_moon[2]) + moon_I_can[2]
-#IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
-
-## Rotate velocity vector to match the epoch moon (I frame)
-#theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
-#if theta > np.pi/2:
-#    theta = -theta
-#rot_matrix = frameConversion.rot(theta, 3)
-#pos_H = rot_matrix @ pos_H
-#vel_H = rot_matrix @ vel_H  # Canonical, I frame
     
 # Define the initial state array (for ~200 day orbit)
-state0 = np.append(np.append(pos_H.value,vel_H.value), 1*timesCRTBP[-1])   # Change to Tp_dim.value for one orbit
-
+state0 = np.append(np.append(pos_H.value,vel_H.value), 1*times_dim[-1])   # Change to Tp_dim.value for one orbit
+breakpoint()
 # Propagate the dynamics in the full force model (H frame) [AU, AU/d, days from 0]
 statesFF, timesFF = orbitEOMProp.statePropFF(state0, t_start) #,times_dim)
 posFF = statesFF[:, 0:3]
 velFF = statesFF[:, 3:6]
 
 # Preallocate space
+r_PEM_r = np.zeros([len(timesFF), 3])
 r_PEM_i = np.zeros([len(timesFF), 3])
 r_SunEM_i = np.zeros([len(timesFF), 3])
 r_EarthEM_i = np.zeros([len(timesFF), 3])
@@ -209,6 +241,9 @@ for ii in np.arange(len(timesFF_mjd)):
     r_SunEM_i[ii, :] = C_G2I@r_SunEM
     r_MoonEM_i[ii, :] = C_G2I@r_MoonEM
     
+    C_I2R = frameConversion.inert2rot(time,t_start)
+    r_PEM_r[ii,:] = C_I2R @ r_PEM_i[ii, :]
+    
 #    breakpoint()
 
 
@@ -235,6 +270,7 @@ for ii in np.arange(len(gmat_time)):
 ax1 = plt.figure().add_subplot(projection='3d')
 ax1.plot(posFF[:, 0], posFF[:, 1], posFF[:, 2], 'b', label='Full Force')
 ax1.plot(r_PO_CRTBP[:,0], r_PO_CRTBP[:,1], r_PO_CRTBP[:,2], 'r-.', label='CRTBP')
+ax1.plot(r_SunO_h[:, 0], r_SunO_h[:, 1], r_SunO_h[:, 2], 'y', label='Sun')
 #ax1.plot(gmat_posicrs[:, 0], gmat_posicrs[:, 1], gmat_posicrs[:, 2], color='g', label='GMAT Orbit')
 ax1.scatter(posFF[0, 0], posFF[0, 1], posFF[0, 2], c='b', marker='*', label='Full Force Start')
 ax1.scatter(posFF[-1, 0], posFF[-1, 1], posFF[-1, 2], c='b', marker='D', label='Full Force End')
@@ -273,6 +309,7 @@ ax2.plot(r_PEM_i[:, 0], r_PEM_i[:, 1], r_PEM_i[:, 2], 'b', label='Full Force')
 ax2.plot(r_CRTBP_I[:, 0], r_CRTBP_I[:, 1], r_CRTBP_I[:, 2], 'r-.', label='CRTBP')
 ax2.plot(r_EarthEM_i[:, 0], r_EarthEM_i[:, 1], r_EarthEM_i[:, 2], 'g', label='Earth')
 ax2.plot(r_MoonEM_i[:, 0], r_MoonEM_i[:, 1], r_MoonEM_i[:, 2], 'k', label='Moon')
+ax2.plot(r_SunEM_i[:, 0], r_SunEM_i[:, 1], r_SunEM_i[:, 2], 'y', label='Sun')
 #ax2.scatter(r_PEM_i[0, 0], r_PEM_i[0, 1], r_PEM_i[0, 2], c='b', marker='*', label='Full Force Start')
 #ax2.scatter(r_PEM_i[-1, 0], r_PEM_i[-1, 1], r_PEM_i[-1, 2], c='b', marker='D', label='Full Force End')
 #ax2.scatter(r_CRTBP_I[0, 0], r_CRTBP_I[0, 1], r_CRTBP_I[0, 2], c='r', marker='*', label='CRTBP Start')
@@ -282,6 +319,26 @@ ax2.set_xlabel('X [AU]')
 ax2.set_ylabel('Y [AU]')
 ax2.set_zlabel('Z [AU]')
 plt.legend()
+
+ax2 = plt.figure().add_subplot(projection='3d')
+ax2.plot(r_PEM_r[:, 0], r_PEM_r[:, 1], r_PEM_r[:, 2], 'b', label='Full Force')
+#ax2.plot(gmat_posinert[:, 0], gmat_posinert[:, 1], gmat_posinert[:, 2], color='g', label='GMAT Orbit')
+ax2.plot(r_CRTBP_rot[:, 0], r_CRTBP_rot[:, 1], r_CRTBP_rot[:, 2], 'r-.', label='CRTBP')
+#ax2.scatter(r_PEM_i[0, 0], r_PEM_i[0, 1], r_PEM_i[0, 2], c='b', marker='*', label='Full Force Start')
+#ax2.scatter(r_PEM_i[-1, 0], r_PEM_i[-1, 1], r_PEM_i[-1, 2], c='b', marker='D', label='Full Force End')
+#ax2.scatter(r_CRTBP_I[0, 0], r_CRTBP_I[0, 1], r_CRTBP_I[0, 2], c='r', marker='*', label='CRTBP Start')
+#ax2.scatter(r_CRTBP_I[-1, 0], r_CRTBP_I[-1, 1], r_CRTBP_I[-1, 2], c='r', marker='D', label='CRTBP End')
+ax2.set_title('GMAT in Rotating Earth-Moon CRTBP Frame')
+ax2.set_xlabel('X [AU]')
+ax2.set_ylabel('Y [AU]')
+ax2.set_zlabel('Z [AU]')
+plt.legend()
+
+ax1 = plt.figure().add_subplot(projection='3d')
+ax1.plot(posCRTBP[:, 0], posCRTBP[:, 1], posCRTBP[:, 2], 'b', label='CRTBP')
+ax1.set_xlabel('X [AU]')
+ax1.set_ylabel('Y [AU]')
+ax1.set_zlabel('Z [AU]')
 
 plt.show()
 breakpoint()

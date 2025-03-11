@@ -22,11 +22,11 @@ import pdb
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
 
 # Initialize the kernel
-coord.solar_system.solar_system_ephemeris.set('de432s')
+coord.solar_system.solar_system_ephemeris.set('de440')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
-t_veq = t_equinox + 79.3125*u.d # + 1*u.yr/4
+t_veq = t_equinox + 79.3125*u.d  # + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
 days = 200
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
@@ -36,6 +36,7 @@ m2 = mu_star
 
 # Initial condition in canonical units in rotating frame R [pos, vel]
 IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
+# IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO, 0.9697497-day period
 
 # Generate new ICs using the free variable and constraint method
 X = [IC[0], IC[2], IC[4], IC[6]]
@@ -72,22 +73,28 @@ IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
 
 # Convert the velocity to I frame from R frame (position is the same in both)
 vO = frameConversion.rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
-
+print(IC[3:6])
+print(vO)
 # Rotate velocity vector to match the epoch moon (I frame)
 theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
 if theta > np.pi/2:
     theta = -theta
 rot_matrix = frameConversion.rot(theta, 3)
+IC[0:3] = rot_matrix @ IC[0:3]  # Canonical, I frame
 IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
-# Convert IC to dimensional, rotating frame (for GMAT)
-pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame
-vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame
+# Convert IC to dimensional, rotating frame (for STK) (THIS MIGHT BE WRONG)
+#pos_dim = unitConversion.convertPos_to_dim(IC[0:3]).to('km')  # I frame, dimensional
+#vel_dim = unitConversion.convertVel_to_dim(IC[3:6]).to('km/s')  # I frame, dimensional
 C_I2R = frameConversion.inert2rot(t_start, t_start)
-pos_dimrot = C_I2R @ pos_dim  # R frame
-vel_dimrot = C_I2R @ vel_dim  # R frame
-print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
-print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
+pos_dimrot = C_I2R @ IC[0:3]  # R frame
+# vel_dimrot = C_I2R @ vel_dim  # R frame
+vel_dimrot = frameConversion.inert2rotV(pos_dimrot, IC[3:6], np.array([0]))  # R frame
+#print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
+#print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
+print(vel_dimrot)
+
+breakpoint()
 
 # Convert ICs to H frame (AU and AU/d) from I frame (canonical)
 pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
