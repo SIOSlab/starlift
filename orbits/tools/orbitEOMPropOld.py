@@ -10,6 +10,59 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 
 
+def CRTBP_EOM(t, w, mu_star):
+    """Equations of motion for the CRTBP in the inertial frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State in non dimensional units [position, velocity]
+        mu_star (float):
+            Non-dimensional mass parameter
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity, acceleration]
+
+    """
+    
+    [x, y, z, vx, vy, vz] = w
+    
+    m1 = 1 - mu_star
+    m2 = mu_star
+
+    r1 = mu_star
+    r2 = 1 - mu_star
+    r_1O_R = r1*np.array([-1, 0, 0])
+    r_2O_R = r2*np.array([1, 0, 0])
+    
+    C_I2R = frameConversion.rot(t, 3)
+    C_R2I = C_I2R.T
+    
+    r_1O_I = C_R2I@r_1O_R
+    r_2O_I = C_R2I@r_2O_R
+
+    r_PO_I = np.array([x, y, z])
+    v_PO_I = np.array([vx, vy, vz])
+
+    r_P1_I = r_PO_I - r_1O_I
+    r_P2_I = r_PO_I - r_2O_I
+    
+    r1_mag = np.linalg.norm(r_P1_I)
+    r2_mag = np.linalg.norm(r_P2_I)
+
+    F_g1 = -m1/r1_mag**3*r_P1_I
+    F_g2 = -m2/r2_mag**3*r_P2_I
+    F_g = F_g1 + F_g2
+
+    a_PO_I = F_g
+    
+    ax = a_PO_I[0]
+    ay = a_PO_I[1]
+    az = a_PO_I[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    return dw
+
 
 def CRTBP_EOM_R(t, w, mu_star):
     """Equations of motion for the CRTBP in the rotating frame
@@ -57,6 +110,71 @@ def CRTBP_EOM_R(t, w, mu_star):
 
     dw = [vx, vy, vz, ax, ay, az]
 
+    return dw
+
+
+def FF_EOM(tt, w, t_mjd):
+    """Equations of motion for the full force model in the ICRS frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    gmJupiter = const.GM_jup.to('AU3/d2').value
+    
+    r_PO = np.array([x, y, z])  # AU
+    v_PO = np.array([vx, vy, vz])  # AU/d
+
+    time = tt*u.d + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
+#    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
+    
+    # Distance vectors
+    r_PSun = r_PO - r_SunO.value
+    r_PEarth = r_PO - r_EarthO.value
+    r_PMoon = r_PO - r_MoonO.value
+#    r_PJupiter = r_PO - r_JupiterO.value
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+#    rJupiter_mag = np.linalg.norm(r_PJupiter)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+#    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p #+ F_gJupiter_p
+    
+    a_PO = F_g
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    
     return dw
     
 def FF_EOM_R(tt, w, t_mjd, C_I2G):
@@ -122,8 +240,73 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
     dw = [vx, vy, vz, ax, ay, az]
     
     return dw
+    
+def FF_EOM_R2(t_current, w, t_mjd, C_I2G):
+    """Equations of motion for the full force model in the ICRS frame
 
-def FF_EOMSTM_R(tt,w,t_mjd,C_I2G):
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    e3_hat = np.array([0, 0, 1])
+    # H frame
+    [x, y, z, vx, vy, vz] = w
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    gmJupiter = const.GM_jup.to('AU3/d2').value
+    
+    r_PO = np.array([x, y, z])  # AU
+    v_PO = np.array([vx, vy, vz])  # AU/d
+
+    dt = t_current - t_mjd.value
+    dt = Time(dt, format='mjd', scale='utc')  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_Sun, r_Earth, r_Moon = frameConversion.getSunEarthMoon(t_current, C_I2G)
+    
+    C_I2R = frameConversion.inert2rot(t_current,t_mjd)
+    r_Sun = C_I2R@r_Sun
+    r_Earth = C_I2R@r_Earth
+    r_Moon = C_I2R@r_Moon
+    
+    # Distance vectors
+    r_PSun = r_PO - r_Sun.value
+    r_PEarth = r_PO - r_Earth.value
+    r_PMoon = r_PO - r_Moon.value
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
+    
+    a_PO = F_g - 2 * np.cross(e3_hat, v_PO) - np.cross(e3_hat, np.cross(e3_hat, r_PO))
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    
+    return dw
+
+def FF_STM_R(tt,w,t_mjd,C_I2G):
     e3_hat = np.array([0, 0, 1])
     # R
     [x, y, z, vx, vy, vz] = w[0:6]
@@ -207,6 +390,73 @@ def FF_EOMSTM_R(tt,w,t_mjd,C_I2G):
     dw = np.append(dEOM,phi_new)
     dw = dw.tolist()
     return dw
+    
+def FF_EOM_bvp(tt, w):
+    """Equations of motion for the full force model in the ICRS frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w
+    t_mjd = 57727
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    gmJupiter = const.GM_jup.to('AU3/d2').value
+    
+    r_PO = np.array([x, y, z])  # AU
+    v_PO = np.array([vx, vy, vz])  # AU/d
+    
+    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+    time = Time(time, format='mjd', scale='utc')
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
+    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
+#    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
+    
+    # Distance vectors
+    r_PSun = r_PO - r_SunO.value
+    r_PEarth = r_PO - r_EarthO.value
+    r_PMoon = r_PO - r_MoonO.value
+#    r_PJupiter = r_PO - r_JupiterO.value
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+#    rJupiter_mag = np.linalg.norm(r_PJupiter)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+#    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p #+ F_gJupiter_p
+    
+    a_PO = F_g
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    
+    return dw
+
 
 def statePropCRTBP(freeVar, mu_star):
     """Propagates the dynamics using the free variables in the CRTBP
@@ -263,6 +513,34 @@ def statePropCRTBP_R(freeVar, mu_star):
     times = sol_int.t
     return states, times
 
+
+def statePropFF2(state0, t_mjd, timesTMP=None):
+    """Propagates the dynamics using the free variables in the full force model
+
+    Args:
+        state0 (~numpy.ndarray(float)):
+            Position [AU], velocity [AU/d], and propagation time [days] in the H frame
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        tuple:
+        states ~numpy.ndarray(float):
+            Positions and velocities in AU and AU/d
+        times ~numpy.ndarray(float):
+            Times in days
+
+    """
+    
+    T = state0[-1]  # days
+
+    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
+#    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
+
+    states = sol_int.y.T
+    times = sol_int.t
+    
+    return states, times
 
 def statePropFF(state0, t_mjd, C_I2G):
     """Propagates the dynamics using the free variables in the full force model

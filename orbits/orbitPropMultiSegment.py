@@ -43,7 +43,11 @@ C_G2I = C_I2G.T
 #IC = [0.8497294463740502, 0, 0, 0, 0.47923580202109567, 0, 1.1515074327754002]       # DRO
 IC = [1.0110350593505575, 0, -0.17315000084377485, 0, -0.0780142664611386, 0, 0.6816048399338378]   # NRHO L2
 #IC = [1.1093213406579072, 0, -0.19463236063796546, 0, -0.22111944917599072, 0, 1.3816048399182301]  # L2
-X = [IC[0], IC[2], IC[4], IC[6]]
+
+Phi0 = np.eye(6)
+Phi0 = np.reshape(Phi0,(36,1))
+X = np.append(IC[0:6],Phi0)
+X = np.append(X,IC[-1])
 
 max_iter = 1000
 
@@ -57,17 +61,17 @@ while orbT.value < 12.1:
     ctr = 0
     
     while error > eps and ctr < max_iter:
-        Fx = orbitEOMProp.calcFx_R(X, mu_star)
+        Fx, Phi, statef = orbitEOMProp.calcFx_R(X, mu_star)
 
         error = np.linalg.norm(Fx)
         print(error)
-        dFx = orbitEOMProp.calcdFx_CRTBP(X,mu_star,m1,m2)
+        dFx = orbitEOMProp.calcdFx_CRTBP(statef,mu_star,Phi)
 
         X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
         
         ctr = ctr + 1
     
-#    breakpoint()
+    breakpoint()
     # Generate new z and X for another orbit
     solp = X + z * step
     ss = fsolve(orbitEOMProp.fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
