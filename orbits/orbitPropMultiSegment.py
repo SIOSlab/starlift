@@ -48,10 +48,10 @@ X = [IC[0], IC[2], IC[4], IC[6]]
 max_iter = 1000
 
 orbT = unitConversion.convertTime_to_dim(2*IC[6])
-step = 1E-2
+step = 1E-3
 eps = 4E-6
 z = np.array([0, 0, 0, 1])
-while orbT.value < 5.9:
+while orbT.value < 12.1:
     print(orbT)
     error = 10
     ctr = 0
@@ -66,7 +66,8 @@ while orbT.value < 5.9:
         X = X - dFx.T@(np.linalg.inv(dFx@dFx.T)@Fx)
         
         ctr = ctr + 1
-        
+    
+#    breakpoint()
     # Generate new z and X for another orbit
     solp = X + z * step
     ss = fsolve(orbitEOMProp.fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
@@ -95,7 +96,7 @@ times_dim = unitConversion.convertTime_to_dim(timesCRTBP).to('d')
 # sim time in mjd
 timesCRTBP_mjd = Time(times_dim.value + t_start.value, format='mjd', scale='utc')
 
-N = 7
+N = 9
 
 dt_epoch = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/(N)
 dt_int = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/(N-1)
@@ -130,88 +131,104 @@ state0 = np.eye(6)
 state0 = np.reshape(state0,(1,36))[0]
 state0 = np.append(state0,taus[0:2].value)
 STMs = np.zeros((N-1,6,6))
-for ii in np.arange(N-1):
-    states, times = orbitEOMProp.jPropFF(state0, t_start, C_G2I)
-    
-    stm = states[-1,:]
-    STMs[ii,:,:] = np.reshape(stm, (6,6))
-
-    state0 = np.append(stm,initialEpoches[ii:ii+2].value)
-
-
-#print("layer 1")
-#error1 = 10
-#eps1 = 1E-12
-#ctr1 = 0
-#initialStates = posvel[0:-1,:]
-#finalStates = np.zeros((N-1,6))
-#while error1 > eps1:
-#    dv = np.array([])
-#    for ii in np.arange(0,N-1):
-#        state0 = np.append(initialStates[ii,:],initialEpoches[ii:ii+2].value)
-#        states, times = orbitEOMProp.statePropFF(state0, t_start, C_I2G)
-#        
-#        Rk = states[-1,0:3]
-#        Rstar = posvel[ii,0:3]
-#        phi = STMs[ii,:,:]
-#        invB = np.linalg.inv(phi[0:3,3:6])
-#        
-#        dvk = invB@(Rstar - Rk)
-#        
-#        dv = np.append(dv, dvk)
-#        
-#        initialStates[ii,3:6] = initialStates[ii,3:6] + dvk
-#        
-#        finalStates[ii,:] = states[-1,:]
+#for ii in np.arange(N-1):
+#    states, times = orbitEOMProp.jPropFF(state0, t_start, C_G2I)
+#    
+#    stm = states[-1,:]
+#    STMs[ii,:,:] = np.reshape(stm, (6,6))
 #
-#    error1 = np.linalg.norm(dv)
-#    print(error1)
-#    ctr1 = ctr1 + 1
-#print(ctr1)
-#np.save('initialStatesN7eps12.npy',initialStates)
-#np.save('finalStatesN7eps12.npy',finalStates)
-initialStates = np.load('initialStatesN7eps12.npy')    # for N = 7
-finalStates = np.load('finalStatesN7eps12.npy')
-#breakpoint()
-    
-print("layer 2")
+#    state0 = np.append(stm,initialEpoches[ii:ii+2].value)
+
+simTimes = initialEpoches.value - t_start.value
+
+eps1 = (((N-1)*100*u.m).to('AU')).value
+print(eps1)
 error2 = 10
-eps2 = 1E-9
-ctr2 = 0
-while error2 > eps2 and error2 < 100:
+eps2 = (10*u.m/u.s).to('AU/day').value
+initialStates = posvel[0:-1,:]
+finalStates = np.zeros((N-1,6))
+finalStates[:,0:3] = posvel[1:,0:3]
+
+STMs = np.zeros((N-1,6,6))
+while error2 > eps2 and error2 < 11:
+    print("layer 1")
+    error1 = 10
+    while error1 > eps1 and error1 < 11:
+        dR = np.array([])
+        
+        stm_ii = np.eye(6)
+        stm_ii = np.reshape(stm_ii,(1,36))[0]
+
+        for ii in np.arange(0,N-1):
+            state0 = np.append(initialStates[ii,:],stm_ii)
+            state0 = np.append(state0,simTimes[ii:ii+2])
+            
+            states, times = orbitEOMProp.prop_FF_J(state0, t_start, C_I2G)
+            
+            Rk = states[-1,0:3]
+            Rstar = posvel[ii,0:3]
+            
+            stm_ii = states[-1,6:]
+
+            STMs[ii,:,:] = np.reshape(stm_ii, (6,6))
+        
+            phi = STMs[ii,:,:]
+            invB = np.linalg.inv(phi[0:3,3:6])
+            
+            Rdiff = Rstar - Rk
+            dvk = invB@Rdiff
+            
+            dR = np.append(dR, np.linalg.norm(Rdiff))
+            
+            initialStates[ii,3:6] = initialStates[ii,3:6] + dvk
+            
+            finalStates[ii,:] = states[-1,0:6]
+
+        error1 = np.sum(dR)
+        print(error1)
+
+    print("layer 2")
     dv = np.array([])
+    
     dInitialEpoches, dInitialPos, dFinalPos = orbitEOMProp.multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_start)
-#    print(dInitialPos)
-#    print(dFinalPos)
 
     initialEpoches = dInitialEpoches*u.d + initialEpoches
     initialStates[:,0:3] = dInitialPos + initialStates[:,0:3]
     finalStates[:,0:3] = dFinalPos + finalStates[:,0:3]
     
+    stm_ii = np.eye(6)
+    stm_ii = np.reshape(stm_ii,(1,36))[0]
+    simTimes = (initialEpoches - initialEpoches[0]).value
     for ii in np.arange(0,N-2):
-        state0 = np.append(initialStates[ii,:],initialEpoches[ii:ii+2].value)
-        states, times = orbitEOMProp.statePropFF(state0, t_start, C_I2G)
+#        state0 = np.append(initialStates[ii,:],initialEpoches[ii:ii+2].value)
+#        states, times = orbitEOMProp.statePropFF(state0, t_start, C_I2G)
+        state0 = np.append(initialStates[ii,:],stm_ii)
+        state0 = np.append(state0,simTimes[ii:ii+2])
+        states, times = orbitEOMProp.prop_FF_J(state0, t_start, C_I2G)
         
         Vminus = states[-1,3:6]
         Vplus = initialStates[ii+1,3:6]
         dvk = Vplus - Vminus
         
-        dv = np.append(dv, dvk)
+        dv = np.append(dv, np.linalg.norm(dvk))
+        stm_ii = states[-1,6:]
+#        STMs[ii,:,:] = np.reshape(stm_ii,(6,6))
         
-    state0 = np.append(initialStates[-1,:],initialEpoches[-2:].value)
-    states, times = orbitEOMProp.statePropFF(state0, t_start, C_I2G)
+#    state0 = np.append(initialStates[-1,:],stm_ii)
+#    state0 = np.append(state0,simTimes[-2:])
+#    states, times = orbitEOMProp.prop_FF_J(state0, t_start, C_I2G)
+#    
+#    Vminus = states[-1,3:6]
+#    Vplus = initialStates[0,3:6]
+#    dvk = Vplus - Vminus
+#    
+#    dv = np.append(dv, dvk)
     
-    Vminus = states[-1,3:6]
-    Vplus = initialStates[0,3:6]
-    dvk = Vplus - Vminus
+    stm_ii = states[-1,6:]
+#    STMs[-1,:,:] = np.reshape(stm_ii,(6,6))
     
-    dv = np.append(dv, dvk)
-    
-    error2 = np.linalg.norm(dv)
+    error2 = np.sum(dv)
     print(error2)
-    ctr2 = ctr2 + 1
-
-print(ctr2)
 
 breakpoint()
 dp = np.array([])
