@@ -18,7 +18,7 @@ import pdb
 # ~~~~~PROPAGATE THE DYNAMICS~~~~~
 
 # Initialize the kernel
-coord.solar_system.solar_system_ephemeris.set('de432s')
+coord.solar_system.solar_system_ephemeris.set('de441')
 
 # Parameters
 t_equinox = Time(51544.5, format='mjd', scale='utc')
