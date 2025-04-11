@@ -7,7 +7,7 @@ import pdb
 
 guess = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]
 mu_star = 1.215059*10**(-2)
-N = 10
+N = 1
 ICs = orbitEOMProp.generateFamily_CRTBP(guess, mu_star, N)
 
 ax = plt.figure().add_subplot(projection='3d')
