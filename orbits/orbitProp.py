@@ -17,11 +17,6 @@ import frameConversion
 import orbitEOMProp
 import gmatTools
 import plot_tools
-
-#import tools.unitConversion as unitConversion
-#import tools.frameConversion as frameConversion
-#import tools.orbitEOMProp as orbitEOMProp
-#import tools.plot_tools as plot_tools
 import pdb
 
 # ~~~~~PROPAGATE THE DYNAMICS  ~~~~~

@@ -322,7 +322,7 @@ def FF_STM_R(tt,w,t_mjd,C_I2G):
 
     time = Time(tt + t_mjd.value, format='mjd', scale='utc')  # Current mission time in mjd (astropy time array, tt in days from 0)
 
-    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    # Get Sun, Moon, and Earth positions at the current time in the I frame [AU]
     r_Sun, r_Earth, r_Moon = frameConversion.getSunEarthMoon(time, C_I2G)
     
     C_I2R = frameConversion.inert2rot(time,t_mjd)
@@ -383,7 +383,7 @@ def FF_STM_R(tt,w,t_mjd,C_I2G):
         A[2,1] = A[1,2]
         A[2,2] = A[2,2] + (threeGM*(pz - z)*(pz - z))/(Rpower5) - GM[ii]/Rpower3
     
-    J = np.block([[Z, I], [A, Z]])
+    J = np.block([[Z, I], [A, W]])
     
     phi = np.reshape(w[6:],(6,6))
     phi_new = J@phi
@@ -1196,29 +1196,28 @@ def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_st
     da = initialStates[0, :] - finalStates[-1, :]
 
     dvs = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
-    bb = np.append(dvs,da)
-    
-    M = np.zeros((len(bb), 4*(N)))
-    for ii in np.arange(0,N-2):
-        M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
-
-    M[-6:,0:8] = dadu[:,0:8]
-    M[-6:,-8:] = dadu[:,8:]
-
-    uu = M.T@np.linalg.inv(M@M.T)@bb
-
-#    bb = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
-#    dvs = bb
+#    bb = np.append(dvs,da)
+#    
 #    M = np.zeros((len(bb), 4*(N)))
 #    for ii in np.arange(0,N-2):
 #        M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
-#    uu = M.T@np.linalg.inv(M@M.T)@bb
 #
-    deltas = np.reshape(uu,(N,4))
+#    M[-6:,0:8] = dadu[:,0:8]
+#    M[-6:,-8:] = dadu[:,8:]
+#
+#    uu = M.T@np.linalg.inv(M@M.T)@bb
+
+    bb = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
+    dvs = bb
+    M = np.zeros((len(bb), 4*(N)))
+    for ii in np.arange(0,N-2):
+        M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
+    uu = M.T@np.linalg.inv(M@M.T)@bb
+#
+    deltas = np.reshape(uu,(N,4))*.3
     dInitialPos = deltas[0:-1,0:3]
     dFinalPos = deltas[1:,0:3]
     dInitialEpoches = deltas[:,-1]
-#    breakpoint()
 
 #    stm_ii = np.eye(6)
 #    stm_ii = np.reshape(stm_ii,(1,36))[0]

@@ -110,7 +110,7 @@ pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)
 
 # Propagate the dynamics (states in AU or AU/day, times in days starting from 0)
-states, times = orbitEOMProp.statePropFF(state0, t_start)  # State is in the H frame
+states, times = orbitEOMProp.statePropFF(state0, t_start, C_I2G)  # State is in the H frame
 pos = states[:, 0:3]
 vel = states[:, 3:6]
 
