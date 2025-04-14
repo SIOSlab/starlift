@@ -702,39 +702,39 @@ def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
     return pos_I, vel_I
 
 def convertSC_R2I(t_start, t_current, C_I2G, state, mu_star):
-    # there's a baked in assumption this occurs at t = 0. Need to do a full conversion from R to I with position. Need the angle between moon at t=0 and t=now in I frame and the adjustment that exists already at t = 0.
-    
+    C_I2R = inert2rot(t_current, t_start)
+    C_R2I = C_I2R.T
     # Get position of the moon at the epoch in the inertial frame
     sun_I, earth_I, moon_I = getSunEarthMoon(t_current, C_I2G)  # I frame [AU]
     moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
 
-    IC = [0,0,0,0,0,0]
+    IC = np.zeros(6)
+    
     # Transform position ICs to the epoch moon
-    ideal_moon = [1-mu_star, 0, 0]
-    IC_x = (state[0] - ideal_moon[0]) + moon_I_can[0]
-    IC_y = (state[1] - ideal_moon[1]) + moon_I_can[1]
-    IC_z = (state[2] - ideal_moon[2]) + moon_I_can[2]
-    IC[0:3] = [IC_x, IC_y, IC_z]  # Canonical, I frame
+    ideal_moon = np.array([1-mu_star, 0, 0])
+#    IC[0:3] = C_R2I@(state[0:3] - ideal_moon) + moon_I_can
+    IC[0:3] = C_R2I@state[0:3]
+    ideal_moon_I = C_R2I@ideal_moon
 
     # Convert the velocity to I frame from R frame (position is the same in both)
-    vO = rot2inertV(np.array(IC[0:3]), np.array(IC[3:6]), 0)
+#    vO = rot2inertV(np.array(IC[0:3]), np.array(state[3:6]), 0)
+    vO = rot2inertV(state[0:3], np.array(state[3:6]), 0)
 
     # Rotate velocity vector to match the epoch moon (I frame)
-    theta = np.arccos((np.dot(moon_I_can, ideal_moon))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon)))
+    theta = np.arccos((np.dot(moon_I_can, ideal_moon_I))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon_I)))
     if theta > np.pi/2:
         theta = -theta
     rot_matrix = rot(theta, 3)
     IC[3:6] = rot_matrix @ vO  # Canonical, I frame
 
     # Convert IC to dimensional, rotating frame (for STK)
-    C_I2R = inert2rot(t_current, t_start)
     pos_canrot = C_I2R @ IC[0:3]  # Canonical, R frame
     vel_canrot = inert2rotV(pos_canrot, IC[3:6], 0)  # Canonical, R frame
     pos_dimrot = unitConversion.convertPos_to_dim(pos_canrot).to('km')  # R frame, dimensional
     vel_dimrot = unitConversion.convertVel_to_dim(vel_canrot).to('km/s')  # R frame, dimensional
     print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
     print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
-    breakpoint()
+#    breakpoint()
     return pos_dimrot, vel_dimrot, IC
 
 def getSunEarthMoon(currentTime, C_I2G):
