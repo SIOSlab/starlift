@@ -133,7 +133,6 @@ def FF_EOM(tt, w, t_mjd):
     gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
     gmEarth = const.GM_earth.to('AU3/d2').value
     gmMoon = 0.109318945437743700E-10              # from de432s header
-    gmJupiter = const.GM_jup.to('AU3/d2').value
     
     r_PO = np.array([x, y, z])  # AU
     v_PO = np.array([vx, vy, vz])  # AU/d
@@ -144,27 +143,23 @@ def FF_EOM(tt, w, t_mjd):
     r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
     r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
     r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
-#    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
     
     # Distance vectors
     r_PSun = r_PO - r_SunO.value
     r_PEarth = r_PO - r_EarthO.value
     r_PMoon = r_PO - r_MoonO.value
-#    r_PJupiter = r_PO - r_JupiterO.value
 
     # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
-#    rJupiter_mag = np.linalg.norm(r_PJupiter)
 
     # Equations of motion
     F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
     F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
-#    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
 
-    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p #+ F_gJupiter_p
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
     
     a_PO = F_g
     
@@ -173,6 +168,101 @@ def FF_EOM(tt, w, t_mjd):
     az = a_PO[2]
 
     dw = [vx, vy, vz, ax, ay, az]
+    
+    return dw
+
+def FF_STM(tt, w, t_mjd):
+    """Equations of motion for the full force model in the ICRS frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w[0:6]
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    GM = np.array([gmSun, gmEarth, gmMoon])
+    
+    r_PO = np.array([x, y, z])  # AU
+    v_PO = np.array([vx, vy, vz])  # AU/d
+
+    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU').value
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
+    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU').value
+    r_bodies = np.vstack((r_SunO, np.vstack((r_EarthO, r_MoonO))))
+        
+    # Distance vectors
+    r_PSun = r_PO - r_SunO
+    r_PEarth = r_PO - r_EarthO
+    r_PMoon = r_PO - r_MoonO
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
+    
+    a_PO = F_g
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+    
+    Z = np.zeros([3, 3])
+    I = np.identity(3)
+    A = np.zeros([3, 3])
+    
+    for ii in np.arange(3):
+        # P is the planet
+        # xyz is the spacecraft
+        P = r_bodies[ii,:]
+        px = P[0]
+        py = P[1]
+        pz = P[2]
+
+        Rpower3 = ((px - x)**2 + (py - y)**2 + (pz - z)**2)**(3/2)
+        Rpower5 = ((px - x)**2 + (py - y)**2 + (pz - z)**2)**(5/2)
+        threeGM = 3*GM[ii]
+        
+        A[0,0] = A[0,0] + (threeGM*(px - x)*(px - x))/(Rpower5) - GM[ii]/Rpower3
+        A[0,1] = A[0,1] + (threeGM*(py - y)*(px - x))/(Rpower5)
+        A[0,2] = A[0,2] + (threeGM*(pz - z)*(px - x))/(Rpower5)
+        A[1,0] = A[0,1]
+        A[1,1] = A[1,1] + (threeGM*(py - y)*(py - y))/(Rpower5) - GM[ii]/Rpower3
+        A[1,2] = A[1,2] + (threeGM*(pz - z)*(py - y))/(Rpower5)
+        A[2,0] = A[0,2]
+        A[2,1] = A[1,2]
+        A[2,2] = A[2,2] + (threeGM*(pz - z)*(pz - z))/(Rpower5) - GM[ii]/Rpower3
+    
+    J = np.block([[Z, I], [A, Z]])
+    
+    phi = np.reshape(w[6:],(6,6))
+    phi_new = J@phi
+    
+    phi_new = np.reshape(phi_new, (1,36))[0]
+    dEOM = np.array([vx, vy, vz, ax, ay, az])
+    dw = np.append(dEOM,phi_new)
+    dw = dw.tolist()
     
     return dw
 
@@ -255,6 +345,35 @@ def statePropFF(state0, t_mjd, timesTMP=None):
 
     sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
 #    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
+
+    states = sol_int.y.T
+    times = sol_int.t
+    
+    return states, times
+    
+def prop_FF_J(state0, t_mjd, C_I2G):
+    """Propagates the dynamics using the free variables in the full force model
+
+    Args:
+        state0 (~numpy.ndarray(float)):
+            Position [AU], velocity [AU/d], and propagation time [days] in the H frame
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        tuple:
+        states ~numpy.ndarray(float):
+            Positions and velocities in AU and AU/d
+        times ~numpy.ndarray(float):
+            Times in days
+
+    """
+    
+    Ti = state0[-2]     # days
+    Tf = state0[-1]     # days
+    state = state0[:-2]
+
+    sol_int = solve_ivp(FF_STM, [Ti, Tf], state, args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -601,3 +720,57 @@ def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
     Phi = np.block([[Z, I], [A, Z]])
 
     return Phi
+
+def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_start):
+    N = len(initialEpoches)     # number of patch points, 0 to N-1
+
+    deltaVelocity = initialStates[1:,3:6] - finalStates[:-1,3:6]
+    
+    C_I2G = C_G2I
+    # modify epoch and velocity of all segments at once
+    dVdu = np.zeros((N-2,3,12))         # for all the interior patch points 1 to N-2
+    for ii in np.arange(1,N-1):
+        # starting at ii-1 and going to ii
+
+        stm21 = STMs[ii-1,:,:]
+        stm12 = np.linalg.inv(stm21)
+        stm32 = STMs[ii,:,:]
+        
+        v1plus  = initialStates[ii-1, 3:6].T
+        v2minus = finalStates[ii-1, 3:6].T
+        v2plus  = initialStates[ii, 3:6].T
+        v3minus = finalStates[ii, 3:6].T
+
+        current_time = (initialEpoches[ii] - t_start).value
+        state2minus = FF_EOM(current_time, finalStates[ii-1,:], t_start)
+        a2minus = state2minus[3:6]
+        a2minus = np.array(a2minus)
+        state2plus  = FF_EOM(current_time, initialStates[ii,:], t_start)
+        a2plus = state2plus[3:6]
+        a2plus = np.array(a2plus)
+        
+        dVdu1 = -np.linalg.inv(stm12[0:3,3:6])
+        dVdu2 = (np.linalg.inv(stm12[0:3,3:6])@v1plus).T
+        dVdu3 = np.linalg.inv(stm12[0:3,3:6])@stm12[0:3,0:3] - np.linalg.inv(stm32[0:3,3:6])@stm32[0:3,0:3]
+        dVdu4 = ((a2plus-a2minus) + (np.linalg.inv(stm32[0:3,3:6])@stm32[0:3,0:3]@v2plus - np.linalg.inv(stm12[0:3,3:6])@stm12[0:3,0:3]@v2minus)).T
+        dVdu5 = np.linalg.inv(stm32[0:3,3:6])
+        dVdu6 = (-np.linalg.inv(stm32[0:3,3:6])@v3minus).T
+        dVdu[ii-1,:,0:3] = dVdu1
+        dVdu[ii-1,:,3] = dVdu2
+        dVdu[ii-1,:,4:7] = dVdu3
+        dVdu[ii-1,:,7] = dVdu4
+        dVdu[ii-1,:,8:11] = dVdu5
+        dVdu[ii-1,:,11] = dVdu6
+
+    bb = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
+    M = np.zeros((len(bb), 4*(N)))
+    for ii in np.arange(0,N-2):
+        M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
+    uu = M.T@np.linalg.inv(M@M.T)@bb
+
+    deltas = np.reshape(uu,(N,4))*.3
+    dInitialPos = deltas[0:-1,0:3]
+    dFinalPos = deltas[1:,0:3]
+    dInitialEpoches = deltas[:,-1]
+        
+    return dInitialEpoches, dInitialPos, dFinalPos, bb
