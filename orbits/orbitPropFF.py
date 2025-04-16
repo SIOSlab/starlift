@@ -21,10 +21,11 @@ import pdb
 coord.solar_system.solar_system_ephemeris.set('de440')
 
 # Parameters
+orbs = 1
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d  # + 1*u.yr/4
 t_start = Time(57727, format='mjd', scale='utc')
-days = 6
+days = 14*orbs
 days_can = unitConversion.convertTime_to_canonical(days * u.d)
 mu_star = 1.215059*10**(-2)
 m1 = (1 - mu_star)
@@ -34,7 +35,8 @@ m2 = mu_star
 #IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
 # IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]  # DRO, 0.9697497-day period
 #IC = [0.429519110229904, 0, 0, 0, 1.440796689672539, 0, 3.051133070334277]
-IC = [1.165130674583613, 0, -0.110699848144854, 0, 0.201519926517907, 0, 1.652428300688599]
+#IC = [1.165130674583613, 0, -0.110699848144854, 0, 0.201519926517907, 0, 1.652428300688599]
+IC = [1.114959432252717, 0, -0.027057507726036, 0, 0.191674660415012, 0, 3.403442494940593/2]
 # Generate new ICs using the free variable and constraint method
 X = [IC[0], IC[2], IC[4], IC[6]]
 max_iter = 1000
@@ -55,10 +57,11 @@ IC = np.array([X[0], 0, X[1], 0, X[2], 0, 2*X[3]])  # Canonical, rotating frame
 
 # Propagate the dynamics (states in AU or AU/day, times in days starting from 0)
 freeVar0CRTBP_R = X.copy()
-freeVar0CRTBP_R[-1] = 2*freeVar0CRTBP_R[-1]
+freeVar0CRTBP_R[-1] = 2*freeVar0CRTBP_R[-1]*orbs
 statesCRTBP_R, timesCRTBP_R = orbitEOMProp.statePropCRTBP_R(freeVar0CRTBP_R, mu_star)  # State is in the R frame
 posCRTBP_R = statesCRTBP_R[:, 0:3]
 velCRTBP_R = statesCRTBP_R[:, 3:6]
+posCRTBP_R_dim = unitConversion.convertPos_to_dim(posCRTBP_R).to('AU')
 #breakpoint()
 # DCM for G frame and I frame
 C_I2G = frameConversion.inert2geo(t_start, t_veq)
@@ -69,7 +72,7 @@ times_dim = unitConversion.convertTime_to_dim(timesCRTBP_R).to('d')
 timesCRTBP_mjd = Time(times_dim.value + t_start.value, format='mjd', scale='utc')
 
 # collect states in H at nodes
-N = 7
+N = 7*orbs
 dt_int = (timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value/(N-1)
 taus = Time(np.zeros(N), format='mjd', scale='utc')
 posvel = np.array([])
@@ -166,7 +169,7 @@ while error2 > eps2 and error2 < 11:
 
             invB = np.linalg.inv(phi[0:3,3:6])
             
-            Rdiff = (Rstar - Rk)
+            Rdiff = (Rstar - Rk)*.618
             dvk = invB@Rdiff
             
             error1 = np.linalg.norm(Rdiff)
@@ -242,10 +245,12 @@ for ii in np.arange(N-1):
     vel_can = unitConversion.convertVel_to_canonical(vel_f*u.AU/u.d)
     pos_I, vel_I = frameConversion.convertSC_H2I(pos_can, vel_can, initialEpoches[ii+1], C_I2G)
     NF_MS_I = np.vstack((NF_MS_I, pos_jj_I))
+    pos_MS_I = np.vstack((pos_MS_I, MS_I))
     
     C_I2R = frameConversion.inert2rot(initialEpoches[ii+1],t_start)
     pos_R = C_I2R@pos_I
     NF_MS_R = np.vstack((NF_MS_R, pos_jj_R))
+    pos_MS_R = np.vstack((pos_MS_R, MS_R))
         
     pos_MS_I = np.vstack((pos_MS_I, pos_jj_I))
     NI_MS_I = np.vstack((NI_MS_I, MS_I[1]))
@@ -259,13 +264,18 @@ ax10.scatter(NI_MS_H[:, 0], NI_MS_H[:, 1], NI_MS_H[:, 2], marker='s')
 ax10.scatter(NF_MS_H[:, 0], NF_MS_H[:, 1], NF_MS_H[:, 2], marker='o')
 
 ax20 = plt.figure().add_subplot(projection='3d')
-ax20.plot(pos_MS_I[:, 0], pos_MS_I[:, 1], pos_MS_I[:, 2], 'b', label='I frame FF')
-ax20.plot(pos_SC[:, 0], pos_SC[:, 1], pos_SC[:, 2], 'r', label='I frame CRTBP')
+ax20.plot(pos_MS_I[:, 0], pos_MS_I[:, 1], pos_MS_I[:, 2], 'b', label='Ephemeris Model')
+ax20.plot(pos_SC[:, 0], pos_SC[:, 1], pos_SC[:, 2], 'r', label='CRTBP Model')
 ax20.scatter(NI_MS_I[:, 0], NI_MS_I[:, 1], NI_MS_I[:, 2], marker='s')
 ax20.scatter(NF_MS_I[:, 0], NF_MS_I[:, 1], NF_MS_I[:, 2], marker='o')
+ax20.set_xlabel('X [AU]')
+ax20.set_ylabel('Y [AU]')
+ax20.set_zlabel('Z [AU]')
+ax20.set_title('Earth-Moon Inertial Frame')
 
 ax30 = plt.figure().add_subplot(projection='3d')
 ax30.plot(pos_MS_R[:, 0], pos_MS_R[:, 1], pos_MS_R[:, 2], 'b', label='R frame')
+ax30.plot(posCRTBP_R_dim[:,0],posCRTBP_R_dim[:,1],posCRTBP_R_dim[:,2],'r', label='CRTBP')
 ax30.scatter(NI_MS_R[:, 0], NI_MS_R[:, 1], NI_MS_R[:, 2], marker='s')
 ax30.scatter(NF_MS_R[:, 0], NF_MS_R[:, 1], NF_MS_R[:, 2], marker='o')
 

@@ -93,7 +93,6 @@ pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)
 
 # Propagate the dynamics (states in AU or AU/day, times in days starting from 0)
-breakpoint()
 states, times = orbitEOMProp.statePropFF(state0, t_start)  # State is in the H frame
 pos = states[:, 0:3]
 vel = states[:, 3:6]
@@ -193,3 +192,32 @@ animate_func_I, ani_object_I = plot_tools.create_animation(times, days, desired_
 # writergif = animation.PillowWriter(fps=30)
 # ani_object_I.save('plotFigures/FF STK earth point mass 100 days.gif', writer=writergif)
 # # ani_object_H.save('plotFigures/FF DRO H frame.gif', writer=writergif)
+
+pos_diff = (interp_stk_posinert - pos_SC)*u.AU.to('km')
+times = times_mjd.value - times_mjd[0].value
+breakpoint()
+fig3, ax3 = plt.subplots(3,1)
+ax3[0].plot(times, pos_diff[:, 0])
+ax3[0].set_ylabel('X [km]')
+ax3[1].plot(times, pos_diff[:, 1])
+ax3[1].set_ylabel('Y [km]')
+ax3[2].plot(times, pos_diff[:, 2])
+ax3[2].set_xlabel('time [d]')
+ax3[2].set_ylabel('Z [km]')
+
+inds_orb = np.argwhere(times < 6)[:,0]
+times_orb = times[inds_orb]
+pos_diff_orb = pos_diff[inds_orb,:]
+fig4, ax4 = plt.subplots(3,1)
+ax4[0].plot(times_orb, pos_diff_orb[:, 0])
+ax4[0].set_ylabel('X [km]')
+ax4[0].set_xlim([0, 6])
+ax4[1].plot(times_orb, pos_diff_orb[:, 1])
+ax4[1].set_ylabel('Y [km]')
+ax4[1].set_xlim([0, 6])
+ax4[2].plot(times_orb, pos_diff_orb[:, 2])
+ax4[2].set_xlabel('time [d]')
+ax4[2].set_ylabel('Z [km]')
+ax4[2].set_xlim([0, 6])
+plt.show()
+breakpoint()
