@@ -170,6 +170,65 @@ def FF_EOM(tt, w, t_mjd):
     dw = [vx, vy, vz, ax, ay, az]
     
     return dw
+    
+def FF_EOM_R(tt, w, t_mjd, C_I2G):
+    """Equations of motion for the full force model in the Rotating frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w
+    
+    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
+    gmEarth = const.GM_earth.to('AU3/d2').value
+    gmMoon = 0.109318945437743700E-10              # from de432s header
+    
+    r_PEM = np.array([x, y, z])  # AU
+    v_PEM = np.array([vx, vy, vz])  # AU/d
+
+    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_SunEM, r_EarthEM, r_MoonEM = frameConversion.getSunEarthMoon(time, C_I2G)
+    
+    # Distance vectors
+    r_PSun = r_PEM - r_SunEM.value
+    r_PEarth = r_PEM - r_EarthEM.value
+    r_PMoon = r_PEM - r_MoonEM.value
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
+    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
+        
+    omega = np.array([0, 0, 2*np.pi/27.321582])
+    
+    a_PO = F_g - 2 * np.cross(omega, v_PEM) - np.cross(omega, np.cross(omega, r_PEM))
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    
+    return dw
 
 def FF_STM(tt, w, t_mjd):
     """Equations of motion for the full force model in the ICRS frame

@@ -747,11 +747,11 @@ def getSunEarthMoon(currentTime, C_I2G):
                 3x3 Array for the directional cosine matrix
 
         Returns:
-            r_SunEM_r (astropy Quantity array):
+            r_SunEM (astropy Quantity array):
                 Position vector for the Sun in the I frame [AU]
-            r_EarthEM_r (astropy Quantity array):
+            r_EarthEM (astropy Quantity array):
                 Position vector for the Earth in the I frame [AU]
-            r_MoonEM_r (astropy Quantity array):
+            r_MoonEM (astropy Quantity array):
                 Position vector for the Moon in the I frame [AU]
 
         """
@@ -775,8 +775,8 @@ def getSunEarthMoon(currentTime, C_I2G):
     r_MoonG = r_MoonGMEc - r_EMGMEc
 
     # Convert from G frame (in km) to I frame (in AU)
-    r_SunEM_r = C_G2I @ r_SunG.to('AU')
-    r_EarthEM_r = C_G2I @ r_EarthG.to('AU')
-    r_MoonEM_r = C_G2I @ r_MoonG.to('AU')
+    r_SunEM = C_G2I @ r_SunG.to('AU')
+    r_EarthEM = C_G2I @ r_EarthG.to('AU')
+    r_MoonEM = C_G2I @ r_MoonG.to('AU')
 
-    return r_SunEM_r, r_EarthEM_r, r_MoonEM_r
+    return r_SunEM, r_EarthEM, r_MoonEM
