@@ -198,9 +198,15 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
 
     time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
 
-    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    # Get Sun, Moon, and Earth positions at the current time in the I frame [AU]
     r_SunEM, r_EarthEM, r_MoonEM = frameConversion.getSunEarthMoon(time, C_I2G)
     
+    # Convert to rotating frame
+    C_I2R = frameConversion.inert2rot(time, t_mjd)
+    r_SunEM = C_I2R@r_SunEM
+    r_EarthEM = C_I2R@r_EarthEM
+    r_MoonEM = C_I2R@r_MoonEM
+
     # Distance vectors
     r_PSun = r_PEM - r_SunEM.value
     r_PEarth = r_PEM - r_EarthEM.value
@@ -217,7 +223,7 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
 
     F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
-        
+    
     omega = np.array([0, 0, 2*np.pi/27.321582])
     
     a_PO = F_g - 2 * np.cross(omega, v_PEM) - np.cross(omega, np.cross(omega, r_PEM))
@@ -403,6 +409,34 @@ def statePropFF(state0, t_mjd, timesTMP=None):
     T = state0[-1]  # days
 
     sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
+#    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
+
+    states = sol_int.y.T
+    times = sol_int.t
+    
+    return states, times
+    
+def statePropFF_R(state0, t_mjd, C_I2G, timesTMP=None):
+    """Propagates the dynamics using the free variables in the full force model
+
+    Args:
+        state0 (~numpy.ndarray(float)):
+            Position [AU], velocity [AU/d], and propagation time [days] in the H frame
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        tuple:
+        states ~numpy.ndarray(float):
+            Positions and velocities in AU and AU/d
+        times ~numpy.ndarray(float):
+            Times in days
+
+    """
+    
+    T = state0[-1]  # days
+
+    sol_int = solve_ivp(FF_EOM_R, [0, T], state0[0:6], args=(t_mjd,C_I2G), rtol=1E-12, atol=1E-12, method='LSODA')
 #    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
 
     states = sol_int.y.T
@@ -801,10 +835,10 @@ def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_st
         v3minus = finalStates[ii, 3:6].T
 
         current_time = (initialEpoches[ii] - t_start).value
-        state2minus = FF_EOM(current_time, finalStates[ii-1,:], t_start)
+        state2minus = FF_EOM_R(current_time, finalStates[ii-1,:], t_start, C_I2G)
         a2minus = state2minus[3:6]
         a2minus = np.array(a2minus)
-        state2plus  = FF_EOM(current_time, initialStates[ii,:], t_start)
+        state2plus  = FF_EOM_R(current_time, initialStates[ii,:], t_start, C_I2G)
         a2plus = state2plus[3:6]
         a2plus = np.array(a2plus)
         

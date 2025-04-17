@@ -191,13 +191,31 @@ while error2 > eps2 and error2 < 11:
         
 #    breakpoint()
     print("layer 2")
-    dv = np.array([])
     
-    dInitialEpoches, dInitialPos, dFinalPos, minus_dv = orbitEOMProp.multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_start)
+    can_initialPos = unitConversion.convertPos_to_canonical(initialStates[:,0:3]*u.AU)
+    can_finalPos = unitConversion.convertPos_to_canonical(finalStates[:,0:3]*u.AU)
+    can_initialVel = unitConversion.convertVel_to_canonical(initialStates[:,3:6]*u.AU/u.d)
+    can_finalVel = unitConversion.convertVel_to_canonical(finalStates[:,3:6]*u.AU/u.d)
+    conv_initialStates = np.zeros((N-1,6))
+    conv_finalStates = np.zeros((N-1,6))
+    for jj in np.arange(N-1):
+        initialPos_jj, initialVel_jj = frameConversion.convertSC_H2I(can_initialPos[jj, :], can_initialVel[jj, :], initialEpoches[jj], C_I2G)
+        state_initial = np.append(initialPos_jj, initialVel_jj)
+        finalPos_jj, finalVel_jj = frameConversion.convertSC_H2I(can_finalPos[jj, :], can_finalVel[jj, :], initialEpoches[jj+1], C_I2G)
+        state_final = np.append(finalPos_jj, finalVel_jj)
+        initialPos_R, initialVel_R = frameConversion.convertSC_I2R(t_start, initialEpoches[jj], C_I2G, state_initial, mu_star)
+        finalPos_R, finalVel_R = frameConversion.convertSC_I2R(t_start, initialEpoches[jj+1], C_I2G, state_final, mu_star)
+        conv_initialStates[jj,0:3] = unitConversion.convertPos_to_dim(initialPos_R).to('AU').value
+        conv_initialStates[jj,3:6] = unitConversion.convertVel_to_dim(initialVel_R).to('AU/d').value
+        conv_finalStates[jj,0:3] = unitConversion.convertPos_to_dim(finalPos_R).to('AU').value
+        conv_finalStates[jj,3:6] = unitConversion.convertVel_to_dim(finalVel_R).to('AU/d').value
+        
+    # Need to recompute the STMs
+    dInitialEpoches, dInitialPos, dFinalPos, minus_dv = orbitEOMProp.multiShooting2(initialEpoches, conv_initialStates, conv_finalStates, C_G2I, STMs, t_start)
 
     initialEpoches = dInitialEpoches*u.d + initialEpoches
-    initialStates[:,0:3] = dInitialPos + initialStates[:,0:3]
-    finalStates[:,0:3] = dFinalPos + finalStates[:,0:3]
+    conv_initialStates[:,0:3] = dInitialPos + conv_initialStates[:,0:3]
+    conv_finalStates[:,0:3] = dFinalPos + conv_finalStates[:,0:3]
 
     error2 = np.linalg.norm(minus_dv)
 

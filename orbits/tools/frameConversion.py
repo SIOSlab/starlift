@@ -404,9 +404,9 @@ def icrs2rot(pos, currentTime, startTime, C_G2I):
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
 
     # pos = pos * u.AU
-    r_PE_gmec = icrs2gmec(pos, startTime)
+    r_PE_gmec = icrs2gmec(pos, currentTime)
     r_rot = r_PE_gmec
-    r_EME_gmec = icrs2gmec(r_EMG_icrs, startTime)
+    r_EME_gmec = icrs2gmec(r_EMG_icrs, currentTime)
     r_PEM = r_PE_gmec - r_EME_gmec
 
     C_I2R = inert2rot(currentTime, startTime)
@@ -702,6 +702,8 @@ def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
     return pos_I, vel_I
 
 def convertSC_R2I(t_start, t_current, C_I2G, state, mu_star):
+    # canonical units
+    
     C_I2R = inert2rot(t_current, t_start)
     C_R2I = C_I2R.T
     # Get position of the moon at the epoch in the inertial frame
@@ -718,7 +720,7 @@ def convertSC_R2I(t_start, t_current, C_I2G, state, mu_star):
 
     # Convert the velocity to I frame from R frame (position is the same in both)
 #    vO = rot2inertV(np.array(IC[0:3]), np.array(state[3:6]), 0)
-    vO = rot2inertV(state[0:3], np.array(state[3:6]), 0)
+    vO = rot2inertV(np.array(state[0:3]), np.array(state[3:6]), 0)
 
     # Rotate velocity vector to match the epoch moon (I frame)
     theta = np.arccos((np.dot(moon_I_can, ideal_moon_I))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon_I)))
@@ -736,6 +738,35 @@ def convertSC_R2I(t_start, t_current, C_I2G, state, mu_star):
     print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
 #    breakpoint()
     return pos_dimrot, vel_dimrot, IC
+    
+def convertSC_I2R(t_start, t_current, C_I2G, state, mu_star):
+    # canonical units
+    
+        
+    C_I2R = inert2rot(t_current, t_start)
+    C_R2I = C_I2R.T
+    
+    # Get position of the moon at the epoch in the inertial frame
+    sun_I, earth_I, moon_I = getSunEarthMoon(t_current, C_I2G)  # I frame [AU]
+    moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+    
+    # Transform position ICs to the epoch moon
+    ideal_moon = np.array([1-mu_star, 0, 0])
+#    IC[0:3] = C_R2I@(state[0:3] - ideal_moon) + moon_I_can
+    pos = C_R2I@state[0:3]
+    ideal_moon_I = C_R2I@ideal_moon
+    
+    # I frame DCM correction to account for real moon rotated from ICRS vs idealized moon rotated from R
+    theta = np.arccos((np.dot(moon_I_can, ideal_moon_I))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon_I)))
+    if theta > np.pi/2:
+        theta = -theta
+    C_IR2IH = rot(theta, 3)
+    C_IH2IR = C_IR2IH.T
+    
+    vel_adjI = C_IH2IR@state[3:6]
+    vel = inert2rotV(state[0:3], vel_adjI, 0)
+    
+    return pos, vel
 
 def getSunEarthMoon(currentTime, C_I2G):
     """Retrieves the position of the Sun, Earth, and Moon at a given time in AU in the I frame
