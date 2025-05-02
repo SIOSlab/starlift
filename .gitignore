@@ -11,7 +11,11 @@ __pycache__/
 *.jpeg
 *.svg
 *.gif
+*.tpc
+*.bsp
+*.BSP
+*.tls
 
 #GraceFiles
-*sandbox.py
+*sandbox*.py
 

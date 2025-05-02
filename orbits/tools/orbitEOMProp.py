@@ -193,8 +193,8 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
     gmEarth = const.GM_earth.to('AU3/d2').value
     gmMoon = 0.109318945437743700E-10              # from de432s header
     
-    r_PEM = np.array([x, y, z])  # AU
-    v_PEM = np.array([vx, vy, vz])  # AU/d
+    r_PM = np.array([x, y, z])  # AU
+    v_PM = np.array([vx, vy, vz])  # AU/d
 
     time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
 
@@ -211,26 +211,30 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
     r_PSun = r_PEM - r_SunEM.value
     r_PEarth = r_PEM - r_EarthEM.value
     r_PMoon = r_PEM - r_MoonEM.value
+    r_EM = r_EarthEM - r_MoonEM.value
+    r_SM = r_SunEM - r_MoonEM.value
 
     # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
+    rEM_mag = np.linalg.norm(rEM)
+    rSM_mag = np.linalg.norm(rSM)
 
     # Equations of motion
-    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
-    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
+    F_gSun_p = -gmSun*((r_PSun/rSun_mag**3) - (r_SM/rSM_mag**3))
+    F_gEarth_p = -gmEarth*((r_PEarth/rEarth_mag**3) - (r_EM/rEM_mag**3))
     F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
 
     F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
     
     omega = np.array([0, 0, 2*np.pi/27.321582])
     
-    a_PO = F_g - 2 * np.cross(omega, v_PEM) - np.cross(omega, np.cross(omega, r_PEM))
+    a_PM = F_g - 2 * np.cross(omega, v_PEM) - np.cross(omega, np.cross(omega, r_PEM))
     
-    ax = a_PO[0]
-    ay = a_PO[1]
-    az = a_PO[2]
+    ax = a_PM[0]
+    ay = a_PM[1]
+    az = a_PM[2]
 
     dw = [vx, vy, vz, ax, ay, az]
     
