@@ -112,7 +112,73 @@ def CRTBP_EOM_R(t, w, mu_star):
     return dw
 
 
-def FF_EOM(tt, w, t_mjd):
+def FF_EOM(tt, w, t_mjd, GM):
+    """Equations of motion for the full force model in the ICRS frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w
+    
+    gmSun = GM[0]        # in AU^3/d^2
+    gmEarth = GM[1]
+    gmMoon = GM[2]       # from de432s header
+    
+    r_PM = np.array([x, y, z])  # AU
+    v_PM = np.array([vx, vy, vz])  # AU/d
+
+    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz()
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz()
+    r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz()
+    
+    r_SunE = icrs2gcrs(r_SunO, time).to_value(u.AU)
+    r_MoonE = icrs2gcrs(r_SunO, time).to_value(u.AU)
+    r_EME = icrs2gcrs(r_EMO, time).to_value(u.AU)
+    
+    # Distance vectors
+    r_PSun = r_PM + r_MoonE - r_SunE
+    r_PEarth = r_PM + r_MoonE
+    r_SM = r_MoonE - r_SunE
+    r_EM = -r_MoonE
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PM)
+    rSM_mag = np.linalg.norm(r_SM)
+    rEM_mag = np.linalg.norm(r_EM)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*((r_PSun/rSun_mag**3) - (r_SM/rSM_mag**3))
+    F_gEarth_p = -gmEarth*((r_PEarth/rEarth_mag**3) - (r_EM/rEM_mag**3))
+    F_gMoon_p = -gmMoon*(r_PM/rMoon_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
+    
+    a_PO = F_g
+    
+    ax = a_PO[0]
+    ay = a_PO[1]
+    az = a_PO[2]
+
+    dw = [vx, vy, vz, ax, ay, az]
+    
+    return dw
+
+def FF_EOM2(tt, w, t_mjd):
     """Equations of motion for the full force model in the ICRS frame
 
     Args:
@@ -171,7 +237,7 @@ def FF_EOM(tt, w, t_mjd):
     
     return dw
     
-def FF_EOM_R(tt, w, t_mjd, C_I2G):
+def FF_EOM_R(tt, w, t_mjd, C_I2G, GM):
     """Equations of motion for the full force model in the Rotating frame
 
     Args:
@@ -189,14 +255,13 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
     # H frame
     [x, y, z, vx, vy, vz] = w
     
-    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
-    gmEarth = const.GM_earth.to('AU3/d2').value
-    gmMoon = 0.109318945437743700E-10              # from de432s header
+    gmSun = GM[0]        # in AU^3/d^2
+    gmEarth = GM[1]
+    gmMoon = GM[2]       # from de432s header
     
     r_PM = np.array([x, y, z])  # AU
     v_PM = np.array([vx, vy, vz])  # AU/d
-
-    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+    time = tt + t_mjd   # Current mission time in mjd (astropy time array, tt in days from 0)
 
     # Get Sun, Moon, and Earth positions at the current time in the I frame [AU]
     r_SunEM, r_EarthEM, r_MoonEM = frameConversion.getSunEarthMoon(time, C_I2G)
@@ -208,18 +273,18 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
     r_MoonEM = C_I2R@r_MoonEM
 
     # Distance vectors
-    r_PSun = r_PEM - r_SunEM.value
-    r_PEarth = r_PEM - r_EarthEM.value
-    r_PMoon = r_PEM - r_MoonEM.value
-    r_EM = r_EarthEM - r_MoonEM.value
-    r_SM = r_SunEM - r_MoonEM.value
+    r_PSun = r_PM + r_MoonEM - r_SunEM
+    r_PEarth = r_PM + r_MoonEM - r_EarthEM
+    r_PMoon = r_PM
+    r_EM = r_EarthEM - r_MoonEM
+    r_SM = r_SunEM - r_MoonEM
 
     # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
     rMoon_mag = np.linalg.norm(r_PMoon)
-    rEM_mag = np.linalg.norm(rEM)
-    rSM_mag = np.linalg.norm(rSM)
+    rEM_mag = np.linalg.norm(r_EM)
+    rSM_mag = np.linalg.norm(r_SM)
 
     # Equations of motion
     F_gSun_p = -gmSun*((r_PSun/rSun_mag**3) - (r_SM/rSM_mag**3))
@@ -228,20 +293,20 @@ def FF_EOM_R(tt, w, t_mjd, C_I2G):
 
     F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
     
-    omega = np.array([0, 0, 2*np.pi/27.321582])
+    omega = -np.array([0, 0, 2*np.pi/27.321582])
     
-    a_PM = F_g - 2 * np.cross(omega, v_PEM) - np.cross(omega, np.cross(omega, r_PEM))
+    a_PE = F_g - 2 * np.cross(omega, v_PM) - np.cross(omega, np.cross(omega, r_PM))
     
-    ax = a_PM[0]
-    ay = a_PM[1]
-    az = a_PM[2]
+    ax = a_PE[0]
+    ay = a_PE[1]
+    az = a_PE[2]
 
     dw = [vx, vy, vz, ax, ay, az]
     
     return dw
-
-def FF_STM(tt, w, t_mjd):
-    """Equations of motion for the full force model in the ICRS frame
+    
+def FF_STM(tt, w, t_mjd, C_I2G, GM):
+    """Equations of motion for the full force model in the rotating frame
 
     Args:
         w (~numpy.ndarray(float)):
@@ -258,52 +323,165 @@ def FF_STM(tt, w, t_mjd):
     # H frame
     [x, y, z, vx, vy, vz] = w[0:6]
     
-    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
-    gmEarth = const.GM_earth.to('AU3/d2').value
-    gmMoon = 0.109318945437743700E-10              # from de432s header
-    GM = np.array([gmSun, gmEarth, gmMoon])
+    gmSun = GM[0]        # in AU^3/d^2
+    gmEarth = GM[1]
+    gmMoon = GM[2]       # from de432s header
     
-    r_PO = np.array([x, y, z])  # AU
-    v_PO = np.array([vx, vy, vz])  # AU/d
+    r_PM = np.array([x, y, z])  # AU
+    v_PM = np.array([vx, vy, vz])  # AU/d
 
     time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
 
     # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
-    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU').value
-    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU').value
-    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU').value
-    r_bodies = np.vstack((r_SunO, np.vstack((r_EarthO, r_MoonO))))
-        
+    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz()
+    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz()
+    r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', time)[0].get_xyz()
+    
+    r_SunE = icrs2gcrs(r_SunO, time).to_value(u.AU)
+    r_MoonE = icrs2gcrs(r_SunO, time).to_value(u.AU)
+    r_EME = icrs2gcrs(r_EMO, time).to_value(u.AU)
+    
     # Distance vectors
-    r_PSun = r_PO - r_SunO
-    r_PEarth = r_PO - r_EarthO
-    r_PMoon = r_PO - r_MoonO
+    r_PSun = r_PM + r_MoonE - r_SunE
+    r_PEarth = r_PM + r_MoonE
+    r_SM = r_MoonE - r_SunE
+    r_EM = -r_MoonE
 
     # Magnitudes
     rSun_mag = np.linalg.norm(r_PSun)
     rEarth_mag = np.linalg.norm(r_PEarth)
-    rMoon_mag = np.linalg.norm(r_PMoon)
+    rMoon_mag = np.linalg.norm(r_PM)
+    rSM_mag = np.linalg.norm(r_SM)
+    rEM_mag = np.linalg.norm(r_EM)
 
     # Equations of motion
-    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
-    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
-    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+    F_gSun_p = -gmSun*((r_PSun/rSun_mag**3) - (r_SM/rSM_mag**3))
+    F_gEarth_p = -gmEarth*((r_PEarth/rEarth_mag**3) - (r_EM/rEM_mag**3))
+    F_gMoon_p = -gmMoon*(r_PM/rMoon_mag**3)
 
     F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
     
-    a_PO = F_g
+    a_PM = F_g
     
-    ax = a_PO[0]
-    ay = a_PO[1]
-    az = a_PO[2]
+    ax = a_PM[0]
+    ay = a_PM[1]
+    az = a_PM[2]
     
     Z = np.zeros([3, 3])
     I = np.identity(3)
     A = np.zeros([3, 3])
     
     for ii in np.arange(3):
-        # P is the planet
-        # xyz is the spacecraft
+        # P is the planet rel moon
+        # xyz is the spacecraft rel moon
+        P = r_bodies[ii,:]
+        px = P[0]
+        py = P[1]
+        pz = P[2]
+
+        Rpower3 = ((px - x)**2 + (py - y)**2 + (pz - z)**2)**(3/2)
+        Rpower5 = ((px - x)**2 + (py - y)**2 + (pz - z)**2)**(5/2)
+        threeGM = 3*GM[ii]
+        
+        A[0,0] = A[0,0] + (threeGM*(px - x)*(px - x))/(Rpower5) - GM[ii]/Rpower3
+        A[0,1] = A[0,1] + (threeGM*(py - y)*(px - x))/(Rpower5)
+        A[0,2] = A[0,2] + (threeGM*(pz - z)*(px - x))/(Rpower5)
+        A[1,0] = A[0,1]
+        A[1,1] = A[1,1] + (threeGM*(py - y)*(py - y))/(Rpower5) - GM[ii]/Rpower3
+        A[1,2] = A[1,2] + (threeGM*(pz - z)*(py - y))/(Rpower5)
+        A[2,0] = A[0,2]
+        A[2,1] = A[1,2]
+        A[2,2] = A[2,2] + (threeGM*(pz - z)*(pz - z))/(Rpower5) - GM[ii]/Rpower3
+    
+    J = np.block([[Z, I], [A, Z]])
+    
+    phi = np.reshape(w[6:],(6,6))
+    phi_new = J@phi
+    
+    phi_new = np.reshape(phi_new, (1,36))[0]
+    dEOM = np.array([vx, vy, vz, ax, ay, az])
+    dw = np.append(dEOM,phi_new)
+    dw = dw.tolist()
+    
+    return dw
+
+def FF_STM2(tt, w, t_mjd, C_I2G, GM):
+    """Equations of motion for the full force model in the rotating frame
+
+    Args:
+        w (~numpy.ndarray(float)):
+            State [position in AU, velocity in AU/d]
+        t_mjd (astropy Time):
+            Mission start time in MJD
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+
+    # H frame
+    [x, y, z, vx, vy, vz] = w[0:6]
+    
+    gmSun = GM[0]        # in AU^3/d^2
+    gmEarth = GM[1]
+    gmMoon = GM[2]       # from de432s header
+    
+    r_PM = np.array([x, y, z])  # AU
+    v_PM = np.array([vx, vy, vz])  # AU/d
+
+    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
+
+    # Get Sun, Moon, and Earth positions at the current time in the I frame [AU]
+    r_SunEM_i, r_EarthEM_i, r_MoonEM_i = frameConversion.getSunEarthMoon(time, C_I2G)
+    
+    # Convert to rotating frame
+    C_I2R = frameConversion.inert2rot(time, t_mjd)
+    r_SunEM = C_I2R@r_SunEM_i
+    r_EarthEM = C_I2R@r_EarthEM_i
+    r_MoonEM = C_I2R@r_MoonEM_i
+        
+    # Distance vectors
+    r_PSun = r_PM + r_MoonEM - r_SunEM
+    r_PEarth = r_PM + r_MoonEM - r_EarthEM
+    r_PMoon = r_PM
+    r_EM = r_EarthEM - r_MoonEM
+    r_SM = r_SunEM - r_MoonEM
+    r_bodies = np.vstack((np.vstack((r_SM, r_EM)), np.zeros(3)))
+
+    # Magnitudes
+    rSun_mag = np.linalg.norm(r_PSun)
+    rEarth_mag = np.linalg.norm(r_PEarth)
+    rMoon_mag = np.linalg.norm(r_PMoon)
+    rEM_mag = np.linalg.norm(r_EM)
+    rSM_mag = np.linalg.norm(r_SM)
+
+    # Equations of motion
+    F_gSun_p = -gmSun*((r_PSun/rSun_mag**3) - (r_SM/rSM_mag**3))
+    F_gEarth_p = -gmEarth*((r_PEarth/rEarth_mag**3) - (r_EM/rEM_mag**3))
+    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
+
+    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p
+    
+    omega = -np.array([0, 0, 2*np.pi/27.321582])
+    
+    a_PM = F_g - 2 * np.cross(omega, v_PM) - np.cross(omega, np.cross(omega, r_PM))
+    
+    ax = a_PM[0]
+    ay = a_PM[1]
+    az = a_PM[2]
+    
+    Z = np.zeros([3, 3])
+    I = np.identity(3)
+    A = np.zeros([3, 3])
+    W = np.zeros([3, 3])
+    W[0,1] = 2
+    W[1,0] = -2
+    
+    
+    for ii in np.arange(3):
+        # P is the planet rel moon
+        # xyz is the spacecraft rel moon
         P = r_bodies[ii,:]
         px = P[0]
         py = P[1]
@@ -392,7 +570,7 @@ def statePropCRTBP_R(freeVar, mu_star):
     return states, times
 
 
-def statePropFF(state0, t_mjd, timesTMP=None):
+def statePropFF(state0, t_mjd, GM, timesTMP=None):
     """Propagates the dynamics using the free variables in the full force model
 
     Args:
@@ -410,9 +588,10 @@ def statePropFF(state0, t_mjd, timesTMP=None):
 
     """
     
-    T = state0[-1]  # days
+    ti = state0[-2]
+    tf = state0[-1]  # days
 
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
+    sol_int = solve_ivp(FF_EOM, [ti, tf], state0[0:6], args=(t_mjd,GM), rtol=1E-12, atol=1E-12, method='LSODA')
 #    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
 
     states = sol_int.y.T
@@ -420,7 +599,7 @@ def statePropFF(state0, t_mjd, timesTMP=None):
     
     return states, times
     
-def statePropFF_R(state0, t_mjd, C_I2G, timesTMP=None):
+def statePropFF_R(state0, t_mjd, C_I2G, GM, timesTMP=None):
     """Propagates the dynamics using the free variables in the full force model
 
     Args:
@@ -438,9 +617,10 @@ def statePropFF_R(state0, t_mjd, C_I2G, timesTMP=None):
 
     """
     
-    T = state0[-1]  # days
+    ti = state0[-2]
+    tf = state0[-1]  # days
 
-    sol_int = solve_ivp(FF_EOM_R, [0, T], state0[0:6], args=(t_mjd,C_I2G), rtol=1E-12, atol=1E-12, method='LSODA')
+    sol_int = solve_ivp(FF_EOM_R, [ti, tf], state0[0:6], args=(t_mjd,C_I2G,GM), rtol=1E-12, atol=1E-12, method='LSODA')
 #    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
 
     states = sol_int.y.T
@@ -448,7 +628,7 @@ def statePropFF_R(state0, t_mjd, C_I2G, timesTMP=None):
     
     return states, times
     
-def prop_FF_J(state0, t_mjd, C_I2G):
+def prop_FF_J(state0, t_mjd, C_I2G, GM):
     """Propagates the dynamics using the free variables in the full force model
 
     Args:
@@ -470,7 +650,7 @@ def prop_FF_J(state0, t_mjd, C_I2G):
     Tf = state0[-1]     # days
     state = state0[:-2]
 
-    sol_int = solve_ivp(FF_STM, [Ti, Tf], state, args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
+    sol_int = solve_ivp(FF_STM, [Ti, Tf], state, args=(t_mjd,C_I2G,GM), rtol=1E-12, atol=1E-12, method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t
@@ -818,7 +998,7 @@ def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
 
     return Phi
 
-def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_start):
+def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_start, GM):
     N = len(initialEpoches)     # number of patch points, 0 to N-1
 
     deltaVelocity = initialStates[1:,3:6] - finalStates[:-1,3:6]
@@ -839,10 +1019,10 @@ def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_st
         v3minus = finalStates[ii, 3:6].T
 
         current_time = (initialEpoches[ii] - t_start).value
-        state2minus = FF_EOM_R(current_time, finalStates[ii-1,:], t_start, C_I2G)
+        state2minus = FF_EOM(current_time, finalStates[ii-1,:], t_start, C_I2G, GM)
         a2minus = state2minus[3:6]
         a2minus = np.array(a2minus)
-        state2plus  = FF_EOM_R(current_time, initialStates[ii,:], t_start, C_I2G)
+        state2plus  = FF_EOM(current_time, initialStates[ii,:], t_start, C_I2G, GM)
         a2plus = state2plus[3:6]
         a2plus = np.array(a2plus)
         
@@ -858,8 +1038,137 @@ def multiShooting2(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_st
         dVdu[ii-1,:,7] = dVdu4
         dVdu[ii-1,:,8:11] = dVdu5
         dVdu[ii-1,:,11] = dVdu6
-
+    
     bb = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
+    dvs = bb
+    M = np.zeros((len(bb), 4*(N)))
+    for ii in np.arange(0,N-2):
+        M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
+    uu = M.T@np.linalg.inv(M@M.T)@bb
+
+    deltas = np.reshape(uu,(N,4))*.3
+    dInitialPos = deltas[0:-1,0:3]
+    dFinalPos = deltas[1:,0:3]
+    dInitialEpoches = deltas[:,-1]
+        
+    return dInitialEpoches, dInitialPos, dFinalPos, bb
+    
+def multiShooting22(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_start, GM):
+    N = len(initialEpoches)     # number of patch points, 0 to N-1
+
+    deltaVelocity = initialStates[1:,3:6] - finalStates[:-1,3:6]
+    
+    C_I2G = C_G2I
+    # modify epoch and velocity of all segments at once
+    dVdu = np.zeros((N-2,3,12))         # for all the interior patch points 1 to N-2
+    for ii in np.arange(1,N-1):
+        # starting at ii-1 and going to ii
+
+        stm21 = STMs[ii-1,:,:]
+        stm12 = np.linalg.inv(stm21)
+        stm32 = STMs[ii,:,:]
+        
+        v1plus  = initialStates[ii-1, 3:6].T
+        v2minus = finalStates[ii-1, 3:6].T
+        v2plus  = initialStates[ii, 3:6].T
+        v3minus = finalStates[ii, 3:6].T
+
+        current_time = (initialEpoches[ii] - t_start).value
+        state2minus = FF_EOM_R(current_time, finalStates[ii-1,:], t_start, C_I2G, GM)
+        a2minus = state2minus[3:6]
+        a2minus = np.array(a2minus)
+        state2plus  = FF_EOM_R(current_time, initialStates[ii,:], t_start, C_I2G, GM)
+        a2plus = state2plus[3:6]
+        a2plus = np.array(a2plus)
+        
+        dVdu1 = -np.linalg.inv(stm12[0:3,3:6])
+        dVdu2 = (np.linalg.inv(stm12[0:3,3:6])@v1plus).T
+        dVdu3 = np.linalg.inv(stm12[0:3,3:6])@stm12[0:3,0:3] - np.linalg.inv(stm32[0:3,3:6])@stm32[0:3,0:3]
+        dVdu4 = ((a2plus-a2minus) + (np.linalg.inv(stm32[0:3,3:6])@stm32[0:3,0:3]@v2plus - np.linalg.inv(stm12[0:3,3:6])@stm12[0:3,0:3]@v2minus)).T
+        dVdu5 = np.linalg.inv(stm32[0:3,3:6])
+        dVdu6 = (-np.linalg.inv(stm32[0:3,3:6])@v3minus).T
+        dVdu[ii-1,:,0:3] = dVdu1
+        dVdu[ii-1,:,3] = dVdu2
+        dVdu[ii-1,:,4:7] = dVdu3
+        dVdu[ii-1,:,7] = dVdu4
+        dVdu[ii-1,:,8:11] = dVdu5
+        dVdu[ii-1,:,11] = dVdu6
+        
+#    stm21 = STMs[0,:,:]
+#    A21 = stm21[0:3,0:3]
+#    invB21 = np.linalg.inv(stm21[0:3,3:6])
+#    D21 = stm21[3:6,3:6]
+#    
+#    stm12 = np.linalg.inv(stm21)
+#    A12 = stm12[0:3,0:3]
+#    invB12 = np.linalg.inv(stm12[0:3,3:6])
+#    D12 = stm12[3:6,3:6]
+#
+#    stmN_N1 = STMs[-1,:,:]
+#    AN_N1 = stmN_N1[0:3,0:3]
+#    invBN_N1 = np.linalg.inv(stmN_N1[0:3,3:6])
+#    DN_N1 = stmN_N1[3:6,3:6]
+#    
+#    stmN1_N = np.linalg.inv(stmN_N1)
+#    AN1_N = stmN1_N[0:3,0:3]
+#    invBN1_N = np.linalg.inv(stmN1_N[0:3,3:6])
+#    DN1_N = stmN1_N[3:6,3:6]
+#
+#    v1plus  = initialStates[0, 3:6].T
+#    v2minus = finalStates[0, 3:6].T
+#    vN1plus  = initialStates[-1, 3:6].T
+#    vNminus = finalStates[-1, 3:6].T
+#    
+#    state1_time = (initialEpoches[0] - t_start).value
+#    stateN_time = (initialEpoches[-1] - t_start).value
+#            
+#    state1plus = FF_EOM_R(state1_time, initialStates[0,:], t_start, C_I2G, GM)
+#    a1plus = state1plus[3:6]
+#    a1plus = np.array(a1plus)
+#    stateNminus  = FF_EOM_R(stateN_time, finalStates[-1,:], t_start, C_I2G, GM)
+#    aNminus = stateNminus[3:6]
+#    aNminus = np.array(aNminus)
+#
+#    dadu1 = -invB21@A21
+#    dadu2 = (a1plus - D12@invB12@v1plus).T
+#    dadu3 = invB21
+#    dadu4 = (-invB21@v2minus).T
+#    dadu5 = -invBN1_N
+#    dadu6 = (invBN1_N@vN1plus).T
+#    dadu7 = invBN1_N@AN1_N
+#    dadu8 = (-aNminus + DN_N1@invBN_N1@vNminus).T
+#    dadu9 = np.zeros((3,16))
+#    dadu9[:,0:3] = dadu1
+#    dadu9[:,3] = dadu2
+#    dadu9[:,4:7] = dadu3
+#    dadu9[:,7] = dadu4
+#    dadu9[:,8:11] = dadu5
+#    dadu9[:,11] = dadu6
+#    dadu9[:,12:15] = dadu7
+#    dadu9[:,15] = dadu8
+#    
+#    dadu10 = np.zeros((3,16))
+#    dadu10[0:3,0:3] = np.identity(3)
+#    dadu10[0:3,12:15] = -np.identity(3)
+#
+#    dadu = np.vstack((dadu10, dadu9))
+#
+#    da = initialStates[0, :] - finalStates[-1, :]
+#
+#    dvs = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
+#
+#    bb = np.append(dvs,da)
+#    M = np.zeros((len(bb), 4*(N)))
+#    for ii in np.arange(0,N-2):
+#        M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
+#
+#    M[-6:,0:8] = dadu[:,0:8]
+#    M[-6:,-8:] = dadu[:,8:]
+#
+#    uu = M.T@np.linalg.inv(M@M.T)@bb
+    
+    bb = -np.reshape(deltaVelocity,(1,3*(N-2)))[0]
+    dvs = bb
     M = np.zeros((len(bb), 4*(N)))
     for ii in np.arange(0,N-2):
         M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]

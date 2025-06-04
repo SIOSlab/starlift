@@ -1,0 +1,9 @@
+\begindata
+   KERNELS_TO_LOAD=(
+   'kernels/naif0011.tls',
+    'kernels/de440.bsp',
+	'kernels/EM_MoonCenteredRotation.fk',
+	'kernels/MoonCenteredInertial.fk',
+'kernels/gm_de440.tpc'
+    )
+\begintext
