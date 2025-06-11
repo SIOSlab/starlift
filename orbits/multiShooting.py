@@ -3,221 +3,6 @@ import spiceypy as spice
 from scipy.integrate import solve_ivp
 from matplotlib import pyplot as plt
 
-#def multipleShootingR(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, omega_m):
-#
-#    iterationNumberLevelTwoMax = 200
-#
-#    N = len(initialEpoches)
-#
-#    iterationNumberLevelTwo = 1
-#    correctedInitialEpoches = initialEpoches.copy()
-#    correctedInitialStates = initialStates.copy()
-#    correctedFinalStates = initialStates[1:,:].copy()
-#    
-#    deltaV = 1
-#    while deltaV > velocityTolerance:
-#        stateTransitionMatrixes = np.zeros((N,6,6))
-#        exitflag = np.zeros((N,1))
-#        exitFlagLevel1 = np.zeros((N-1,1))
-#        correctedFinalStates = np.zeros((N-1,6))
-#        STMs = np.zeros((N-1,6,6))
-#        print('level-1 position shooting')
-##        ax10 = plt.figure().add_subplot(projection='3d')
-#        for ii in np.arange(N-1):
-#            cInitial, cFinal, STM, exitFlag1 = positionShooting(correctedInitialEpoches[ii], correctedInitialStates[ii,:], correctedInitialEpoches[ii+1], correctedInitialStates[ii+1,:], positionTolerance, GM, omega_m)
-#            correctedInitialStates[ii,:] = cInitial
-#            correctedFinalStates[ii,:] = cFinal
-#            STMs[ii,:,:] = STM
-#            exitFlagLevel1[ii] = exitFlag1
-#            if not exitFlagLevel1[ii]:
-#                print('# !!! fail: segment '+str(ii)+' fails at the level-1 shooting.')
-#                deltaV = -1
-#                break
-#            else:
-#                print('#      segment '+str(ii)+' done.')
-#            
-##            Ts = correctedInitialEpoches[ii:ii+2]
-##            times, states = statePropFFI(Ts, correctedInitialStates[ii,:], GM)
-##
-##            ax10.plot(states[:, 0], states[:, 1], states[:, 2], 'b', label='Multi Segment')
-#
-#        print('#    level-1 done.')
-##        plt.show()
-##        breakpoint()
-#        # plot level-1 shooting results
-##        figure(99); clf; PlotInitialState(dynamicFcn, correctedInitialEpoches, correctedInitialStates);
-#        
-#        # test failure
-#        if np.any(exitFlagLevel1 != 1):
-#            exitflag = -2
-#            break
-#        
-#        #---- level-2 shooting ----
-#        # collcect the target error
-#        deltaVelocity = correctedFinalStates[:-1,3:6] - correctedInitialStates[1:-1,3:6]
-#        deltaVelocity = np.reshape(deltaVelocity,(1,3*(N-2)))[0]
-#        deltaV = np.linalg.norm(deltaVelocity)
-#        print('#  level-2 iter '+str(iterationNumberLevelTwo)+' norm: '+str(deltaV))
-#        
-#        # test early stop
-#        if deltaV < velocityTolerance:
-#            exitflag = 1
-#            print('# multiple-shooting success. norm(dV) = '+str(deltaV))
-#            break
-#        
-#        # modify epoch and velocity of all segments at once
-#        # after one modification, shooting position again
-#        dVdu = np.zeros((N-2,3,12))         # for all the interior patch points 1 to N-2
-#        for ii in np.arange(1,N-1):
-#            # generate state relationship matrix
-#            stm21 = STMs[ii-1, :, :]
-#            stm12 = np.linalg.inv(stm21)
-#            stm32 = STMs[ii, :, :]
-#
-#            v1plus  = correctedInitialStates[ii-1, 3:6]
-#            v2minus = correctedFinalStates[ii-1, 3:6]
-#            v2plus  = correctedInitialStates[ii, 3:6]
-#            v3minus = correctedFinalStates[ii, 3:6]
-#
-#            a2minus = ffRotating(correctedInitialEpoches[ii], correctedFinalStates[ii-1, :], GM, omega_m)
-#            a2minus = a2minus[3:6]
-#            a2plus  = ffRotating(correctedInitialEpoches[ii], correctedInitialStates[ii, :], GM, omega_m)
-#            a2plus = a2plus[3:6]
-#
-#            dVdu1 = -np.linalg.inv(stm12[0:3,3:6])
-#            dVdu2 = np.linalg.inv(stm12[0:3,3:6])@v1plus
-#            dVdu3 = -np.linalg.inv(stm32[0:3,3:6])@stm32[0:3,0:3] + np.linalg.inv(stm12[0:3,3:6])@stm12[0:3,0:3]
-#            dVdu4 = (a2plus-a2minus) + (np.linalg.inv(stm32[0:3,3:6])@stm32[0:3,0:3]@v2plus - np.linalg.inv(stm12[0:3,3:6])@stm12[0:3,0:3]@v2minus)
-#            dVdu5 = np.linalg.inv(stm32[0:3,3:6])
-#            dVdu6 = -np.linalg.inv(stm32[0:3,3:6])@v3minus
-#            
-#            dVdu[ii-1,:,0:3] = dVdu1
-#            dVdu[ii-1,:,3] = dVdu2
-#            dVdu[ii-1,:,4:7] = dVdu3
-#            dVdu[ii-1,:,7] = dVdu4
-#            dVdu[ii-1,:,8:11] = dVdu5
-#            dVdu[ii-1,:,11] = dVdu6
-#            
-##        stm21 = STMs[0,:,:]
-##        A21 = stm21[0:3,0:3]
-##        invB21 = np.linalg.inv(stm21[0:3,3:6])
-##        D21 = stm21[3:6,3:6]
-##
-##        stm12 = np.linalg.inv(stm21)
-##        A12 = stm12[0:3,0:3]
-##        invB12 = np.linalg.inv(stm12[0:3,3:6])
-##        D12 = stm12[3:6,3:6]
-##
-##        stmN_N1 = STMs[-1,:,:]
-##        AN_N1 = stmN_N1[0:3,0:3]
-##        invBN_N1 = np.linalg.inv(stmN_N1[0:3,3:6])
-##        DN_N1 = stmN_N1[3:6,3:6]
-##
-##        stmN1_N = np.linalg.inv(stmN_N1)
-##        AN1_N = stmN1_N[0:3,0:3]
-##        invBN1_N = np.linalg.inv(stmN1_N[0:3,3:6])
-##        DN1_N = stmN1_N[3:6,3:6]
-##
-##        v1plus  = correctedInitialStates[0, 3:6].T
-##        v2minus = correctedFinalStates[0, 3:6].T
-##        vN1plus  = correctedInitialStates[-1, 3:6].T
-##        vNminus = correctedFinalStates[-1, 3:6].T
-##
-##        state1_time = correctedInitialEpoches[0]
-##        stateN_time = correctedInitialEpoches[-1]
-##
-##        state1plus = ffRotating(state1_time, correctedInitialStates[0,:], GM, omega_m)
-##        a1plus = state1plus[3:6]
-##        stateNminus  = ffRotating(stateN_time, correctedFinalStates[-1,:], GM, omega_m)
-##        aNminus = stateNminus[3:6]
-#
-#
-##        stm21 = rotatedSTMs[0,:,:]
-##        A21 = stm21[0:3,0:3]
-##        invB21 = np.linalg.inv(stm21[0:3,3:6])
-##        D21 = stm21[3:6,3:6]
-##
-##        stm12 = np.linalg.inv(stm21)
-##        A12 = stm12[0:3,0:3]
-##        invB12 = np.linalg.inv(stm12[0:3,3:6])
-##        D12 = stm12[3:6,3:6]
-##
-##        stmN_N1 = rotatedSTMs[-1,:,:]
-##        AN_N1 = stmN_N1[0:3,0:3]
-##        invBN_N1 = np.linalg.inv(stmN_N1[0:3,3:6])
-##        DN_N1 = stmN_N1[3:6,3:6]
-##
-##        stmN1_N = np.linalg.inv(stmN_N1)
-##        AN1_N = stmN1_N[0:3,0:3]
-##        invBN1_N = np.linalg.inv(stmN1_N[0:3,3:6])
-##        DN1_N = stmN1_N[3:6,3:6]
-##
-##        v1plus  = rotatedInitialStates[0, 3:6]
-##        v2minus = rotatedFinalStates[0, 3:6]
-##        vN1plus  = rotatedInitialStates[-1, 3:6]
-##        vNminus = rotatedFinalStates[-1, 3:6]
-##
-##        state1_time = correctedInitialEpoches[0]
-##        stateN_time = correctedInitialEpoches[-1]
-##
-##        state1plus = ffRotating(state1_time, rotatedInitialStates[0,:], GM, omega_m)
-##        a1plus = state1plus[3:6]
-##        stateNminus  = ffRotating(stateN_time, rotatedFinalStates[-1,:], GM, omega_m)
-##        aNminus = stateNminus[3:6]
-##
-##        dadu1 = -invB21@A21
-##        dadu2 = (a1plus - D12@invB12@v1plus).T
-##        dadu3 = invB21
-##        dadu4 = (-invB21@v2minus).T
-##        dadu5 = -invBN1_N
-##        dadu6 = (invBN1_N@vN1plus).T
-##        dadu7 = invBN1_N@AN1_N
-##        dadu8 = (-aNminus + DN_N1@invBN_N1@vNminus).T
-##        dadu9 = np.zeros((3,16))
-##        dadu9[:,0:3] = dadu1
-##        dadu9[:,3] = dadu2
-##        dadu9[:,4:7] = dadu3
-##        dadu9[:,7] = dadu4
-##        dadu9[:,8:11] = dadu5
-##        dadu9[:,11] = dadu6
-##        dadu9[:,12:15] = dadu7
-##        dadu9[:,15] = dadu8
-##
-##        dadu10 = np.zeros((3,16))
-##        dadu10[0:3,0:3] = np.identity(3)
-##        dadu10[0:3,12:15] = -np.identity(3)
-##
-##        dadu = np.vstack((dadu10, dadu9))
-##
-##        da = rotatedInitialStates[0, :] - rotatedFinalStates[-1, :]
-##
-##        bb = np.append(deltaVelocity, da)
-#        bb = deltaVelocity
-#        M = np.zeros((len(bb), 4*(N)))
-#        for ii in np.arange(0,N-2):
-#            M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
-##        M[-6:,0:8] = dadu[:,0:8]
-##        M[-6:,-8:] = dadu[:,8:]
-#
-#        deltas = M.T@np.linalg.inv(M@M.T)@bb
-#        deltas = np.reshape(deltas, (N,4))
-#        sigma = 1 #.0001
-##        breakpoint()
-#
-#        correctedInitialEpoches = correctedInitialEpoches + sigma*deltas[:,3]
-#        correctedInitialStates[:,0:3] = correctedInitialStates[:,0:3] + sigma*deltas[:,0:3]
-#        correctedFinalStates[:,0:3] = correctedFinalStates[:,0:3] + sigma*deltas[1:,0:3]
-#
-#        iterationNumberLevelTwo = iterationNumberLevelTwo + 1
-#
-#        # stop after too many iterations
-#        if iterationNumberLevelTwo > iterationNumberLevelTwoMax:
-#            exitflag = -1
-#            print('#  !!! fail: level-2 shooting exceeds maximum iteration number '+str(iterationNumberLevelTwoMax)+'.')
-#            break
-#
-#    return correctedInitialEpoches, correctedInitialStates, exitflag
-
 def multipleShootingR(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, omega_m):
 
     iterationNumberLevelTwoMax = 200
@@ -278,7 +63,6 @@ def multipleShootingR(initialEpoches, initialStates, positionTolerance, velocity
             rotatedFinalStates[ii,:] = Crv_I2R[ii+1,:,:]@correctedFinalStates[ii,:]
             rotatedSTMs[ii,:,:] = np.linalg.inv(Crv_I2R[ii+1,:,:])@STMs[ii,:,:]@Crv_I2R[ii,:,:]
         # collcect the target error
-#        deltaVelocity = correctedFinalStates[:-1,3:6] - correctedInitialStates[1:-1,3:6]
         deltaVelocity = rotatedFinalStates[:-1,3:6] - rotatedInitialStates[1:,3:6]
         deltaVelocity = np.reshape(deltaVelocity,(1,3*(N-2)))[0]
         deltaV = np.linalg.norm(deltaVelocity)
@@ -294,20 +78,6 @@ def multipleShootingR(initialEpoches, initialStates, positionTolerance, velocity
         # after one modification, shooting position again
         dVdu = np.zeros((N-2,3,12))         # for all the interior patch points 1 to N-2
         for ii in np.arange(1,N-1):
-            # generate state relationship matrix
-#            stm21 = STMs[ii-1, :, :]
-#            stm12 = np.linalg.inv(stm21)
-#            stm32 = STMs[ii, :, :]
-#
-#            v1plus  = correctedInitialStates[ii-1, 3:6]
-#            v2minus = correctedFinalStates[ii-1, 3:6]
-#            v2plus  = correctedInitialStates[ii, 3:6]
-#            v3minus = correctedFinalStates[ii, 3:6]
-#
-#            a2minus = ffRotating(correctedInitialEpoches[ii], correctedFinalStates[ii-1, :], GM, omega_m)
-#            a2minus = a2minus[3:6]
-#            a2plus  = ffRotating(correctedInitialEpoches[ii], correctedInitialStates[ii, :], GM, omega_m)
-#            a2plus = a2plus[3:6]
             stm21 = rotatedSTMs[ii-1, :, :]
             stm12 = np.linalg.inv(stm21)
             stm32 = rotatedSTMs[ii, :, :]
@@ -336,75 +106,73 @@ def multipleShootingR(initialEpoches, initialStates, positionTolerance, velocity
             dVdu[ii-1,:,8:11] = dVdu5
             dVdu[ii-1,:,11] = dVdu6
             
-        stm21 = rotatedSTMs[0,:,:]
-        A21 = stm21[0:3,0:3]
-        invB21 = np.linalg.inv(stm21[0:3,3:6])
-    
-        stm12 = np.linalg.inv(stm21)
-        invB12 = np.linalg.inv(stm12[0:3,3:6])
-        D12 = stm12[3:6,3:6]
-    
-        stmN_N1 = rotatedSTMs[-1,:,:]
-        invBN_N1 = np.linalg.inv(stmN_N1[0:3,3:6])
-        DN_N1 = stmN_N1[3:6,3:6]
-    
-        stmN1_N = np.linalg.inv(stmN_N1)
-        AN1_N = stmN1_N[0:3,0:3]
-        invBN1_N = np.linalg.inv(stmN1_N[0:3,3:6])
+#        stm21 = rotatedSTMs[0,:,:]
+#        A21 = stm21[0:3,0:3]
+#        invB21 = np.linalg.inv(stm21[0:3,3:6])
+#    
+#        stm12 = np.linalg.inv(stm21)
+#        invB12 = np.linalg.inv(stm12[0:3,3:6])
+#        D12 = stm12[3:6,3:6]
+#    
+#        stmN_N1 = rotatedSTMs[-1,:,:]
+#        invBN_N1 = np.linalg.inv(stmN_N1[0:3,3:6])
+#        DN_N1 = stmN_N1[3:6,3:6]
+#    
+#        stmN1_N = np.linalg.inv(stmN_N1)
+#        AN1_N = stmN1_N[0:3,0:3]
+#        invBN1_N = np.linalg.inv(stmN1_N[0:3,3:6])
+#
+#        v1plus  = rotatedInitialStates[0, 3:6]
+#        v2minus = rotatedFinalStates[0, 3:6]
+#        vN1plus  = rotatedInitialStates[-1, 3:6]
+#        vNminus = rotatedFinalStates[-1, 3:6]
+#
+#        state1_time = correctedInitialEpoches[0]
+#        stateN_time = correctedInitialEpoches[-1]
+#
+#        state1plus = ffRotating(state1_time, rotatedInitialStates[0,:], GM, omega_m)
+#        a1plus = state1plus[3:6]
+#        stateNminus  = ffRotating(stateN_time, rotatedFinalStates[-1,:], GM, omega_m)
+#        aNminus = stateNminus[3:6]
+#
+#        dadu1 = -invB21@A21
+#        dadu2 = a1plus - D12@invB12@v1plus
+#        dadu3 = invB21
+#        dadu4 = -invB21@v2minus
+#        dadu5 = -invBN1_N
+#        dadu6 = invBN1_N@vN1plus
+#        dadu7 = invBN1_N@AN1_N
+#        dadu8 = -aNminus + DN_N1@invBN_N1@vNminus
+#        dadu9 = np.zeros((3,16))
+#        dadu9[:,0:3] = dadu1
+#        dadu9[:,3] = dadu2
+#        dadu9[:,4:7] = dadu3
+#        dadu9[:,7] = dadu4
+#        dadu9[:,8:11] = dadu5
+#        dadu9[:,11] = dadu6
+#        dadu9[:,12:15] = dadu7
+#        dadu9[:,15] = dadu8
+#
+#        dadu10 = np.zeros((3,16))
+#        dadu10[0:3,0:3] = np.identity(3)
+#        dadu10[0:3,12:15] = -np.identity(3)
+#
+#        dadu = np.vstack((dadu10, dadu9))
+#
+#        da = rotatedFinalStates[-1, :] - rotatedInitialStates[0, :]
+#
+#        bb = np.append(deltaVelocity, da)
 
-        v1plus  = rotatedInitialStates[0, 3:6]
-        v2minus = rotatedFinalStates[0, 3:6]
-        vN1plus  = rotatedInitialStates[-1, 3:6]
-        vNminus = rotatedFinalStates[-1, 3:6]
-
-        state1_time = correctedInitialEpoches[0]
-        stateN_time = correctedInitialEpoches[-1]
-
-        state1plus = ffRotating(state1_time, rotatedInitialStates[0,:], GM, omega_m)
-        a1plus = state1plus[3:6]
-        stateNminus  = ffRotating(stateN_time, rotatedFinalStates[-1,:], GM, omega_m)
-        aNminus = stateNminus[3:6]
-
-        dadu1 = -invB21@A21
-        dadu2 = a1plus - D12@invB12@v1plus
-        dadu3 = invB21
-        dadu4 = -invB21@v2minus
-        dadu5 = -invBN1_N
-        dadu6 = invBN1_N@vN1plus
-        dadu7 = invBN1_N@AN1_N
-        dadu8 = -aNminus + DN_N1@invBN_N1@vNminus
-        dadu9 = np.zeros((3,16))
-        dadu9[:,0:3] = dadu1
-        dadu9[:,3] = dadu2
-        dadu9[:,4:7] = dadu3
-        dadu9[:,7] = dadu4
-        dadu9[:,8:11] = dadu5
-        dadu9[:,11] = dadu6
-        dadu9[:,12:15] = dadu7
-        dadu9[:,15] = dadu8
-
-        dadu10 = np.zeros((3,16))
-        dadu10[0:3,0:3] = np.identity(3)
-        dadu10[0:3,12:15] = -np.identity(3)
-
-        dadu = np.vstack((dadu10, dadu9))
-
-        da = rotatedFinalStates[-1, :] - rotatedInitialStates[0, :]
-
-        bb = np.append(deltaVelocity, da)
-#        bb = deltaVelocity
+        bb = deltaVelocity
         M = np.zeros((len(bb), 4*(N)))
         for ii in np.arange(0,N-2):
             M[3*(ii):3*(ii+1),4*ii:4*(ii+3)] = dVdu[ii,:,:]
-#        breakpoint()
-        M[-6:,0:8] = dadu[:,0:8]
-        M[-6:,-8:] = dadu[:,8:]
+#        M[-6:,0:8] = dadu[:,0:8]
+#        M[-6:,-8:] = dadu[:,8:]
 
         deltas = M.T@np.linalg.inv(M@M.T)@bb
         deltas = np.reshape(deltas, (N,4))
-#        breakpoint()
-        sigma = 1 #.0001
-#        breakpoint()
+        sigma = 1
 
 #        correctedInitialEpoches[1:N] = correctedInitialEpoches[1:N] + sigma*deltas[1:N,3]
 #        rotatedInitialStates[1:,0:3] = rotatedInitialStates[1:,0:3] + sigma*deltas[1:N-1,0:3]
@@ -496,8 +264,8 @@ def ffRotating(tt, w, GM, omega_m):
     
     f_Moon = -GM[0]*(r_sc - r_Moon)/np.linalg.norm(r_sc - r_Moon)**3
     f_Earth = -GM[1]*(r_sc - r_Earth)/np.linalg.norm(r_sc - r_Earth)**3 - GM[1]*r_Earth/np.linalg.norm(r_Earth)**3
-#    f_Sun = -GM[2]*(r_sc - r_Sun)/np.linalg.norm(r_sc - r_Sun)**3 - GM[2]*r_Sun/np.linalg.norm(r_Sun)**3
-    f_Sun = 0*r_Sun
+    f_Sun = -GM[2]*(r_sc - r_Sun)/np.linalg.norm(r_sc - r_Sun)**3 - GM[2]*r_Sun/np.linalg.norm(r_Sun)**3
+#    f_Sun = 0*r_Sun
     
     Fg = f_Moon + f_Earth + f_Sun
     ang_vel = np.array([0, 0, 2*np.pi/omega_m])
@@ -729,8 +497,8 @@ def ffInertial(tt, w, GM):
     
     f_Moon = -GM[0]*(r_sc - r_Moon)/np.linalg.norm(r_sc - r_Moon)**3
     f_Earth = -GM[1]*(r_sc - r_Earth)/np.linalg.norm(r_sc - r_Earth)**3 - GM[1]*r_Earth/np.linalg.norm(r_Earth)**3
-#    f_Sun = -GM[2]*(r_sc - r_Sun)/np.linalg.norm(r_sc - r_Sun)**3 - GM[2]*r_Sun/np.linalg.norm(r_Sun)**3
-    f_Sun = 0*r_Sun
+    f_Sun = -GM[2]*(r_sc - r_Sun)/np.linalg.norm(r_sc - r_Sun)**3 - GM[2]*r_Sun/np.linalg.norm(r_Sun)**3
+#    f_Sun = 0*r_Sun
     
     Fg = f_Moon + f_Earth + f_Sun
     

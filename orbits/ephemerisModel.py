@@ -44,11 +44,11 @@ omega_m = spice.oscltx(rvMoon,et_start,gmEarth)[-1]
 
 # Initial condition in canonical units in rotating frame R [pos, vel]
 #IC = [1.011035058929108, 0, -0.173149999840112, 0, -0.078014276336041, 0,  1.3632096570/2]  # L2, 5.92773293-day period
-IC = [1.01103506347211, 0, -0.17315001039682773, 0, -0.07801414771853428, 0, 1.363209636932144/2]    #1E-7 error version of ^
+#IC = [1.01103506347211, 0, -0.17315001039682773, 0, -0.07801414771853428, 0, 1.363209636932144/2]    #1E-7 error version of ^
 #IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]   # DRO, 0.9697497-day period
 #IC = [0.429519110229904, 0, 0, 0, 1.440796689672539, 0, 3.051133070334277]
 #IC = [1.165130674583613, 0, -0.110699848144854, 0, 0.201519926517907, 0, 1.652428300688599]
-#IC = [1.114959432252717, 0, 0.027057507726036, 0, 0.191674660415012, 0, 3.403442494940593/2]   # matlab
+IC = [1.114959432252717, 0, 0.027057507726036, 0, 0.191674660415012, 0, 3.403442494940593/2]   # matlab
 # Generate new ICs using the free variable and constraint method
 X = [IC[0], IC[2], IC[4], IC[6]]
 max_iter = 1000
@@ -144,34 +144,46 @@ correctedInitialEpoches, correctedInitialStates, exitflag = ms.multipleShootingR
 # Plot in MCI and MCR
 ax10 = plt.figure().add_subplot(projection='3d')
 ax11 = plt.figure().add_subplot(projection='3d')
+inertialStates = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
+rotatedStates = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
 for ii in np.arange(N-1):
     Ts = correctedInitialEpoches[ii:ii+2]
     times, states = ms.statePropFFI(Ts, correctedInitialStates[ii,:], GM)
+        
+    inertialStates = np.vstack((inertialStates, states))
     
     ax11.plot(states[:, 0], states[:, 1], states[:, 2], 'b', label='Multi Segment')
     ax11.scatter(states[0,0], states[0,1], states[0,2], c='g', marker='o')
     ax11.scatter(states[-1,0], states[-1,1], states[-1,2], c='y', marker='*')
     
     Crv_I2R = spice.sxform('MCI','MCR',times)
-    rotatedStates = np.zeros((len(times), 6))
+    rStates = np.zeros((len(times), 6))
     for jj in np.arange(len(times)):
-        rotatedStates[jj,:] = Crv_I2R[jj,:,:]@states[jj,:]
+        rStates[jj,:] = Crv_I2R[jj,:,:]@states[jj,:]
 
-    ax10.plot(rotatedStates[:, 0], rotatedStates[:, 1], rotatedStates[:, 2], 'b', label='Multi Segment')
-    ax10.scatter(rotatedStates[0,0], rotatedStates[0,1], rotatedStates[0,2], c='g', marker='o')
-    ax10.scatter(rotatedStates[-1,0], rotatedStates[-1,1], rotatedStates[-1,2], c='y', marker='*')
-ax11.plot(posCRTBP_I_dim[:,0], posCRTBP_I_dim[:,1], posCRTBP_I_dim[:,2], 'r-.', label='CRTBP')
-ax11.set_xlabel('X [km]')
-ax11.set_ylabel('Y [km]')
-ax11.set_zlabel('Z [km]')
-ax11.set_title('Moon Centered Inertial Frame')
-plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
+    rotatedStates = np.vstack((rotatedStates, rStates))
 
+diff = rotatedStates[-1] - rotatedStates[1]
+rDiff = np.linalg.norm(diff[0:3])
+vDiff = np.linalg.norm(diff[3:6])
+print('End Position Difference: '+str(rDiff))
+print('End Velocity Difference: '+str(vDiff))
+
+ax10.plot(rotatedStates[:, 0], rotatedStates[:, 1], rotatedStates[:, 2], 'b', label='Multi Segment')
+ax10.scatter(rotatedStates[0,0], rotatedStates[0,1], rotatedStates[0,2], c='g', marker='o')
+ax10.scatter(rotatedStates[-1,0], rotatedStates[-1,1], rotatedStates[-1,2], c='y', marker='*')
 ax10.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r-.', label='CRTBP')
 ax10.set_xlabel('X [km]')
 ax10.set_ylabel('Y [km]')
 ax10.set_zlabel('Z [km]')
 ax10.set_title('Moon Centered Rotating Frame')
+plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
+
+ax11.plot(posCRTBP_I_dim[:,0], posCRTBP_I_dim[:,1], posCRTBP_I_dim[:,2], 'r-.', label='CRTBP')
+ax11.set_xlabel('X [km]')
+ax11.set_ylabel('Y [km]')
+ax11.set_zlabel('Z [km]')
+ax11.set_title('Moon Centered Inertial Frame')
 plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
 
 #ax10 = plt.figure().add_subplot(projection='3d')
