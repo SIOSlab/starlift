@@ -30,8 +30,8 @@ GM = np.array([gmMoon, gmEarth, gmSun])
 orbs = 5
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d
-#t_start = Time(57727, format='mjd', scale='utc')
-t_start = Time(58070, format='mjd', scale='utc')
+t_start = Time(57727, format='mjd', scale='utc')
+#t_start = Time(58070, format='mjd', scale='utc')
 mu_star = gmMoon/(gmEarth + gmMoon)
 m1 = (1 - mu_star)
 m2 = mu_star
@@ -103,6 +103,10 @@ r_half1 = posCRTBP_R[:rmin_ind,:]
 r_half2 = posCRTBP_R[rmin_ind:-1,:]
 r_new = np.vstack((r_half2, r_half1))
 
+v_half1 = velCRTBP_R[:rmin_ind,:]
+v_half2 = velCRTBP_R[rmin_ind:-1,:]
+v_new = np.vstack((v_half2, v_half1))
+
 # rezero time, keep spacing
 t_half1 = timesCRTBP_R[1:rmin_ind]
 t_half2 = timesCRTBP_R[rmin_ind:]
@@ -121,9 +125,9 @@ plt.title('Perilune Time Permutation')
 plt.show()
 
 # Convert from nondimensional units to dimensional
-posCRTBP_R_dim = unitConversion.convertPos_to_dim(posCRTBP_R - np.array([1-mu_star, 0, 0])).to_value(u.km)
-velCRTBP_R_dim = unitConversion.convertVel_to_dim(velCRTBP_R).to_value(u.km/u.s)
-timesCRTBP_d = unitConversion.convertTime_to_dim(timesCRTBP_R).to('d')
+posCRTBP_R_dim = unitConversion.convertPos_to_dim(r_new - np.array([1-mu_star, 0, 0])).to_value(u.km)
+velCRTBP_R_dim = unitConversion.convertVel_to_dim(v_new).to_value(u.km/u.s)
+timesCRTBP_d = unitConversion.convertTime_to_dim(t_new).to('d')
 timesCRTBP_mjd = t_start + timesCRTBP_d
 etCRTBP_mjd = spice.str2et(timesCRTBP_mjd.iso)
 
