@@ -1,6 +1,7 @@
 import numpy as np
 import spiceypy as spice
 from scipy.integrate import solve_ivp
+from astropy.time import Time
 from matplotlib import pyplot as plt
 
 def multipleShootingR(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, omega_m):
@@ -759,3 +760,27 @@ def statePropFFIForced(Ts,state0,GM,uT,times):
     times = sol_int.t
     
     return times, states
+
+def getPatches(N, times_dim, times_mjd, pos_dim, vel_dim):
+
+    dt_int = (times_dim[-1]-times_dim[0])/(N-1)
+    taus = Time(np.zeros(N), format='mjd', scale='utc')
+    posvel = np.array([])
+    for ii in np.arange(N):
+        time_i = ii*dt_int
+
+        # find the index
+        difference_array_i = np.absolute(times_dim-time_i).value
+        index_i = difference_array_i.argmin()
+        
+        # index the time, position, and velocity
+        taus[ii] = times_mjd[index_i]
+        pos_i = pos_dim[index_i,:]
+        vel_i = vel_dim[index_i,:]
+        
+        # package the state
+        state_i = np.append(pos_i, vel_i)
+        posvel = np.append(posvel, state_i)
+    posvel = np.reshape(posvel,(N,6))
+    
+    return posvel, taus
