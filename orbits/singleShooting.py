@@ -20,7 +20,6 @@ def CRTBP_EOM_R(t, w, mu_star):
     """
 
     [x, y, z, vx, vy, vz] = w[0:6]
-    phi = np.reshape(w[6:], (6,6))
 
     m1 = 1 - mu_star
     m2 = mu_star
@@ -50,12 +49,14 @@ def CRTBP_EOM_R(t, w, mu_star):
     az = a_PO_H[2]
     
     if len(w) > 6:
-        dxdx = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * (x + m2) ** 2 / rp1 ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / rp2 ** 5
-        dxdy = 3 * m1 * (x + m2) * y / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * y / rp2 ** 5
-        dxdz = 3 * m1 * (x + m2) * z / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * z / rp2 ** 5
-        dydy = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * y ** 2 / rp1 ** 5 + 3 * m2 * y ** 2 / rp2 ** 5
-        dydz = 3 * m1 * y * z / rp1 ** 5 + 3 * m2 * y * z / rp2 ** 5
-        dzdz = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * z ** 2 / rp1 ** 5 + 3 * m2 * z ** 2 / rp2 ** 5
+        phi = np.reshape(w[6:], (6,6))
+        
+        dxdx = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * (x + m2) ** 2 / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / r2_mag ** 5
+        dxdy = 3 * m1 * (x + m2) * y / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * y / r2_mag ** 5
+        dxdz = 3 * m1 * (x + m2) * z / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * z / r2_mag ** 5
+        dydy = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * y ** 2 / r1_mag ** 5 + 3 * m2 * y ** 2 / r2_mag ** 5
+        dydz = 3 * m1 * y * z / r1_mag ** 5 + 3 * m2 * y * z / r2_mag ** 5
+        dzdz = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * z ** 2 / r1_mag ** 5 + 3 * m2 * z ** 2 / r2_mag ** 5
 
         Z = np.zeros((3, 3))
         I = np.identity(3)
@@ -63,7 +64,9 @@ def CRTBP_EOM_R(t, w, mu_star):
                       [dxdy, dydy, dydz],
                       [dxdz, dydz, dzdz]])
         Omega = np.zeros((3,3))
-        A = np.block([[Z, I], [U, Omega])
+        Omega[0, 1] = 2
+        Omega[1, 0] = -2
+        A = np.block([[Z, I], [U, Omega]])
         dPhi = A@phi
         
         dPhi = np.reshape(dPhi, (1,36))[0]
@@ -145,9 +148,10 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
 
     """
 
-    
-    s_T = statePropCRTBP_R(freeVar, mu_star)    # state and phi
-    state = s_T[-1]
+    Phi0 = np.reshape(np.eye(6), (1,36))[0]
+    freeVarPhi = np.append(freeVar, Phi0)
+    states, times = statePropCRTBP_R(freeVarPhi, mu_star)
+    state = states[-1,:]
 
     Phi = np.reshape(state[6:], (6,6))
 
@@ -188,52 +192,4 @@ def fsolve_eqns(w, z, solp, mu_star):
     sys_w = np.append(Fx, zeq)
 
     return sys_w
-    
-def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
-    """Calculates the monodromy matrix
 
-    Args:
-        freeVar (~numpy.ndarray(float)):
-            x and z positions, y velocity, and half the orbit period
-        mu_star (float):
-            Non-dimensional mass parameter
-        m1 (float):
-            Mass of the larger primary in non-dimensional units
-        m2 (float):
-            Mass of the smaller primary in non-dimensional units
-
-    Returns:
-        ~numpy.ndarray(float):
-            monodromy matrix
-
-    """
-
-    x = freeVar[0]
-    y = freeVar[1]
-    z = freeVar[2]
-
-    r_P0 = np.array([x, y, z])
-    r_m10 = -np.array([mu_star, 0, 0])
-    r_m20 = np.array([(1 - mu_star), 0, 0])
-
-    r_Pm1 = r_P0 - r_m10
-    r_Pm2 = r_P0 - r_m20
-
-    rp1 = np.linalg.norm(r_Pm1)
-    rp2 = np.linalg.norm(r_Pm2)
-
-    dxdx = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * (x + m2) ** 2 / rp1 ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / rp2 ** 5
-    dxdy = 3 * m1 * (x + m2) * y / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * y / rp2 ** 5
-    dxdz = 3 * m1 * (x + m2) * z / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * z / rp2 ** 5
-    dydy = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * y ** 2 / rp1 ** 5 + 3 * m2 * y ** 2 / rp2 ** 5
-    dydz = 3 * m1 * y * z / rp1 ** 5 + 3 * m2 * y * z / rp2 ** 5
-    dzdz = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * z ** 2 / rp1 ** 5 + 3 * m2 * z ** 2 / rp2 ** 5
-
-    Z = np.zeros([3, 3])
-    I = np.identity(3)
-    A = np.array([[dxdx, dxdy, dxdz],
-                  [dxdy, dydy, dydz],
-                  [dxdz, dydz, dzdz]])
-    Phi = np.block([[Z, I], [A, Z]])
-
-    return Phi
