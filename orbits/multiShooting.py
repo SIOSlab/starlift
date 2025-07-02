@@ -520,7 +520,7 @@ def statePropFFI(Ts,state0,GM):
 
 def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, uT, timesInterp):
 
-    iterationNumberLevelTwoMax = 20
+    iterationNumberLevelTwoMax = 10
 
     N = len(initialEpoches)
 

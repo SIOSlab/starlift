@@ -267,73 +267,174 @@ timesPeri_mjd = Time(t_startNew.mjd + timesPeri_d.value, format='mjd', scale='ut
 posPeri = inertialStates[min1_ind:minLast_ind,0:3]
 velPeri = inertialStates[min1_ind:minLast_ind,3:6]
 
-N2 = 31
-posvel, taus = ms.getPatches(N2, timesPeri_d, timesPeri_mjd, posPeri, velPeri)
-initialEphmerisEpoch = spice.str2et(timesPeri_mjd[0].iso)
-times_dim = (taus - timesPeri_mjd[0]).to_value(u.s)
-initialEphmerisEpoches = initialEphmerisEpoch + times_dim
+# decrease the number of patches until 2*(orbs - 1) - 1
+velocityTolerance = 0.0001*(orbs - 1)  # km/s
+Nmax = 7*(orbs - 1) + 1
+#Nmin = 2*(orbs - 1) - 1
+Nmin = 6*(orbs - 1) - 1
+Ns = np.append(np.arange(Nmax, Nmin, -(orbs-1)), Nmin)
+patchCtr = 0
+plusCtr = 0
+minPatch = False
+exitflag = 1
+while not minPatch:
+    if exitflag == 1:
+        N2 = Ns[patchCtr]
+        plusCtr = 0
+    else:
+        print('Solution not found. Increasing number of patch points by 1.')
+        plusCtr = plusCtr + 1
+        N2 = N2 + 1
 
-correctedInitialEpochesNew, correctedInitialStatesNew, exitflag = ms.multipleShootingI(initialEphmerisEpoches, posvel, positionTolerance, velocityTolerance, GM)
+    posvel, taus = ms.getPatches(N2, timesPeri_d, timesPeri_mjd, posPeri, velPeri)
+    initialEphmerisEpoch = spice.str2et(timesPeri_mjd[0].iso)
+    times_dim = (taus - timesPeri_mjd[0]).to_value(u.s)
+    initialEphmerisEpoches = initialEphmerisEpoch + times_dim
 
-# Plot in MCI and MCR
-ax10 = plt.figure().add_subplot(projection='3d')
-ax11 = plt.figure().add_subplot(projection='3d')
-inertialStatesNew = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
-rotatedStatesNew = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
-timesFullNew = np.array([])
-for ii in np.arange(N2-1):
-    Ts = correctedInitialEpochesNew[ii:ii+2]
-    times, states = ms.statePropFFI(Ts, correctedInitialStatesNew[ii,:], GM)
+    correctedInitialEpoches, correctedInitialStates, exitflag = ms.multipleShootingI(initialEphmerisEpoches, posvel, positionTolerance, velocityTolerance, GM)
+
+    if exitflag == 1:
+        if np.any(Ns == N2):
+            patchCtr = patchCtr + 1
+            
+        if N2 < Ns[-2] and N2 >= Ns[-1]:
+            minPatch = True
+        elif plusCtr == (Ns[patchCtr-2] - Ns[patchCtr-1]):
+            minPatch = True
+            
+        # Plot in MCI and MCR
+        ax10 = plt.figure().add_subplot(projection='3d')
+        ax11 = plt.figure().add_subplot(projection='3d')
+        inertialStates = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
+        rotatedStates = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
+        timesFull = np.array([])
+        for ii in np.arange(N2-1):
+            Ts = correctedInitialEpoches[ii:ii+2]
+            times, states = ms.statePropFFI(Ts, correctedInitialStates[ii,:], GM)
+                
+            inertialStates = np.vstack((inertialStates, states))
+            
+            ax11.plot(states[:, 0], states[:, 1], states[:, 2], 'b', label='Multi Segment')
+            ax11.scatter(states[0,0], states[0,1], states[0,2], c='g', marker='o')
+            ax11.scatter(states[-1,0], states[-1,1], states[-1,2], c='y', marker='*')
+            
+            Crv_I2R = spice.sxform('MCI','MCR',times)
+            rStates = np.zeros((len(times), 6))
+            for jj in np.arange(len(times)):
+                rStates[jj,:] = Crv_I2R[jj,:,:]@states[jj,:]
+                
+            ax10.plot(rStates[:, 0], rStates[:, 1], rStates[:, 2], 'b', label='Multi Segment')
+            ax10.scatter(rStates[0,0], rStates[0,1], rStates[0,2], c='g', marker='o')
+            ax10.scatter(rStates[-1,0], rStates[-1,1], rStates[-1,2], c='y', marker='*')
+
+            rotatedStates = np.vstack((rotatedStates, rStates))
+            timesFull = np.append(timesFull, times)
+
+        diff = rotatedStates[-1] - rotatedStates[1]
+        rDiff = np.linalg.norm(diff[0:3])
+        vDiff = np.linalg.norm(diff[3:6])
+        print('End Position Difference: '+str(rDiff)+' km')
+        print('End Velocity Difference: '+str(vDiff)+' km/s')
+
+        ax10.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r-.', label='CRTBP')
+        ax10.set_xlabel('X [km]')
+        ax10.set_ylabel('Y [km]')
+        ax10.set_zlabel('Z [km]')
+        ax10.set_title('Moon Centered Rotating Frame')
+        plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
+
+        ax11.plot(posCRTBP_I_dim[:,0], posCRTBP_I_dim[:,1], posCRTBP_I_dim[:,2], 'r-.', label='CRTBP')
+        ax11.set_xlabel('X [km]')
+        ax11.set_ylabel('Y [km]')
+        ax11.set_zlabel('Z [km]')
+        ax11.set_title('Moon Centered Inertial Frame')
+        plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
+
+        fig, (ax12, ax13, ax14) = plt.subplots(3, 1)
+        ax12.plot(np.arange(len(rotatedStates[1:,2])),rotatedStates[1:,0])
+        ax12.set_ylabel('x')
+        ax13.plot(np.arange(len(rotatedStates[1:,2])),rotatedStates[1:,1])
+        ax13.set_ylabel('y')
+        ax14.plot(np.arange(len(rotatedStates[1:,2])),rotatedStates[1:,2])
+        ax14.set_ylabel('z')
+
+        rmag = np.linalg.norm(rotatedStates[1:,0:3], axis=1)
+        plt.figure(15)
+        plt.plot(np.arange(len(rotatedStates[1:,2])), rmag)
+#        plt.show()
         
-    inertialStatesNew = np.vstack((inertialStatesNew, states))
-    
-    ax11.plot(states[:, 0], states[:, 1], states[:, 2], 'b', label='Multi Segment')
-    ax11.scatter(states[0,0], states[0,1], states[0,2], c='g', marker='o')
-    ax11.scatter(states[-1,0], states[-1,1], states[-1,2], c='y', marker='*')
-    
-    Crv_I2R = spice.sxform('MCI','MCR',times)
-    rStates = np.zeros((len(times), 6))
-    for jj in np.arange(len(times)):
-        rStates[jj,:] = Crv_I2R[jj,:,:]@states[jj,:]
-        
-    ax10.plot(rStates[:, 0], rStates[:, 1], rStates[:, 2], 'b', label='Multi Segment')
-    ax10.scatter(rStates[0,0], rStates[0,1], rStates[0,2], c='g', marker='o')
-    ax10.scatter(rStates[-1,0], rStates[-1,1], rStates[-1,2], c='y', marker='*')
+        # redo the patches
+        timesPeri_d = ((timesFull - timesFull[0])*u.s).to('d')
+        t_startStr = spice.et2utc(timesFull[0], 'ISOC', 23, 24)
+        t_startNew = Time(t_startStr, format='isot', scale='utc')
+        timesPeri_mjd = Time(t_startNew.mjd + timesPeri_d.value, format='mjd', scale='utc')
+        posPeri = inertialStates[1:,0:3]
+        velPeri = inertialStates[1:,3:6]
 
-    rotatedStatesNew = np.vstack((rotatedStatesNew, rStates))
-    timesFullNew = np.append(timesFullNew, times)
+print('Minimum number of patch points for '+str(orbs-1)+' orbits: '+str(N2))
+inertialStates = inertialStates[1:,:]
+rotatedStates = rotatedStates[1:,:]
+# find the minimums
+diff1 = np.diff(rmag)
+sign1 = np.sign(diff1)
+diff2 = np.diff(sign1)
+minIndsR = np.argwhere(diff2 == 2)[:,0]
+rMins = rmag[minIndsR]
+vmag = np.linalg.norm(rotatedStates[1:,3:6], axis=1)
+vMins = vmag[minIndsR]
+tMins = timesPeri_d[minIndsR].value
 
-diff = rotatedStatesNew[-1] - rotatedStatesNew[1]
-rDiff = np.linalg.norm(diff[0:3])
-vDiff = np.linalg.norm(diff[3:6])
-print('End Position Difference: '+str(rDiff)+' km')
-print('End Velocity Difference: '+str(vDiff)+' km/s')
+# select only those near perilune
+minModError1 = np.mod(tMins, timesCRTBP_d[-1].value)
+minModError2 = np.abs(minModError1 - timesCRTBP_d[-1].value)
+periodTolerance = .1*timesCRTBP_d[-1].value
+ind1 = np.argwhere(minModError1 < periodTolerance)[:,0]
+ind2 = np.argwhere(minModError2 < periodTolerance)[:,0]
+indTot = np.sort(np.append(ind1,ind2))
+rMins2 = rMins[indTot]
+vMins2 = vMins[indTot]
+tMins2 = tMins[indTot]
 
-ax10.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r-.', label='CRTBP')
-ax10.set_xlabel('X [km]')
-ax10.set_ylabel('Y [km]')
-ax10.set_zlabel('Z [km]')
-ax10.set_title('Moon Centered Rotating Frame')
-plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
+# if two local minima occur near perilune time, pick the lowest
+diff3 = np.abs(np.diff(rMins2))
+inds3 = np.argwhere(diff3 < periodTolerance)[:,0]
+if len(inds3) > 0:
+    rPerilunes = np.array([])
+    vPerilunes = np.array([])
+    breakpoint()
+    for ii in np.arange(0,len(inds3), 2):
+        if rMins2[ii] < rMins2[ii+1]:
+            rPerilunes = np.append(rPerilunes, rMins2[ii])
+            vPerilunes = np.append(vPerilunes, vMins2[ii])
+        else:
+            rPerilunes = np.append(rPerilunes, rMins2[ii+1])
+            vPerilunes = np.append(vPerilunes, vMins2[ii+1])
+else:
+    rPerilunes = rMins2
+    vPerilunes = vMins2
 
-ax11.plot(posCRTBP_I_dim[:,0], posCRTBP_I_dim[:,1], posCRTBP_I_dim[:,2], 'r-.', label='CRTBP')
-ax11.set_xlabel('X [km]')
-ax11.set_ylabel('Y [km]')
-ax11.set_zlabel('Z [km]')
-ax11.set_title('Moon Centered Inertial Frame')
-plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
+# find the orbits that satisfy the periodicity constraints
+rPeriTol = 65.91973017001155
+vPeriTol = 0.001361807785758283
 
-fig, (ax12, ax13, ax14) = plt.subplots(3, 1)
-ax12.plot(np.arange(len(rotatedStatesNew[1:,2])),rotatedStatesNew[1:,0])
-ax12.set_ylabel('x')
-ax13.plot(np.arange(len(rotatedStatesNew[1:,2])),rotatedStatesNew[1:,1])
-ax13.set_ylabel('y')
-ax14.plot(np.arange(len(rotatedStatesNew[1:,2])),rotatedStatesNew[1:,2])
-ax14.set_ylabel('z')
+periPosDiff = np.abs(np.diff(rPerilunes))
+periVelDiff = np.abs(np.diff(vPerilunes))
+goodPeriPosInds = np.argwhere(periPosDiff < rPeriTol)[:,0]
+goodPeriVelInds = np.argwhere(periVelDiff < vPeriTol)[:,0]
+goodPeriInds = np.intersect1d(goodPeriPosInds,goodPeriVelInds)
+goodPeriPos = periPosDiff[goodPeriInds]
+goodPeriVel = periVelDiff[goodPeriInds]
 
-rmag = np.linalg.norm(rotatedStatesNew[1:,0:3], axis=1)
-plt.figure(15)
-plt.plot(np.arange(len(rotatedStatesNew[1:,2])), rmag)
-plt.show()
+# select the one with the smallest combined error
+periPosError = (rPeriTol - goodPeriPos)/rPeriTol
+periVelError = (vPeriTol - goodPeriVel)/vPeriTol
+periError = periPosError + periVelError
+maxError = np.argwhere(periError == max(periError))[0,0]
+
+# find the corresponding perilune
+indPeri = np.argwhere(periPosDiff == goodPeriPos[maxError])[0,0]
+indData = np.argwhere(rmag == rPerilunes[indPeri])[0,0]
+statePeri = rotatedStates[indData,:]
+timePeri = timesFull[indData]
 
 breakpoint()
