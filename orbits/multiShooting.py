@@ -446,7 +446,7 @@ def positionShooting(initialEpoch, initialState, targetEpoch, targetState, posit
     return initialState, finalState, STM, exitflag
 
 #
-def ffInertial(tt, w, GM, uT=None, times=None):
+def ffInertial(tt, w, GM, radii=None, uT=None, times=None):
 
     x = w[0]
     y = w[1]
@@ -784,3 +784,51 @@ def getPatches(N, times_dim, times_mjd, pos_dim, vel_dim):
     posvel = np.reshape(posvel,(N,6))
     
     return posvel, taus
+
+def hitMoon(tt, w, GM, radii, uT=None, times=None):
+    r_scM = w[0:3]
+
+    if np.linalg.norm(r_scM) < radii[0]:
+        moonCrash = 0
+    else:
+        moonCrash = 1
+        
+    return moonCrash
+    
+def hitEarth(tt, w, GM, radii, uT=None, times=None):
+    r_scM = w[0:3]
+
+    r_Earth = spice.spkpos('Earth', tt, 'J2000', 'None', 'Moon')[0]
+    
+    r_scE = r_scM - r_Earth
+
+    if np.linalg.norm(r_scE) < radii[1]:
+        earthCrash = 0
+    else:
+        earthCrash = 1
+        
+    return earthCrash
+
+def lostShape(tt, w, GM, radii, uT=None, times=None):
+    r_scM = w[0:3]
+    
+    if np.linalg.norm(r_scM) > 1.5*radii[-1]:
+        chaoticBehavior = 0
+    else:
+        chaoticBehavior = 1
+        
+    return chaoticBehavior
+
+#def hitSun(tt, w, GM, radii, uT=None, times=None):
+#    r_scM = w[0:3]
+#
+#    r_Earth = spice.spkpos('Earth', tt, 'J2000', 'None', 'Moon')[0]
+#    r_Sun = spice.spkpos('Sun', tt, 'J2000', 'None', 'Moon')[0]
+#    
+#    radii = np.array([radiiMoon, radiiEarth, radiiSun])
+#
+#    if np.linalg.norm(r_scM) < radii[0]
+#        moonCrash = 0
+#        
+#    return moonCrash
+

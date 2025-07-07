@@ -1,11 +1,8 @@
 import numpy as np
 import sys
-import astropy.coordinates as coord
-from astropy.coordinates.solar_system import get_body_barycentric_posvel
 from astropy.time import Time
 import astropy.units as u
-import astropy.constants as const
-from scipy.interpolate import interp1d
+from scipy.integrate import solve_ivp
 from matplotlib import pyplot as plt
 from matplotlib import animation
 sys.path.insert(1, 'tools')
@@ -26,7 +23,11 @@ gmSun = spice.bodvrd( 'Sun', 'GM', 1 )[1][0]
 gmEarth = spice.bodvrd( 'Earth', 'GM', 1 )[1][0]
 gmMoon = spice.bodvrd( 'Moon', 'GM', 1 )[1][0]
 GM = np.array([gmMoon, gmEarth, gmSun])
-#GM = np.array([gmMoon, gmEarth, 0.0])
+
+radiiSun = spice.bodvrd( 'Sun', 'RADII', 3 )[1][0]
+radiiEarth = spice.bodvrd( 'Earth', 'RADII', 3 )[1][0]
+radiiMoon = spice.bodvrd( 'Moon', 'RADII', 3 )[1][0]
+radii = np.array([radiiMoon, radiiEarth, radiiSun])
 
 t_equinox = Time(51544.5, format='mjd', scale='utc')
 t_veq = t_equinox + 79.3125*u.d
@@ -108,7 +109,7 @@ for ii in np.arange(len(etCRTBP_mjd)):
     state_I = Crv_R2I@state_R
     posCRTBP_I_dim[ii,:] = state_I[0:3]
 
-orbs = int(np.round(120/timesCRTBP_d[-1].value))
+orbs = int(np.round(45/timesCRTBP_d[-1].value))
 timesCRTBP_dtot = timesCRTBP_d.copy()
 timesCRTBP_mjdtot = timesCRTBP_mjd.copy()
 posCRTBP_dimtot = posCRTBP_R_dim.copy()
@@ -259,7 +260,7 @@ velPeri = inertialStates[min1_ind:minLast_ind,3:6]
 # decrease the number of patches until 2*(orbs - 1) - 1
 velocityTolerance = 0.0001*(orbs - 1)  # km/s
 Nmax = 9*(orbs - 1) + 1
-Nmin = 58
+Nmin = 2*(orbs - 1)
 #Nmin = 2*(orbs - 1) - 1
 Ns = np.append(np.arange(Nmax, Nmin, -(orbs-1)), Nmin)
 patchCtr = 0
@@ -392,26 +393,9 @@ tMins2 = tMins[indTot]
 # if two local minima occur near perilune time, pick the lowest
 diff3 = np.abs(np.diff(tMins2))
 diff4 = np.abs(np.diff(rMins2))
-inds3 = np.argwhere(diff3 < periodTolerance)[:,0]
-breakpoint()
-if len(inds3) > 0:
-    rPerilunes = np.array([])
-    vPerilunes = np.array([])
-    for ii in np.arange(len(tMins2)-1):
-        if np.abs(tMins2[ii] - tMins2[ii+1]) < 2*periodTolerance:
-            if rMins2[ii] < rMins2[ii+1]:
-                rPerilunes = np.append(rPerilunes, rMins2[ii])
-                vPerilunes = np.append(vPerilunes, vMins2[ii])
-            else:
-                rPerilunes = np.append(rPerilunes, rMins2[ii+1])
-                vPerilunes = np.append(vPerilunes, vMins2[ii+1])
-        else:
-            rPerilunes = np.append(rPerilunes, rMins2[ii])
-            vPerilunes = np.append(vPerilunes, vMins2[ii])
-    breakpoint()
-else:
-    rPerilunes = rMins2
-    vPerilunes = vMins2
+inds3 = np.argwhere(diff3 > 2*periodTolerance)[:,0]
+rPerilunes = np.append(rMins2[0], rMins2[inds3+1])
+vPerilunes = np.append(vMins2[0], vMins2[inds3+1])
 
 # find the orbits that satisfy the periodicity constraints
 rPeriTol = 65.91973017001155
@@ -430,7 +414,6 @@ if np.any(goodPeriInds):
     periPosError = (rPeriTol - goodPeriPos)/rPeriTol
     periVelError = (vPeriTol - goodPeriVel)/vPeriTol
     periError = periPosError + periVelError
-    breakpoint()
     maxError = np.argwhere(periError == max(periError))[0,0]
 
     # find the corresponding perilune
@@ -438,11 +421,43 @@ if np.any(goodPeriInds):
     indData = np.argwhere(rmag == rPerilunes[indPeri])[0,0]
     statePeri = rotatedStates[indData,:]
     timePeri = timesFull[indData]
+    print('Perilune state')
+    print(statePeri)
+    print(timePeri)
+    flag100Years = True
 else:
     print('No suitable perilunes')
     print('Pos differences')
     print(periPosDiff)
     print('Vel differences')
     print(periVelDiff)
+    flag100Years = False
 
+
+if flag100Years:
+    radii = np.append(radii, max(rmag))
+    ms.hitMoon.terminal = True
+    ms.hitEarth.terminal = True
+    ms.lostShape.terminal = True
+    timePeri_f = timePeri + (100*u.yr).to_value(u.s)
+    
+    sol_int = solve_ivp(ms.ffInertial, [timePeri, timePeri_f], statePeri, args=(GM,radii), events=[ms.hitMoon, ms.hitEarth, ms.lostShape], rtol=1E-12, atol=1E-12, method='LSODA')
+    time100 = sol_int.t
+    states100 = sol_int.y.T
+    time100Events = sol_int.t_events
+    states100Events = sol_int.y_events
+    
+    if np.any(states100Events[0]):
+        print('Impacted Moon')
+    elif np.any(states100Events[1]):
+        print('Impacted Earth')
+    else:
+        print('Lost orbit shape')
+    
+    if showPlots:
+        ax16 = plt.figure().add_subplot(projection='3d')
+        ax16.plot(states100[:,0], states100[:,1], states100[:,2])
+        ax16.set_title(str((time100[-1]-time100[0])/60/60/24/365)+' year propagation')
+        plt.show()
+    
 breakpoint()
