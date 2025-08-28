@@ -1180,3 +1180,40 @@ def multiShooting22(initialEpoches, initialStates, finalStates, C_G2I, STMs, t_s
     dInitialEpoches = deltas[:,-1]
         
     return dInitialEpoches, dInitialPos, dFinalPos, bb
+
+def jacobiConstCRTBPR(pos, vel, mu_star):
+
+    r_Mbary = np.array([1-mu_star, 0, 0])
+    r_Ebary = np.array([-mu_star, 0, 0])
+    
+    KE = np.dot(vel, vel)/2
+    U1 = -(pos[0]**2 + pos[1]**2)/2
+    U2 = -((1-mu_star)/np.linalg.norm(pos - r_Ebary[0:3]) + (mu_star)/np.linalg.norm(pos - r_Mbary))
+
+    C = KE + U1 + U2
+    
+#    breakpoint()
+    return C
+
+def jacobiConstCRTBPI(pos, vel, mu_star, t):
+    r_Mbary = np.array([1-mu_star, 0, 0])
+    r_Ebary = np.array([-mu_star, 0, 0])
+    
+    C_I2R = frameConversion.rot(t, 3)
+    C_R2I = C_I2R.T
+    
+    r_MbaryI = C_R2I@r_Mbary
+    r_EbaryI = C_R2I@r_Ebary
+    
+    r_scM = pos - r_MbaryI
+    r_scE = pos - r_EbaryI
+    
+    e3 = np.array([0, 0, 1])
+    
+    KE = np.dot(vel, vel)/2
+    U1 = (1-mu_star)/np.linalg.norm(r_scE) + mu_star/np.linalg.norm(r_scM)
+    U2 = np.dot(vel, np.cross(e3, pos))
+    
+    C = KE - U1 - U2
+
+    return C

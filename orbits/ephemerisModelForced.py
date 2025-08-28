@@ -43,8 +43,8 @@ Tp_m = spice.oscltx(rvMoon, et_start, gmEarth)[-1]
 omega_m = 2*np.pi/Tp_m
 
 # Initial condition in canonical units in rotating frame R [pos, vel, time, U]
-fileStr = 'TrajExample'
-#fileStr = 'TrajI_1265'
+#fileStr = 'TrajExample'     # pole sitter
+fileStr = 'TrajI_1265'      # mass optimal
 mat_data = loadmat(fileStr+'.mat')['TrajI']
 posCRTBP_R = mat_data[:,0:3]
 velCRTBP_R = mat_data[:,3:6]
@@ -129,7 +129,7 @@ for ii in np.arange(len(times_dim)):
 positionTolerance = 0.01    # km
 velocityTolerance = 1E-6*orbs  # km/s
 
-correctedInitialEpoches, correctedInitialStates, exitflag, correctedFinalStates = ms.multipleShootingIForced(initialEphmerisEpoches, initialEphemerisMCI, positionTolerance, velocityTolerance, GM, uT_dim.value, etCRTBP_mjd)
+correctedInitialEpoches, correctedInitialStates, exitflag, correctedFinalStates = ms.multipleShootingIForced(initialEphmerisEpoches, initialEphemerisMCI, positionTolerance, velocityTolerance, GM, uT_dim.value, etCRTBP_mjd, omega_m)
 
 # Plot in MCI and MCR
 ax10 = plt.figure().add_subplot(projection='3d')
@@ -141,7 +141,7 @@ vFinal = np.array([])
 dVtot = 0
 for ii in np.arange(N-1):
     Ts = correctedInitialEpoches[ii:ii+2]
-    times, states = ms.statePropFFIForced(Ts, correctedInitialStates[ii,:], GM, uT_dim.value, etCRTBP_mjd)
+    times, states = ms.statePropFFIForced(Ts, correctedInitialStates[ii,:], GM, uT_dim.value, etCRTBP_mjd, omega_m)
         
     inertialStates = np.vstack((inertialStates, states))
     vFinal = np.append(vFinal, states[-1,3:6])

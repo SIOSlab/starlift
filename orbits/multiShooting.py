@@ -223,7 +223,7 @@ def statePropFFI(Ts,state0,GM):
     return times, states
 
 
-def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, uT, timesInterp):
+def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, uT, timesInterp, omega_m):
 
     iterationNumberLevelTwoMax = 10
 
@@ -243,7 +243,7 @@ def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, ve
         STMs = np.zeros((N-1,6,6))
         print('Inner loop: position shooting')
         for ii in np.arange(N-1):
-            cInitial, cFinal, STM, exitFlag1 = positionShootingForced(correctedInitialEpoches[ii], correctedInitialStates[ii,:], correctedInitialEpoches[ii+1], correctedInitialStates[ii+1,:], positionTolerance, GM, uT, timesInterp)
+            cInitial, cFinal, STM, exitFlag1 = positionShootingForced(correctedInitialEpoches[ii], correctedInitialStates[ii,:], correctedInitialEpoches[ii+1], correctedInitialStates[ii+1,:], positionTolerance, GM, uT, timesInterp, omega_m)
             correctedInitialStates[ii,:] = cInitial
             correctedFinalStates[ii,:] = cFinal
             STMs[ii,:,:] = STM
@@ -290,9 +290,9 @@ def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, ve
             v2plus  = correctedInitialStates[ii, 3:6]
             v3minus = correctedFinalStates[ii, 3:6]
 
-            a2minus = ffInertialForced(correctedInitialEpoches[ii], correctedFinalStates[ii-1, :], GM, uT, timesInterp)
+            a2minus = ffInertialForced(correctedInitialEpoches[ii], correctedFinalStates[ii-1, :], GM, uT, timesInterp, omega_m)
             a2minus = a2minus[3:6]
-            a2plus  = ffInertialForced(correctedInitialEpoches[ii], correctedInitialStates[ii, :], GM, uT, timesInterp)
+            a2plus  = ffInertialForced(correctedInitialEpoches[ii], correctedInitialStates[ii, :], GM, uT, timesInterp, omega_m)
             a2plus = a2plus[3:6]
 
             dVdu1 = -np.linalg.inv(stm12[0:3,3:6])
@@ -330,7 +330,7 @@ def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, ve
     return correctedInitialEpoches, correctedInitialStates, exitflag, correctedFinalStates
     
 
-def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState, positionTolerance, GM, uT, timesInterp):
+def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState, positionTolerance, GM, uT, timesInterp, omega_m):
 
     iterationNumberMax = 50
     iterationNumber = 1
@@ -340,7 +340,7 @@ def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState,
     while np.linalg.norm(deltaR) > positionTolerance:
         # calculate state transition matrix
         state0 = np.append(initialState, phi0)
-        times, states = statePropFFIForced(np.array([initialEpoch, targetEpoch]), state0, GM, uT, timesInterp)
+        times, states = statePropFFIForced(np.array([initialEpoch, targetEpoch]), state0, GM, uT, timesInterp, omega_m)
 
         finalState = states[-1, 0:6]
         STM = np.reshape(states[-1, 6:], (6,6))
@@ -372,7 +372,7 @@ def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState,
     return initialState, finalState, STM, exitflag
     
     
-def ffInertialForced(tt, w, GM, uT=None, times=None):
+def ffInertialForced(tt, w, GM, uT=None, times=None, omega_m=None):
 
     x = w[0]
     y = w[1]
@@ -398,6 +398,14 @@ def ffInertialForced(tt, w, GM, uT=None, times=None):
         u_ii = linInterp(times, uT, tt)
         Crv_R2I = spice.sxform('MCR','MCI',tt)
         f_T = Crv_R2I[0:3,0:3]@u_ii
+#        wR = Crv_R2I@w[0:6]
+#        rotVec = np.array([0, 0, omega_m])
+#        try:
+#            tmp1 = 2*np.cross(rotVec, wR[3:6])
+#            tmp2 = np.cross(rotVec, np.cross(rotVec, wR[0:3]))
+#        except:
+#            breakpoint()
+#        f_T = u_ii + tmp1 + tmp2
         Fg = Fg + f_T
 
     if len(w) > 6:
@@ -450,11 +458,11 @@ def linInterp(times, uT, currentTime):
     
     return u_current
 
-def statePropFFIForced(Ts,state0,GM,uT,times):
+def statePropFFIForced(Ts,state0,GM,uT,times,omega_m):
     ti = Ts[0]
     tf = Ts[1]
     
-    sol_int = solve_ivp(ffInertialForced, [ti, tf], state0, args=(GM,uT,times), rtol=1E-12, atol=1E-12, method='LSODA')
+    sol_int = solve_ivp(ffInertialForced, [ti, tf], state0, args=(GM,uT,times,omega_m), rtol=1E-12, atol=1E-12, method='LSODA')
 
     states = sol_int.y.T
     times = sol_int.t

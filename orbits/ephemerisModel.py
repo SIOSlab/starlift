@@ -57,17 +57,17 @@ data = np.load('L2_Southern.npz')
 posvelt = data['ICs']
 Tp0 = unitConversion.convertTime_to_dim(posvelt[:,6]).value
 Tp_target = np.linspace(Tp0[0],Tp0[-1], 10)
-
-for kk in np.arange(0,len(Tp_target)):
+#Tp_target = np.flip(np.linspace(Tp0[82], Tp0[141], 15))
+for kk in np.arange(1,len(Tp_target)):
     Tp_diff = np.abs(Tp0 - Tp_target[kk])
     Tp_ind = np.argwhere(min(Tp_diff) == Tp_diff)[0,0]
 
     state_kk = posvelt[Tp_ind,:]
     
     timeDays = unitConversion.convertTime_to_dim(state_kk[6]).value
-    totTime = timeDays*5
+    totTime = timeDays*10
     
-    mainDir = '/Users/gracegenszler/Documents/Research/starlift/orbits/graveyardOrbits/L2S/' + str(timeDays) + '_days/'
+    mainDir = '/Users/gracegenszler/Documents/Research/starlift/orbits/graveyardOrbits/L2S_full100run/' + str(timeDays) + '_days/'
     
     giveUp = False
     attempt100Ctr = 0
@@ -137,12 +137,12 @@ for kk in np.arange(0,len(Tp_target)):
             os.makedirs(orbitDir)
             np.savez(orbitDir+'/CRTBPData.npz', RPs = posCRTBP_R_dim, RVs = velCRTBP_R_dim, Ts = timesCRTBP_mjd, IPs = posCRTBP_I_dim, mu_star = mu_star)
             np.savez(orbitDir+'/CRTBPDataTot.npz', Ts = timesCRTBP_dtot, Tmjd = timesCRTBP_mjdtot, IPs = posCRTBP_dimtot, IVs = velCRTBP_dimtot, Norbit = orbs)
-            # Tmjd not necessairly aligning with t_start, move to saving t_start with the FF apo data and calculating timesCRTBP_mjd after loading it in
-
-
 
         patchRound = int(np.round((timesCRTBP_mjd[-1]-timesCRTBP_mjd[0]).value))
-            
+        
+        positionTolerance = 0.01    # km
+        velocityTolerance = 0.0001*orbs  # km/s
+        
         initialFFFilePath = Path(orbitDir + '/InitialFF.npz')
         apoluneDataFilePath = orbitDir + '/ApoluneData.npz'
         if os.path.exists(initialFFFilePath):
@@ -151,7 +151,7 @@ for kk in np.arange(0,len(Tp_target)):
             
             stateApo = initialFF['ICs']
             timeApo = initialFF['Ts']
-    #        orbs = initialFF['Norbit']
+#            orbs = initialFF['Norbit']
             N1 = initialFF['Npatch']
      
             rotatedStatesApo = apoluneData['RICs']
@@ -161,10 +161,10 @@ for kk in np.arange(0,len(Tp_target)):
             correctedInitialStatesApo = apoluneData['patchStatesI']
             correctedInitialEpochesApo = apoluneData['patchTimes']
             
-            positionTolerance = 0.01    # km
-            velocityTolerance = 0.0001*orbs  # km/s
+#            positionTolerance = 0.01    # km
+#            velocityTolerance = 0.0001*orbs  # km/s
         else:
-            N1 = int(patchRound*orbs*1.5 - 1)
+            N1 = int(patchRound*orbs*1 - 1)
             exitflag = 0
             patchCtr1 = 0
             while exitflag != 1:
@@ -481,7 +481,7 @@ for kk in np.arange(0,len(Tp_target)):
             ms.hitMoon.terminal = True
             ms.hitEarth.terminal = True
             ms.hitSun.terminal = True
-            ms.lostShape.terminal = True
+            ms.lostShape.terminal = False        # CHANGE THIS BACK
             
             while not solutionFound:
                 propTimes = np.array([])
@@ -536,7 +536,7 @@ for kk in np.arange(0,len(Tp_target)):
                     ax16.set_zlabel('z [km]')
                     plt.show(block=False)
                 
-                np.savez(orbitDir+'/attemptStartTime_'+str(t100_initial)+'_propTime_'+str(propTime)+'.npz', states = states100, statesR = states100R, Ts = time100, flagEvent = firstEventFlag)
+                np.savez(orbitDir+'/attemptStartTime_'+str(t100_initial)+'_propTime_'+str(propTime)+'.npz', states = states100, statesR = statesR100, Ts = time100, eventFlag = firstEventFlag)
                                 
                 if propTime > 365*100:
                     solutionFound = True
@@ -562,7 +562,9 @@ for kk in np.arange(0,len(Tp_target)):
         if showPlots:
             plt.close('all')
         
-        if attempt100Ctr > 5:
+        if attempt100Ctr > 10:
             giveUp = True
+            
+        breakpoint()
 
 breakpoint()

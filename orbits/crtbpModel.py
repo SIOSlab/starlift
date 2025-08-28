@@ -23,6 +23,7 @@ showPlots = False
 gmEarth = spice.bodvrd( 'Earth', 'GM', 1 )[1][0]
 gmMoon = spice.bodvrd( 'Moon', 'GM', 1 )[1][0]
 mu_star = gmMoon/(gmEarth + gmMoon)
+#mu_star = 0.01215059
 m1 = (1 - mu_star)
 m2 = mu_star
 
@@ -30,8 +31,12 @@ radiiMoon = spice.bodvrd( 'Moon', 'RADII', 3 )[1][0]
 rMoon = unitConversion.convertPos_to_canonical(radiiMoon*u.km)
 
 # Initial condition in canonical units in rotating frame R [pos, vel]
-IC = [1.0118, 0, 0.1739, 0, -0.0799, 0, 1.3743]     # L2 Northern
-#IC = [1.0118, 0, -0.1739, 0, -0.0799, 0, 1.3743]     # L2 Southern
+#IC = [1.0118, 0, 0.1739, 0, -0.0799, 0, 1.3743]                 # L2 Northern
+#IC = [1.0118, 0, -0.1739, 0, -0.0799, 0, 1.3743]                # L2 Southern
+#IC = [0.8234, 0, 0.0224, 0, 0.1343, 0, 2.7464/2]                # L1 Northern
+#IC = [0.8234, 0, -0.0224, 0, 0.1343, 0, 2.7464/2]               # L1 Southern
+#IC = [1.0118, 0, 0.1739, 0, -0.0799, 0, 1.3743]                 # L2 Northern Butterfly
+#IC = [0.9624690577, 0, 0, 0, 0.7184165432, 0, 0.2230147974/2]   # DRO
 
 #IC = [((1 - mu_star) - 0.023413), 0, 0, 0, 0.720544, 0, 0.102081]
 
@@ -54,7 +59,7 @@ max_iter = 50
 error = 10
 eps = 1E-6
 step = 0.01
-Tp_max = unitConversion.convertTime_to_canonical(14*u.d)
+Tp_max = unitConversion.convertTime_to_canonical(6.02*u.d)
 goodSols = np.array([])
 Nsols = 0
 while X[-1] < Tp_max:
@@ -113,10 +118,50 @@ while X[-1] < Tp_max:
     z = z / np.linalg.norm(z)
 
 goodSols = np.reshape(goodSols, (Nsols, 7))
-goodSols = goodSols[1:,:]
+#goodSols = goodSols[1:,:]
 states = goodSols[:,0:6]
-periods = goodSols[:,7]
+periods = goodSols[:,6]
 
-np.savez('/Users/gracegenszler/Documents/Research/starlift/orbits/graveyardOrbits/L2_Northern.npz', states = states, periods = periods, mu_star = mu_star)
-print(Nsols)
+statesR, timesR = orbitEOMProp.statePropCRTBP_R(goodSols[-1,:], mu_star)
+
+ax1 = plt.figure().add_subplot(projection='3d')
+ax1.plot(statesR[:, 0], statesR[:, 1], statesR[:, 2])
+ax1.set_xlabel('X [DU]')
+ax1.set_ylabel('Y [DU]')
+ax1.set_zlabel('Z [DU]')
+        
+# save initial conditions
+#np.savez('/Users/gracegenszler/Documents/Research/starlift/orbits/graveyardOrbits/L2_Northern.npz', states = states, periods = periods, mu_star = mu_star)
+#print(Nsols)
+
+# calculate jacobi constant in the rotating frame
+#initialConds = np.append(freeVar0CRTBP_R[0:6], unitConversion.convertTime_to_canonical(100*u.yr))
+#statesCRTBP_R100, timesCRTBP_R100 = orbitEOMProp.statePropCRTBP_R(initialConds, mu_star)
+#
+#C = np.zeros(len(timesCRTBP_R100))
+#for ii in np.arange(len(timesCRTBP_R100)):
+#    C[ii] = orbitEOMProp.jacobiConstCRTBPR(statesCRTBP_R100[ii,0:3], statesCRTBP_R100[ii,3:6], mu_star)
+
+#plt.figure(1)
+#plt.plot(timesCRTBP_R100, C)
+#plt.xlabel('time [nd]')
+#plt.ylabel('jacobi constant [nd]')
+
+# calculate jacobi constant in the inertial frame
+#vI0 = frameConversion.rot2inertV(freeVar0CRTBP_R[0:3], freeVar0CRTBP_R[3:6], 0)
+#
+#initialConds = np.append(np.append(freeVar0CRTBP_R[0:3], vI0), unitConversion.convertTime_to_canonical(100*u.yr))
+#statesCRTBP_I100, timesCRTBP_I100 = orbitEOMProp.statePropCRTBP(initialConds, mu_star)
+#
+#C = np.zeros(len(timesCRTBP_I100))
+#print('Calculating jacobi constant')
+#for ii in np.arange(len(timesCRTBP_I100)):
+#    C[ii] = orbitEOMProp.jacobiConstCRTBPI(statesCRTBP_I100[ii,0:3], statesCRTBP_I100[ii,3:6], mu_star, timesCRTBP_I100[ii])
+#
+#plt.figure(1)
+#plt.plot(timesCRTBP_I100, C)
+#plt.xlabel('time [nd]')
+#plt.ylabel('jacobi constant [nd]')
+
+plt.show()
 breakpoint()
