@@ -73,17 +73,17 @@ for ii in np.arange(len(etCRTBP_mjd)):
     state_I = Crv_R2I@state_R
     posCRTBP_I_dim[ii,:] = state_I[0:3]
 
-filepath = '/Users/gracegenszler/Documents/Research/starlift/orbits/forcedOrbits/twoOrbits/'+fileStr
+filepath = '/Users/gracegenszler/Documents/Research/starlift/orbits/forcedOrbits/varyPatches/'+fileStr+'_Separate'
 if os.path.isdir(filepath):
     print('directory exists')
 else:
     os.makedirs(filepath)
     
 positionTolerance = 0.01    # km
-velocityTolerance = 1E-2   #1E-6*orbs  # km/s
+velocityTolerance = 1E-6*orbs  # km/s
     
-Nmax = 9
-Ns = np.arange(Nmax, 7, -1)
+Nmax = 19
+Ns = np.arange(Nmax, 9, -1)
 patchCtr = 0
 plusCtr = 0
 minPatch = False
@@ -155,6 +155,7 @@ while not minPatch:
                         
         np.savez(filepath+'/InitialFF_N'+str(N)+'.npz', ICs = correctedInitialStates, FCs = correctedFinalStates, Ts = correctedInitialEpoches, times = timesFull, statesR = rotatedStates, statesI = inertialStates, Npatch = N, startTime = t_start, mu_star = mu_cstar)
 
+breakpoint()
 # solve for one orbit using code above
 # calculate patch points for second orbit
 N2 = 9
@@ -166,8 +167,11 @@ etCRTBP_mjd2 = spice.str2et(timesCRTBP_mjd2.iso)
 posvelNew, tausNew = ms.getPatches(N2, timesCRTBP_d, timesCRTBP_mjd2, posCRTBP_R_dim, velCRTBP_R_dim)
 
 # ignore the first new patch point and use the final state from the section above
-posvel2 = np.vstack((correctedFinalStates[-1,:], posvelNew[1:,:]))
-taus2 = Time(np.append(t_start2.mjd, tausNew[1:].value), format='mjd', scale='utc')
+#posvel2 = np.vstack((correctedFinalStates[-1,:], posvelNew[1:,:]))
+#taus2 = Time(np.append(t_start2.mjd, tausNew[1:].value), format='mjd', scale='utc')
+# solve for two distinct orbits
+posvel2 = posvelNew
+taus2 = tausNew
 
 # solve again
 # Convert to MCI frame

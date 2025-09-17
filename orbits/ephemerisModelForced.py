@@ -43,8 +43,12 @@ Tp_m = spice.oscltx(rvMoon, et_start, gmEarth)[-1]
 omega_m = 2*np.pi/Tp_m
 
 # Initial condition in canonical units in rotating frame R [pos, vel, time, U]
-#fileStr = 'TrajExample'     # pole sitter
-fileStr = 'TrajI_1265'      # mass optimal
+#fileStr = 'L1_Halo'                     # L1 Halo
+#fileStr = 'L2_NRHO'                     # L2 NRHO
+#fileStr = 'TrajI_1265_MassOptimal'      # L2 Halo
+fileStr = 'TrajI_1265_EnergyOptimal'    # L2 Halo
+#fileStr = 'L2_Butterfly'                # L2 Butterfly
+#fileStr = 'TrajExample'                 # pole sitter
 mat_data = loadmat(fileStr+'.mat')['TrajI']
 posCRTBP_R = mat_data[:,0:3]
 velCRTBP_R = mat_data[:,3:6]

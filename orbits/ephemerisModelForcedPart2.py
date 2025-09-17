@@ -31,8 +31,12 @@ gmMoon = spice.bodvrd( 'Moon', 'GM', 1 )[1][0]
 GM = np.array([gmMoon, gmEarth, gmSun])
 
 fileDirectory = '/Users/gracegenszler/Documents/Research/starlift/orbits/forcedOrbits/'
-fileStr = 'TrajI_1265'      # mass optimal
-#fileStr = 'TrajExample'    # pole sitter
+#fileStr = 'L1_Halo'                     # L1 Halo
+#fileStr = 'L2_NRHO'                     # L2 NRHO
+#fileStr = 'TrajI_1265_MassOptimal'      # L2 Halo
+fileStr = 'TrajI_1265_EnergyOptimal'    # L2 Halo
+#fileStr = 'L2_Butterfly'                # L2 Butterfly
+#fileStr = 'TrajExample'                 # pole sitter
 folders = [fileStr+'/']
 
 for jj in np.arange(len(folders)):
@@ -90,10 +94,10 @@ for jj in np.arange(len(folders)):
 #    Ftmaxs = np.array([Ftmax0])*u.mN
     
     thrusterName = "ST-100 Hall Thruster"      # https://sets.space/wp-content/themes/sets-space/images/product-sheet/2023/ST-100.pdf
-    Ftmax = 70*u.mN
+    Ftmax = Ftmax0*u.mN
 #    Ftmax0 = (max(uT_mag)*mi).to_value(u.mN)
 #    Ftmaxs = np.array([Ftmax0, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 107])*u.mN
-    Isps = np.array([1500, 1550, 1600, 1650, 1700])*u.s
+    Isps = np.array([1500])*u.s
 
 #    thrusterName = "BHT-1500 Hall Thruster"    # https://www.busek.com/bht1500
 #    Ftmaxs = np.array([68, 101, 120, 134, 158, 179])*u.mN
@@ -253,9 +257,9 @@ for jj in np.arange(len(folders)):
         ax1.plot(statesR[:, 0], statesR[:, 1], statesR[:, 2], 'b', label='Multi Segment')
         ax1.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r-.', label='CRTBP')
         ax1.plot(states_final_R[:,0], states_final_R[:,1], states_final_R[:,2], 'y-.', label='Final Trajectory')
-        ax1.set_xlabel('X [km]')
-        ax1.set_ylabel('Y [km]')
-        ax1.set_zlabel('Z [km]')
+        ax1.set_xlabel('X [km]', labelpad = 30)
+        ax1.set_ylabel('Y [km]', labelpad = 30)
+        ax1.set_zlabel('Z [km]', labelpad = 30)
         ax1.set_title('Moon Centered Rotating Frame')
         plt.legend()
 
@@ -287,23 +291,25 @@ for jj in np.arange(len(folders)):
             
         ff.write(str(Ftmax.to_value(u.mN))+", "+str(Isp.value)+", "+str(burnTimeTot)+", "+str(max(diffR_mag))+", "+str(mi.value)+", "+str(mf[-1].value)+"\n")
         
+        statesR_diff = statesR_diff*1000
         plot_time = (timesFF - timesFF[0])/60/60/24
         fig, (ax2, ax3, ax4, ax5) = plt.subplots(4, 1, figsize=(10, 8))
-        ax2.plot(plot_time, abs(statesR_diff[:,0])*1000)
-        ax2.set_ylabel('x [km]')
+        ax2.plot(plot_time, abs(statesR_diff[:,0]))
+        ax2.set_ylabel('x [m]')
         ax2.set_xlim(0, plot_time[-1])
         ax2.get_xaxis().set_visible(False)
         ax2.set_title('Absolute Value Differences')
-        ax3.plot(plot_time, abs(statesR_diff[:,1])*1000)
+        ax3.plot(plot_time, abs(statesR_diff[:,1]))
         ax3.set_ylabel('y [m]')
         ax3.set_xlim(0, plot_time[-1])
         ax3.get_xaxis().set_visible(False)
-        ax4.plot(plot_time, abs(statesR_diff[:,2])*1000)
+        ax4.plot(plot_time, abs(statesR_diff[:,2]))
         ax4.set_ylabel('z [m]')
         ax4.set_xlim(0, plot_time[-1])
         ax4.get_xaxis().set_visible(False)
-        ax5.plot(plot_time, abs(diffR_mag)*1000)
+        ax5.plot(plot_time, abs(diffR_mag*1000))
         ax5.set_ylabel('Position Magnitude [m]')
+#        ax5.set_ylabel('Position Magnitude [km]', labelpad = 10)
         ax5.set_xlabel('Time [days]')
         ax5.set_xlim(0, plot_time[-1])
         
@@ -321,10 +327,10 @@ for jj in np.arange(len(folders)):
         plt.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
         plt.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
         plt.plot(np.array([timesCRTBP_d[0].value, timesCRTBP_d[-1].value]), FtMaxPlt, 'k', label='Max Thrust')
-        plt.xlabel('time [d]')
+        plt.xlabel('Time [d]')
         plt.ylabel('Thrust Force [mN]')
         plt.xlim(0, uTNew_time[-1])
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.28, .84),loc='lower right')
 #        fig, (ax9, ax6) = plt.subplots(2, 1)
 #        ax9.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
 #        ax9.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')

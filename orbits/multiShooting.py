@@ -6,6 +6,34 @@ from matplotlib import pyplot as plt
 
 
 def multipleShootingI(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM):
+    """Multi-segment shooting algorithm in the moon centered inertial frame
+
+    Args:
+        initialEpoches (~numpy.ndarray(float)):
+            Epoch times of the patch points in seconds past J2000
+        initialStates (~numpy.ndarray(float)):
+            States at each patch point in km, s units [[pos, vel], [pos, vel], ...]
+        positionTolerance (float):
+            Max allowable difference between the propagated and the desired positions
+        velocityTolerance (float):
+            Max allowable difference between sum of the velocity differences at patch 
+            points
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+
+    Returns:
+        tuple:
+        correctedInitialEpoches ~numpy.ndarray(float):
+            Corrected epoch times of the patch points in seconds past J2000
+        correctedInitialStates (~numpy.ndarray(float)):
+            Corrected states at each patch point in km, s units 
+            [[pos, vel], [pos, vel], ...]
+        exitflag (int):
+            1: multi shooting algorithm is successful
+            -2: fails the inner loop
+            -1: fails the outer loop
+
+    """
 
     iterationNumberLevelTwoMax = 20
 
@@ -111,7 +139,41 @@ def multipleShootingI(initialEpoches, initialStates, positionTolerance, velocity
 
 
 def positionShooting(initialEpoch, initialState, targetEpoch, targetState, positionTolerance, GM):
+    """Position shooting inner loop for the multi-segment optimization
 
+    Args:
+        initialEpoch (~numpy.ndarray(float)):
+            Initial patch point time in seconds past J2000
+        initialState (~numpy.ndarray(float)):
+            Initial state in km, s units [pos, vel]
+        targetEpoch (~numpy.ndarray(float)):
+            Target patch point time in seconds past J2000
+        targetState (~numpy.ndarray(float)):
+            Target state at the next patch point in km, s units [pos, vel]
+        positionTolerance (float):
+            Max allowable difference between the propagated and the desired positions
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+            
+
+    Returns:
+        tuple:
+        initialState (~numpy.ndarray(float)):
+            Corrected initial state in km, s units 
+            [pos, vel]
+        finalState (~numpy.ndarray(float)):
+            Final state after propagating the segment in km, s units 
+            [pos, vel]
+        STM (~numpy.ndarray(float)):
+            6x6 state transition matrix to go from the initial epoch to the end of the
+            segment
+        exitflag (int):
+            1: multi shooting algorithm is successful
+            -1: fails the outer loop
+
+    """
+    
+    
     iterationNumberMax = 50
     iterationNumber = 1
     deltaR = 1
@@ -153,7 +215,30 @@ def positionShooting(initialEpoch, initialState, targetEpoch, targetState, posit
 
 
 def ffInertial(tt, w, GM, radii=None, uT=None, times=None):
+    """Equations of motion in the moon centered inertial frame
 
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+            
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+    
+    
     x = w[0]
     y = w[1]
     z = w[2]
@@ -212,6 +297,27 @@ def ffInertial(tt, w, GM, radii=None, uT=None, times=None):
 
 
 def statePropFFI(Ts,state0,GM):
+    """Propagate the dynamics in the moon centered inertial frame
+
+    Args:
+        Ts (~numpy.ndarray(float)):
+            Start and end times in seconds past J2000
+        state0 (~numpy.ndarray(float)):
+            Initial state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+
+    Returns:
+        tuple:
+        times ~numpy.ndarray(float):
+            Times in seconds past J2000
+        states ~numpy.ndarray(float):
+            Positions and velocities in km, s units [[pos, vel], [pos, vel], ...]
+        
+
+    """
+    
+    
     ti = Ts[0]
     tf = Ts[1]
     
@@ -224,6 +330,42 @@ def statePropFFI(Ts,state0,GM):
 
 
 def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM, uT, timesInterp, omega_m):
+    """Multi-segment shooting algorithm in the moon centered inertial frame for forced
+    periodic orbits
+
+    Args:
+        initialEpoches (~numpy.ndarray(float)):
+            Epoch times of the patch points in seconds past J2000
+        initialStates (~numpy.ndarray(float)):
+            States at each patch point in km, s units [[pos, vel], [pos, vel], ...]
+        positionTolerance (float):
+            Max allowable difference between the propagated and the desired positions
+        velocityTolerance (float):
+            Max allowable difference between sum of the velocity differences at patch 
+            points
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        timesInterp (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+        omega_m (float):
+            Angular velocity of the Moon about the Earth
+            
+
+    Returns:
+        tuple:
+        correctedInitialEpoches ~numpy.ndarray(float):
+            Corrected epoch times of the patch points in seconds past J2000
+        correctedInitialStates (~numpy.ndarray(float)):
+            Corrected states at each patch point in km, s units 
+            [[pos, vel], [pos, vel], ...]
+        exitflag (int):
+            1: multi shooting algorithm is successful
+            -2: fails the inner loop
+            -1: fails the outer loop
+
+    """
 
     iterationNumberLevelTwoMax = 10
 
@@ -331,6 +473,46 @@ def multipleShootingIForced(initialEpoches, initialStates, positionTolerance, ve
     
 
 def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState, positionTolerance, GM, uT, timesInterp, omega_m):
+    """Position shooting inner loop for the multi-segment optimization for forced
+    periodic orbits
+
+    Args:
+        initialEpoch (~numpy.ndarray(float)):
+            Initial patch point time in seconds past J2000
+        initialState (~numpy.ndarray(float)):
+            Initial state in km, s units [pos, vel]
+        targetEpoch (~numpy.ndarray(float)):
+            Target patch point time in seconds past J2000
+        targetState (~numpy.ndarray(float)):
+            Target state at the next patch point in km, s units [pos, vel]
+        positionTolerance (float):
+            Max allowable difference between the propagated and the desired positions
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        timesInterp (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+        omega_m (float):
+            Angular velocity of the Moon about the Earth
+            
+
+    Returns:
+        tuple:
+        initialState (~numpy.ndarray(float)):
+            Corrected initial state in km, s units 
+            [pos, vel]
+        finalState (~numpy.ndarray(float)):
+            Final state after propagating the segment in km, s units 
+            [pos, vel]
+        STM (~numpy.ndarray(float)):
+            6x6 state transition matrix to go from the initial epoch to the end of the
+            segment
+        exitflag (int):
+            1: multi shooting algorithm is successful
+            -1: fails the outer loop
+
+    """
 
     iterationNumberMax = 50
     iterationNumber = 1
@@ -373,7 +555,33 @@ def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState,
     
     
 def ffInertialForced(tt, w, GM, uT=None, times=None, omega_m=None):
+    """Equations of motion in the moon centered inertial frame for forced periodic 
+    orbits
 
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+        omega_m (float):
+            Angular velocity of the Moon about the Earth
+            
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+    
+    
     x = w[0]
     y = w[1]
     z = w[2]
@@ -445,6 +653,22 @@ def ffInertialForced(tt, w, GM, uT=None, times=None, omega_m=None):
     return dw
 
 def linInterp(times, uT, currentTime):
+    """Linearly interpolate the control history
+
+    Args:
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        currentTime (float):
+            Current time in seconds past J2000
+            
+
+    Returns:
+        uT (~numpy.ndarray(float)):
+            Interpolated control history in km/s^2
+
+    """
 
     if currentTime >= times[-1]:
         u_current = uT[-1,:]
@@ -459,6 +683,36 @@ def linInterp(times, uT, currentTime):
     return u_current
 
 def statePropFFIForced(Ts,state0,GM,uT,times,omega_m):
+    """Propagate the dynamics in the moon centered inertial frame for forced periodic
+    orbits
+
+    Args:
+        Ts (~numpy.ndarray(float)):
+            Start and end times in seconds past J2000
+        state0 (~numpy.ndarray(float)):
+            Initial state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+        omega_m (float):
+            Angular velocity of the Moon about the Earth
+
+    Returns:
+        tuple:
+        times ~numpy.ndarray(float):
+            Times in seconds past J2000
+        states ~numpy.ndarray(float):
+            Positions and velocities in km, s units [[pos, vel], [pos, vel], ...]
+        
+
+    """
+    
+    
     ti = Ts[0]
     tf = Ts[1]
     
@@ -470,6 +724,28 @@ def statePropFFIForced(Ts,state0,GM,uT,times,omega_m):
     return times, states
 
 def getPatches(N, times_dim, times_mjd, pos_dim, vel_dim):
+    """Split a CRTBP orbit into equitemporal segments
+
+    Args:
+        N (int):
+            The number of patch points
+        times_dim (~numpy.ndarray(float)):
+            Times in days
+        times_mjd (~numpy.ndarray(astropy Time)):
+            Times in MJD
+        pos_dim (~numpy.ndarray(float)):
+            Positions in km
+        vel_dim (~numpy.ndarray(float)):
+            Velocities in km/s
+
+    Returns:
+        tuple:
+        posvel ~numpy.ndarray(float):
+            Positions and velocities of the patch points in km, s units 
+            [[pos, vel], [pos, vel], ...]
+        taus (~numpy.ndarray(astropy Time)):
+            Epoch times at the patch points in MJD
+    """
 
     dt_int = (times_dim[-1]-times_dim[0])/(N-1)
     taus = Time(np.zeros(N), format='mjd', scale='utc')
@@ -494,6 +770,31 @@ def getPatches(N, times_dim, times_mjd, pos_dim, vel_dim):
     return posvel, taus
 
 def hitMoon(tt, w, GM, radii, uT=None, times=None):
+    """Event function to check if the spacecraft impacts the moon
+
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+            
+
+    Returns:
+        (boolean):
+            1: if spacecraft is outside the volume of the moon
+            0: if the spacecraft impacts the moon
+
+    """
+    
+    
     r_scM = w[0:3]
 
     if np.linalg.norm(r_scM) < radii[0]:
@@ -504,6 +805,31 @@ def hitMoon(tt, w, GM, radii, uT=None, times=None):
     return moonCrash
     
 def hitEarth(tt, w, GM, radii, uT=None, times=None):
+    """Event function to check if the spacecraft impacts the earth
+
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+            
+
+    Returns:
+        (boolean):
+            1: if spacecraft is outside the volume of the earth
+            0: if the spacecraft impacts the earth
+
+    """
+    
+    
     r_scM = w[0:3]
 
     r_Earth = spice.spkpos('Earth', tt, 'J2000', 'None', 'Moon')[0]
@@ -518,6 +844,31 @@ def hitEarth(tt, w, GM, radii, uT=None, times=None):
     return earthCrash
 
 def hitSun(tt, w, GM, radii, uT=None, times=None):
+    """Event function to check if the spacecraft impacts the sun
+
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+            
+
+    Returns:
+        (boolean):
+            1: if spacecraft is outside the volume of the sun
+            0: if the spacecraft impacts the sun
+
+    """
+    
+    
     r_scM = w[0:3]
 
     r_Sun = spice.spkpos('Sun', tt, 'J2000', 'None', 'Moon')[0]
@@ -532,6 +883,29 @@ def hitSun(tt, w, GM, radii, uT=None, times=None):
     return sunCrash
     
 def lostShape(tt, w, GM, radii, uT=None, times=None):
+    """Event function to check if the spacecraft strays more than 1.5 sun radii away
+
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+            
+
+    Returns:
+        (boolean):
+            1: if spacecraft is contained near the moon
+            0: if the spacecraft strays more than 1.5 sun radii away
+
+    """
     r_scM = w[0:3]
     
     if np.linalg.norm(r_scM) > 1.5*radii[-1]:
@@ -541,18 +915,39 @@ def lostShape(tt, w, GM, radii, uT=None, times=None):
         
     return chaoticBehavior
     
-def t_normalize(times, t_i, t_f):
-    times_normalized = np.zeros(len(times))
-    t_min = times[0]
-    t_max = times[-1]
-    t_range = t_max - t_min
-    t_desired = t_f - t_i
-    for ii in np.arange(len(times)):
-        times_normalized[ii] = (times[ii] - t_min)/t_range*t_desired + t_i
-
-    return times_normalized
+#def t_normalize(times, t_i, t_f):
+#    times_normalized = np.zeros(len(times))
+#    t_min = times[0]
+#    t_max = times[-1]
+#    t_range = t_max - t_min
+#    t_desired = t_f - t_i
+#    for ii in np.arange(len(times)):
+#        times_normalized[ii] = (times[ii] - t_min)/t_range*t_desired + t_i
+#
+#    return times_normalized
     
 def statePropFFI_ECI(Ts,state0,GM):
+    """Propagate the dynamics in the earth centered inertial frame
+
+    Args:
+        Ts (~numpy.ndarray(float)):
+            Start and end times in seconds past J2000
+        state0 (~numpy.ndarray(float)):
+            Initial state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+
+    Returns:
+        tuple:
+        times ~numpy.ndarray(float):
+            Times in seconds past J2000
+        states ~numpy.ndarray(float):
+            Positions and velocities in km, s units [[pos, vel], [pos, vel], ...]
+        
+
+    """
+    
+    
     ti = Ts[0]
     tf = Ts[1]
     
@@ -565,7 +960,30 @@ def statePropFFI_ECI(Ts,state0,GM):
 
 
 def ffInertial_ECI(tt, w, GM, radii=None, uT=None, times=None):
+    """Equations of motion in the earth centered inertial frame
 
+    Args:
+        tt (~numpy.ndarray(float)):
+            Current time in seconds past J2000
+        w (~numpy.ndarray(float)):
+            Current state in km, s units [pos, vel]
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        radii (~numpy.ndarray(float)):
+            Average radii for moon, earth, sun in km
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        times (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+            
+
+    Returns:
+        ~numpy.ndarray(float):
+            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
+
+    """
+    
+    
     x = w[0]
     y = w[1]
     z = w[2]
@@ -624,7 +1042,42 @@ def ffInertial_ECI(tt, w, GM, radii=None, uT=None, times=None):
 
 
 def positionShooting_ECI(initialEpoch, initialState, targetEpoch, targetState, positionTolerance, GM):
+    """Position shooting inner loop for the multi-segment optimization for forced
+    periodic orbits
 
+    Args:
+        initialEpoch (~numpy.ndarray(float)):
+            Initial patch point time in seconds past J2000
+        initialState (~numpy.ndarray(float)):
+            Initial state in km, s units [pos, vel]
+        targetEpoch (~numpy.ndarray(float)):
+            Target patch point time in seconds past J2000
+        targetState (~numpy.ndarray(float)):
+            Target state at the next patch point in km, s units [pos, vel]
+        positionTolerance (float):
+            Max allowable difference between the propagated and the desired positions
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+            
+
+    Returns:
+        tuple:
+        initialState (~numpy.ndarray(float)):
+            Corrected initial state in km, s units 
+            [pos, vel]
+        finalState (~numpy.ndarray(float)):
+            Final state after propagating the segment in km, s units 
+            [pos, vel]
+        STM (~numpy.ndarray(float)):
+            6x6 state transition matrix to go from the initial epoch to the end of the
+            segment
+        exitflag (int):
+            1: multi shooting algorithm is successful
+            -1: fails the outer loop
+
+    """
+    
+    
     iterationNumberMax = 50
     iterationNumber = 1
     deltaR = 1
@@ -666,7 +1119,43 @@ def positionShooting_ECI(initialEpoch, initialState, targetEpoch, targetState, p
 
 
 def multipleShootingI_ECI(initialEpoches, initialStates, positionTolerance, velocityTolerance, GM):
+    """Multi-segment shooting algorithm in the earth centered inertial frame
 
+    Args:
+        initialEpoches (~numpy.ndarray(float)):
+            Epoch times of the patch points in seconds past J2000
+        initialStates (~numpy.ndarray(float)):
+            States at each patch point in km, s units [[pos, vel], [pos, vel], ...]
+        positionTolerance (float):
+            Max allowable difference between the propagated and the desired positions
+        velocityTolerance (float):
+            Max allowable difference between sum of the velocity differences at patch 
+            points
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+        uT (~numpy.ndarray(float)):
+            Control history in km/s^2
+        timesInterp (~numpy.ndarray(float)):
+            Control actuation times in seconds past J2000
+        omega_m (float):
+            Angular velocity of the Moon about the Earth
+            
+
+    Returns:
+        tuple:
+        correctedInitialEpoches ~numpy.ndarray(float):
+            Corrected epoch times of the patch points in seconds past J2000
+        correctedInitialStates (~numpy.ndarray(float)):
+            Corrected states at each patch point in km, s units 
+            [[pos, vel], [pos, vel], ...]
+        exitflag (int):
+            1: multi shooting algorithm is successful
+            -2: fails the inner loop
+            -1: fails the outer loop
+
+    """
+    
+    
     iterationNumberLevelTwoMax = 20
 
     N = len(initialEpoches)
