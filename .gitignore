@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+#Mac
+.DS_Store
+
+#Static Files
+*.pdf
+*.png
+*.jpeg
+*.svg
+*.gif
+*.tpc
+*.bsp
+*.BSP
+*.tls
+*.mat
+*.npz
+
+#GraceFiles
+*sandbox*.py
+
