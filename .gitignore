@@ -3,9 +3,6 @@ __pycache__/
 *.pyc
 
 #Mac
-<<<<<<< HEAD
-.DS_Store
-=======
 .DS_Store
 
 #Static Files
@@ -23,5 +20,7 @@ __pycache__/
 
 #GraceFiles
 *sandbox*.py
+*/GNSSOrbits/*
+*/graveyardOrbits/*
+*/forcedOrbits/*
 
->>>>>>> graceDebug4
