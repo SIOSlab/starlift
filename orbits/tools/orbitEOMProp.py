@@ -9,60 +9,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 
 
-def CRTBP_EOM(t, w, mu_star):
-    """Equations of motion for the CRTBP in the inertial frame
-
-    Args:
-        w (~numpy.ndarray(float)):
-            State in non dimensional units [position, velocity]
-        mu_star (float):
-            Non-dimensional mass parameter
-
-    Returns:
-        ~numpy.ndarray(float):
-            Time derivative of the state [velocity, acceleration]
-
-    """
-    
-    [x, y, z, vx, vy, vz] = w
-    
-    m1 = 1 - mu_star
-    m2 = mu_star
-
-    r1 = mu_star
-    r2 = 1 - mu_star
-    r_1O_R = r1*np.array([-1, 0, 0])
-    r_2O_R = r2*np.array([1, 0, 0])
-    
-    C_I2R = frameConversion.rot(t, 3)
-    C_R2I = C_I2R.T
-    
-    r_1O_I = C_R2I@r_1O_R
-    r_2O_I = C_R2I@r_2O_R
-
-    r_PO_I = np.array([x, y, z])
-    v_PO_I = np.array([vx, vy, vz])
-
-    r_P1_I = r_PO_I - r_1O_I
-    r_P2_I = r_PO_I - r_2O_I
-    
-    r1_mag = np.linalg.norm(r_P1_I)
-    r2_mag = np.linalg.norm(r_P2_I)
-
-    F_g1 = -m1/r1_mag**3*r_P1_I
-    F_g2 = -m2/r2_mag**3*r_P2_I
-    F_g = F_g1 + F_g2
-
-    a_PO_I = F_g
-    
-    ax = a_PO_I[0]
-    ay = a_PO_I[1]
-    az = a_PO_I[2]
-
-    dw = [vx, vy, vz, ax, ay, az]
-    return dw
-
-
 def CRTBP_EOM_R(t, w, mu_star):
     """Equations of motion for the CRTBP in the rotating frame
 
@@ -106,104 +52,27 @@ def CRTBP_EOM_R(t, w, mu_star):
     ax = a_PO_H[0]
     ay = a_PO_H[1]
     az = a_PO_H[2]
+    
+    dxdx = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * (x + m2) ** 2 / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / r2_mag ** 5
+    dxdy = 3 * m1 * (x + m2) * y / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * y / r2_mag ** 5
+    dxdz = 3 * m1 * (x + m2) * z / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * z / r2_mag ** 5
+    dydy = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * y ** 2 / r1_mag ** 5 + 3 * m2 * y ** 2 / r2_mag ** 5
+    dydz = 3 * m1 * y * z / r1_mag ** 5 + 3 * m2 * y * z / r2_mag ** 5
+    dzdz = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * z ** 2 / r1_mag ** 5 + 3 * m2 * z ** 2 / r2_mag ** 5
 
-    dw = [vx, vy, vz, ax, ay, az]
+    Z = np.zeros([3, 3])
+    I = np.identity(3)
+    A = np.array([[dxdx, dxdy, dxdz],
+                  [dxdy, dydy, dydz],
+                  [dxdz, dydz, dzdz]])
+    J = np.block([[Z, I], [A, Z]])
+    
+    dPhi = J@w[6:]
+    dPhi = np.reshape(dPhi, (1,36))[0]
+
+    dw = [vx, vy, vz, ax, ay, az, dPhi]
 
     return dw
-
-
-def FF_EOM(tt, w, t_mjd):
-    """Equations of motion for the full force model in the ICRS frame
-
-    Args:
-        w (~numpy.ndarray(float)):
-            State [position in AU, velocity in AU/d]
-        t_mjd (astropy Time):
-            Mission start time in MJD
-
-    Returns:
-        ~numpy.ndarray(float):
-            Time derivative of the state [velocity in AU/d, acceleration in AU/d^2]
-
-    """
-
-    # H frame
-    [x, y, z, vx, vy, vz] = w
-    
-    gmSun = const.GM_sun.to('AU3/d2').value        # in AU^3/d^2
-    gmEarth = const.GM_earth.to('AU3/d2').value
-    gmMoon = 0.109318945437743700E-10              # from de432s header
-    gmJupiter = const.GM_jup.to('AU3/d2').value
-    
-    r_PO = np.array([x, y, z])  # AU
-    v_PO = np.array([vx, vy, vz])  # AU/d
-
-    time = tt + t_mjd  # Current mission time in mjd (astropy time array, tt in days from 0)
-
-    # Get Sun, Moon, and Earth positions at the current time in the H frame [AU]
-    r_SunO = get_body_barycentric_posvel('Sun', time)[0].get_xyz().to('AU')
-    r_MoonO = get_body_barycentric_posvel('Moon', time)[0].get_xyz().to('AU')
-    r_EarthO = get_body_barycentric_posvel('Earth', time)[0].get_xyz().to('AU')
-#    r_JupiterO = get_body_barycentric_posvel('Jupiter', time)[0].get_xyz().to('AU')
-    
-    # Distance vectors
-    r_PSun = r_PO - r_SunO.value
-    r_PEarth = r_PO - r_EarthO.value
-    r_PMoon = r_PO - r_MoonO.value
-#    r_PJupiter = r_PO - r_JupiterO.value
-
-    # Magnitudes
-    rSun_mag = np.linalg.norm(r_PSun)
-    rEarth_mag = np.linalg.norm(r_PEarth)
-    rMoon_mag = np.linalg.norm(r_PMoon)
-#    rJupiter_mag = np.linalg.norm(r_PJupiter)
-
-    # Equations of motion
-    F_gSun_p = -gmSun*(r_PSun/rSun_mag**3)
-    F_gEarth_p = -gmEarth*(r_PEarth/rEarth_mag**3)
-    F_gMoon_p = -gmMoon*(r_PMoon/rMoon_mag**3)
-#    F_gJupiter_p = -gmJupiter*(r_PJupiter/rJupiter_mag**3)
-
-    F_g = F_gSun_p + F_gEarth_p + F_gMoon_p #+ F_gJupiter_p
-    
-    a_PO = F_g
-    
-    ax = a_PO[0]
-    ay = a_PO[1]
-    az = a_PO[2]
-
-    dw = [vx, vy, vz, ax, ay, az]
-    
-    return dw
-
-
-def statePropCRTBP(freeVar, mu_star):
-    """Propagates the dynamics using the free variables in the CRTBP
-
-    Args:
-        freeVar (~numpy.ndarray(float)):
-            x and z positions (DU), y velocity (DU/TU), and orbit period (DU) in the I frame
-        mu_star (float):
-            Non-dimensional mass parameter
-
-    Returns:
-        tuple:
-        states ~numpy.ndarray(float):
-            Positions and velocities in DU and DU/TU
-        times ~numpy.ndarray(float):
-            Times in DU
-
-    """
-    
-    x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    T = freeVar[-1]
-
-    # sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), method='LSODA', first_step=0.0001, min_step=1E-10, max_step=2700, rtol=1E-12, atol=1E-12)
-    sol_int = solve_ivp(CRTBP_EOM, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12)
-    states = sol_int.y.T
-    times = sol_int.t
-    
-    return states, times
 
 
 def statePropCRTBP_R(freeVar, mu_star):
@@ -225,63 +94,15 @@ def statePropCRTBP_R(freeVar, mu_star):
     """
 
     x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
+    x0 = np.append(x0, np.reshape(np.eye(6), (1,36))[0])
     T = freeVar[-1]
 
     sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12, )
     states = sol_int.y.T
     times = sol_int.t
-    return states, times
-
-
-def statePropFF(state0, t_mjd, timesTMP=None):
-    """Propagates the dynamics using the free variables in the full force model
-
-    Args:
-        state0 (~numpy.ndarray(float)):
-            Position [AU], velocity [AU/d], and propagation time [days] in the H frame
-        t_mjd (astropy Time):
-            Mission start time in MJD
-
-    Returns:
-        tuple:
-        states ~numpy.ndarray(float):
-            Positions and velocities in AU and AU/d
-        times ~numpy.ndarray(float):
-            Times in days
-
-    """
-    
-    T = state0[-1]  # days
-
-    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA')
-#    sol_int = solve_ivp(FF_EOM, [0, T], state0[0:6], args=(t_mjd,), rtol=1E-12, atol=1E-12, method='LSODA',t_eval=timesTMP)
-
-    states = sol_int.y.T
-    times = sol_int.t
     
     return states, times
 
-
-def calcFx_CRTBP(freeVar, mu_star):
-    """Applies constraints to the free variables in the CRTBP inertial frame
-
-    Args:
-        freeVar (~numpy.ndarray(float)):
-            x and z positions, y velocity, and half the orbit period
-        mu_star (float):
-            Non-dimensional mass parameter
-
-    Returns:
-        ~numpy.ndarray(float):
-            constraint array
-
-    """
-    
-    s_T = statePropCRTBP(freeVar, mu_star)
-    state = s_T[-1]
-
-    Fx = np.array([state[1], state[3], state[5]])
-    return Fx
 
 
 def calcFx_R(freeVar, mu_star):
@@ -303,50 +124,14 @@ def calcFx_R(freeVar, mu_star):
     state = s_T[-1]
 
     Fx = np.array([state[1], state[3], state[5]])
-    return Fx
 
-
-def calcFx_FF(X, taus, N, Ts):
-    """Applies constraints to the free variables in the full force model
-
-    Args:
-        X (~numpy.ndarray(float)):
-            states (position and velocity) stacked in a 1x6N array
-        taus (astropy Time array):
-            epochs stacked in a 1xN array
-        N (int):
-            Number of patch points
-        Ts (astropy Time array):
-            integration times stacked in a 1xN array
-
-    Returns:
-        ~numpy.ndarray(float):
-            constraint array
-
-    """
+    Phi = state[6:]
+    Phi = np.reshape(Phi, (1,36))[0]
     
-    ctr1 = 0
-    Fx = np.array([])
-    for ii in np.arange(N-1):
-        IC = np.append(X[ctr1 * 6:((ctr1 + 1) * 6)], Ts[ctr1].value)
-        tau = taus[ctr1]
-        const = X[ctr1 * 6:((ctr1 + 1) * 6)]
-        states, times = statePropFF(IC, tau)
-
-        Fx = np.append(Fx, states[-1, :] - const)
-
-        ctr1 = ctr1 + 1
-    
-    ctr2 = 0
-    for jj in np.arange(N-1):
-        timeEq = taus[ctr2].value + Ts[ctr2].value - taus[ctr2 + 1].value
-        Fx = np.append(Fx, timeEq)
-        
-        ctr2 = ctr2 + 1
-    return Fx
+    return Fx, Phi
 
 
-def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
+def calcdFx_CRTBP(freeVar, mu_star, m1, m2, Phi):
     """Calculates the Jacobian of the free variables wrt the constraints for the CRTBP
 
     Args:
@@ -365,11 +150,6 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
 
     """
 
-    s_T = statePropCRTBP_R(freeVar, mu_star)
-    state = s_T[-1]
-
-    Phi = calcMonodromyMatrix(state, mu_star, m1, m2)
-
     phis = np.array([[Phi[1, 0], Phi[1, 2], Phi[1, 4]],
                      [Phi[3, 0], Phi[3, 2], Phi[3, 4]],
                      [Phi[5, 0], Phi[5, 2], Phi[5, 4]]])
@@ -381,77 +161,6 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2):
     dFx[:, 0:3] = phis
     dFx[:, 3] = ddT
 
-    return dFx
-
-
-def calcdFx_FF(X, taus, N, Ts):
-    """Calculates the Jacobian of the free variables wrt the constraints for the full force model
-
-    Args:
-        X (~numpy.ndarray(float)):
-            states (position and velocity) stacked in a 1x6N array
-        taus (astropy Time array):
-            epochs stacked in a 1xN array
-        N (int):
-            Number of patch points
-        Ts (astropy Time array):
-            integration times stacked in a 1xN array
-
-    Returns:
-        ~numpy.ndarray(float):
-            constraint array
-
-    """
-    hstep = 1E-8
-
-    Fx_0 = calcFx_FF(X, taus, N, Ts)
-
-    dFx = np.zeros((7*(N - 1), 8*N - 1))
-    indsXh = np.arange(0, N * 6, 6)
-    indsD = np.arange(0, (N-1) * 6, 6)
-    for ii in np.arange(6):
-        dh = np.zeros(N * 6)
-        dh[indsXh] = hstep
-
-        Xh = X + dh
-
-        Fx_ii = calcFx_FF(Xh, taus, N, Ts)
-
-        dFx_ii = (Fx_ii - Fx_0) / hstep
-
-        for jj in np.arange(len(indsD)):
-            ind1 = indsD[jj]
-            ind2 = ind1 + 6
-            
-            dFx[jj * 6:(jj + 1) * 6, ind1] = dFx_ii[jj * 6:(jj + 1) * 6]
-        indsD = indsD + 1
-        indsXh = indsXh + 1
-    
-    I6 = -np.identity(6)
-    ind3 = 6
-    ind4 = ind3 + 6
-    for kk in np.arange(N-1):
-        dFx[kk * 6:(kk + 1) * 6, ind3:ind4] = I6
-        ind3 = ind3 + 6
-        ind4 = ind4 + 6
-
-    taus_ll = taus + hstep*u.d
-    Ts_ll = Ts + hstep*u.d
-    dFx_ll_taus = (calcFx_FF(X, taus_ll, N, Ts) - Fx_0) / hstep
-    dFx_ll_Ts = (calcFx_FF(X, taus, N, Ts_ll) - Fx_0) / hstep
-    for ll in np.arange(N-1):
-        dFx[ll * 6:(ll + 1) * 6, 6*N + ll] = dFx_ll_Ts[ll * 6:(ll + 1) * 6]
-        dFx[ll * 6:(ll + 1) * 6, 7*N + ll - 1] = dFx_ll_taus[ll * 6:(ll + 1) * 6]
-
-    ind5 = 6*N
-    ind6 = 7*N - 1
-    for mm in np.arange(N-1):
-        dFx[6*(N-1) + mm, ind5] = 1
-        dFx[6*(N-1) + mm, ind6] = 1
-        dFx[6*(N-1) + mm, ind6 + 1] = -1
-        
-        ind5 = ind5 + 1
-        ind6 = ind6 + 1
     return dFx
 
 
@@ -553,51 +262,40 @@ def generateFamily_CRTBP(guess, mu_star, N):
     return ICs
 
 
-def calcMonodromyMatrix(freeVar, mu_star, m1, m2):
-    """Calculates the monodromy matrix
+def jacobiConstCRTBPR(pos, vel, mu_star):
 
-    Args:
-        freeVar (~numpy.ndarray(float)):
-            x and z positions, y velocity, and half the orbit period
-        mu_star (float):
-            Non-dimensional mass parameter
-        m1 (float):
-            Mass of the larger primary in non-dimensional units
-        m2 (float):
-            Mass of the smaller primary in non-dimensional units
+    r_Mbary = np.array([1-mu_star, 0, 0])
+    r_Ebary = np.array([-mu_star, 0, 0])
+    
+    KE = np.dot(vel, vel)/2
+    U1 = -(pos[0]**2 + pos[1]**2)/2
+    U2 = -((1-mu_star)/np.linalg.norm(pos - r_Ebary[0:3]) + (mu_star)/np.linalg.norm(pos - r_Mbary))
 
-    Returns:
-        ~numpy.ndarray(float):
-            monodromy matrix
+    C = KE + U1 + U2
+    
+    return C
 
-    """
 
-    x = freeVar[0]
-    y = freeVar[1]
-    z = freeVar[2]
+def jacobiConstCRTBPI(pos, vel, mu_star, t):
+    r_Mbary = np.array([1-mu_star, 0, 0])
+    r_Ebary = np.array([-mu_star, 0, 0])
+    
+    C_I2R = frameConversion.rot(t, 3)
+    C_R2I = C_I2R.T
+    
+    r_MbaryI = C_R2I@r_Mbary
+    r_EbaryI = C_R2I@r_Ebary
+    
+    r_scM = pos - r_MbaryI
+    r_scE = pos - r_EbaryI
+    
+    e3 = np.array([0, 0, 1])
+    
+    KE = np.dot(vel, vel)/2
+    U1 = (1-mu_star)/np.linalg.norm(r_scE) + mu_star/np.linalg.norm(r_scM)
+    U2 = np.dot(vel, np.cross(e3, pos))
+    
+    C = KE - U1 - U2
 
-    r_P0 = np.array([x, y, z])
-    r_m10 = -np.array([mu_star, 0, 0])
-    r_m20 = np.array([(1 - mu_star), 0, 0])
+    return C
 
-    r_Pm1 = r_P0 - r_m10
-    r_Pm2 = r_P0 - r_m20
-
-    rp1 = np.linalg.norm(r_Pm1)
-    rp2 = np.linalg.norm(r_Pm2)
-
-    dxdx = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * (x + m2) ** 2 / rp1 ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / rp2 ** 5
-    dxdy = 3 * m1 * (x + m2) * y / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * y / rp2 ** 5
-    dxdz = 3 * m1 * (x + m2) * z / rp1 ** 5 + 3 * m2 * (x - 1 + m2) * z / rp2 ** 5
-    dydy = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * y ** 2 / rp1 ** 5 + 3 * m2 * y ** 2 / rp2 ** 5
-    dydz = 3 * m1 * y * z / rp1 ** 5 + 3 * m2 * y * z / rp2 ** 5
-    dzdz = 1 - m1 / rp1 ** 3 - m2 / rp2 ** 3 + 3 * m1 * z ** 2 / rp1 ** 5 + 3 * m2 * z ** 2 / rp2 ** 5
-
-    Z = np.zeros([3, 3])
-    I = np.identity(3)
-    A = np.array([[dxdx, dxdy, dxdz],
-                  [dxdy, dydy, dydz],
-                  [dxdz, dydz, dzdz]])
-    Phi = np.block([[Z, I], [A, Z]])
-
-    return Phi

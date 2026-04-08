@@ -404,9 +404,9 @@ def icrs2rot(pos, currentTime, startTime, C_G2I):
     r_EMG_icrs = state_EM[0].get_xyz().to('AU')
 
     # pos = pos * u.AU
-    r_PE_gmec = icrs2gmec(pos, startTime)
+    r_PE_gmec = icrs2gmec(pos, currentTime)
     r_rot = r_PE_gmec
-    r_EME_gmec = icrs2gmec(r_EMG_icrs, startTime)
+    r_EME_gmec = icrs2gmec(r_EMG_icrs, currentTime)
     r_PEM = r_PE_gmec - r_EME_gmec
 
     C_I2R = inert2rot(currentTime, startTime)
@@ -450,6 +450,110 @@ def icrs2gmec(pos, currentTime, vel=None):
         pos_gmec = pos_icrs.transform_to(GeocentricMeanEcliptic(obstime=currentTime)).cartesian.get_xyz()
         return pos_gmec
 
+
+def icrs2gcrs(pos, currentTime, vel=None):
+    """Convert position and velocity vectors in ICRS coordinate frame to GCRS frame
+    
+    Args:
+        pos (astropy Quantity array):
+            Position vector in ICRS (heliocentric) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current mission time in MJD
+        vel (astropy Quantity array, optional):
+            Velocity vector in ICRS (solar system barycentric) frame in arbitrary distance units
+
+    Returns:
+        pos_gmec (astropy Quantity array):
+            Position vector in Geocentric Mean Ecliptic frame in km
+        vel_gmec (astropy Quantity array, optional):
+            Velocity vector in Geocentric Mean Ecliptic frame in km/s
+    """
+
+    if vel is not None:
+        pos = pos.to('km')
+        vel = vel.to('km/s')
+        state_icrs = coord.SkyCoord(x=pos[0], y=pos[1], z=pos[2], v_x=vel[0], v_y=vel[1], v_z=vel[2],
+                                    representation_type='cartesian', frame='icrs', obstime=currentTime)
+        state_gcrs = state_icrs.transform_to(GCRS(obstime=currentTime))
+        pos_gcrs = state_gcrs.cartesian.get_xyz()
+        vel_gcrs = state_gcrs.velocity.get_d_xyz()
+        return pos_gcrs, vel_gcrs
+    else:
+        pos = pos.to('km')
+        pos_icrs = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km',
+                                  representation_type='cartesian', frame='icrs', obstime=currentTime)
+        pos_gcrs = pos_icrs.transform_to(GCRS(obstime=currentTime)).cartesian.get_xyz()
+        return pos_gcrs
+        
+
+def gmec2gcrs(pos, currentTime, vel=None):
+    """Convert position and velocity vectors in geocentric mean ecliptic coordinate frame to GCRS coordinate frame
+    
+    Args:
+        pos (astropy Quantity array):
+            Position vector in GMEC (geocentric mean ecliptic) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current mission time in MJD
+        vel (astropy Quantity array, optional):
+            Velocity vector in GMEC (geocentric mean ecliptic) frame in arbitrary distance units
+
+    Returns:
+        pos_gmec (astropy Quantity array):
+            Position vector in GCRS frame in km
+        vel_gmec (astropy Quantity array, optional):
+            Velocity vector in GCRS frame in km/s
+    """
+
+    if vel is not None:
+        pos = pos.to('km')
+        vel = vel.to('km/s')
+        state_gmec = coord.SkyCoord(x=pos[0], y=pos[1], z=pos[2], v_x=vel[0], v_y=vel[1], v_z=vel[2],
+                                    representation_type='cartesian', frame='geocentricmeanecliptic', obstime=currentTime)
+        state_gcrs = state_gmec.transform_to(GCRS(obstime=currentTime))
+        pos_gcrs = state_gcrs.cartesian.get_xyz()
+        vel_gcrs = state_gcrs.velocity.get_d_xyz()
+        return pos_gcrs, vel_gcrs
+    else:
+        pos = pos.to('km')
+        pos_gmec = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km',
+                                  representation_type='cartesian', frame='geocentricmeanecliptic', obstime=currentTime)
+        pos_gcrs = pos_gmec.transform_to(GCRS(obstime=currentTime)).cartesian.get_xyz()
+        return pos_gcrs
+
+
+def gcrs2gmec(pos, currentTime, vel=None):
+    """Convert position and velocity vectors in GCRS coordinate frame to geocentric mean ecliptic coordinate frame
+    
+    Args:
+        pos (astropy Quantity array):
+            Position vector in GCRS (geocentric mean ecliptic) frame in arbitrary distance units
+        currentTime (astropy Time array):
+            Current mission time in MJD
+        vel (astropy Quantity array, optional):
+            Velocity vector in GCRS (geocentric mean ecliptic) frame in arbitrary distance units
+
+    Returns:
+        pos_gmec (astropy Quantity array):
+            Position vector in geocentric mean ecliptic frame in km
+        vel_gmec (astropy Quantity array, optional):
+            Velocity vector in geocentric mean ecliptic frame in km/s
+    """
+
+    if vel is not None:
+        pos = pos.to('km')
+        vel = vel.to('km/s')
+        state_gcrs = coord.SkyCoord(x=pos[0], y=pos[1], z=pos[2], v_x=vel[0], v_y=vel[1], v_z=vel[2],
+                                    representation_type='cartesian', frame='gcrs', obstime=currentTime)
+        state_gmec = state_gcrs.transform_to(GeocentricMeanEcliptic(obstime=currentTime))
+        pos_gmec = state_gmec.cartesian.get_xyz()
+        vel_gmec = state_gmec.velocity.get_d_xyz()
+        return pos_gmec, vel_gmec
+    else:
+        pos = pos.to('km')
+        pos_gcrs = coord.SkyCoord(x=pos[0].value, y=pos[1].value, z=pos[2].value, unit='km',
+                                  representation_type='cartesian', frame='gcrs', obstime=currentTime)
+        pos_gmec = pos_gcrs.transform_to(GeocentricMeanEcliptic(obstime=currentTime)).cartesian.get_xyz()
+        return pos_gmec
 
 def gmec2icrs(pos, currentTime, vel=None):
     """Convert position and velocity vectors in Geocentric Mean Ecliptic coordinate frame to ICRS coordinate frame
@@ -507,7 +611,7 @@ def rot2inertV(rR, vR, t_norm):
     if rR.shape[0] == 3 and len(rR.shape) == 1:
         vI = vR + np.cross(e3, rR)
     else:
-        vR = np.zeros([len(t_norm), 3])
+        vI = np.zeros([len(t_norm), 3])
         for t in range(len(t_norm)):
             vI[t, :] = vR[t, :] + np.cross(e3, rR[t, :])
 
@@ -538,9 +642,37 @@ def inert2rotV(rR, vI, t_norm):
             vR[t, :] = vI[t, :] - np.cross(e3, rR[t, :])
 
     return vR
+    
+def inert2rotV2(rR, vI, t_norm, omega):
+    """Convert velocity from inertial frame to rotating frame
+
+    Args:
+      rR (float nx3 array):
+        Rotating frame position vectors in arbitrary units
+      vI (float nx3 array):
+        Inertial frame velocity vectors in arbitrary units
+      t_norm (float):
+        Arbitrary time units for current epoch
+      omega (float):
+        Rotation rate in arbitrary
+
+    Returns:
+      float nx3 array:
+        Rotating frame velocity vectors in canonical units
+    """
+
+    e3 = np.array([0, 0, 1])*omega
+    if rR.shape[0] == 3 and len(rR.shape) == 1:
+        vR = vI - np.cross(e3, rR)
+    else:
+        vR = np.zeros([len(t_norm), 3])
+        for t in range(len(t_norm)):
+            vR[t, :] = vI[t, :] - np.cross(e3, rR[t, :])
+
+    return vR
 
 
-def convertSC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
+def convertSC_R2H(pos_R, vel_R, t_mjd, t_veq, Tp_can=None):
     """Converts initial conditions from the R frame to the H frame
 
     Args:
@@ -567,7 +699,7 @@ def convertSC_R2H(pos_R, vel_R, t_mjd, Tp_can=None):
     """
 
     pos_I = unitConversion.convertPos_to_dim(pos_R).to('AU')
-    C_I2G = inert2geo(t_mjd)
+    C_I2G = inert2geo(t_mjd, t_veq)
     pos_G = C_I2G @ pos_I
 
     state_EMB = get_body_barycentric_posvel('Earth-Moon-Barycenter', t_mjd)
@@ -641,15 +773,6 @@ def convertSC_I2H(pos_I, vel_I, currentTime, C_I2G, Tp_can=None):
     pos_H = pos_H.to('AU')
     vel_H = vel_H.to('AU/d')
 
-    # tmp_G = icrs2gmec(pos_H, currentTime)
-    # tmp_GMECL = tmp_G - posEMB_E
-    # tmp_I = C_I2G.T @ tmp_GMECL
-    #
-    # tmpM_H = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz()
-    # tmpM_G = icrs2gmec(tmpM_H, currentTime).to('AU')
-    # tmpM_GMECL = tmpM_G - posEMB_E
-    # tmpM_I = C_I2G.T @ tmpM_GMECL
-
     if Tp_can is not None:
         Tp_dim = unitConversion.convertTime_to_dim(Tp_can).to('day')
         return pos_H, vel_H, Tp_dim
@@ -711,7 +834,74 @@ def convertSC_H2I(pos_H, vel_H, currentTime, C_I2G, Tp_can=None):
     return pos_I, vel_I
 
 
-def getSunEarthMoon(currentTime, C_I2G):
+def convertSC_R2I(t_start, t_current, C_I2G, state, mu_star):
+    # canonical units
+    
+    C_I2R = inert2rot(t_current, t_start)
+    C_R2I = C_I2R.T
+    # Get position of the moon at the epoch in the inertial frame
+    sun_I, earth_I, moon_I = getSunEarthMoon(t_current, C_I2G)  # I frame [AU]
+    moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+
+    IC = np.zeros(6)
+    
+    # Transform position ICs to the epoch moon
+    ideal_moon = np.array([1-mu_star, 0, 0])
+#    IC[0:3] = C_R2I@(state[0:3] - ideal_moon) + moon_I_can
+    IC[0:3] = C_R2I@state[0:3]
+    ideal_moon_I = C_R2I@ideal_moon
+
+    # Convert the velocity to I frame from R frame (position is the same in both)
+#    vO = rot2inertV(np.array(IC[0:3]), np.array(state[3:6]), 0)
+    vO = rot2inertV(np.array(state[0:3]), np.array(state[3:6]), 0)
+
+    # Rotate velocity vector to match the epoch moon (I frame)
+    theta = np.arccos((np.dot(moon_I_can, ideal_moon_I))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon_I)))
+    if theta > np.pi/2:
+        theta = -theta
+    rot_matrix = rot(theta, 3)
+    IC[3:6] = rot_matrix @ vO  # Canonical, I frame
+
+    # Convert IC to dimensional, rotating frame (for STK)
+    pos_canrot = C_I2R @ IC[0:3]  # Canonical, R frame
+    vel_canrot = inert2rotV(pos_canrot, IC[3:6], 0)  # Canonical, R frame
+    pos_dimrot = unitConversion.convertPos_to_dim(pos_canrot).to('km')  # R frame, dimensional
+    vel_dimrot = unitConversion.convertVel_to_dim(vel_canrot).to('km/s')  # R frame, dimensional
+    print('Dimensional [km] position IC in the rotating frame: ', pos_dimrot)
+    print('Dimensional [km/s] velocity IC in the rotating frame: ', vel_dimrot)
+#    breakpoint()
+    return pos_dimrot, vel_dimrot, IC
+    
+def convertSC_I2R(t_start, t_current, C_I2G, state, mu_star):
+    # canonical units
+    
+        
+    C_I2R = inert2rot(t_current, t_start)
+    C_R2I = C_I2R.T
+    
+    # Get position of the moon at the epoch in the inertial frame
+    sun_I, earth_I, moon_I = getSunEarthMoon(t_current, C_I2G)  # I frame [AU]
+    moon_I_can = unitConversion.convertPos_to_canonical(moon_I)
+    
+    # Transform position ICs to the epoch moon
+    ideal_moon = np.array([1-mu_star, 0, 0])
+#    IC[0:3] = C_R2I@(state[0:3] - ideal_moon) + moon_I_can
+    pos = C_R2I@state[0:3]
+    ideal_moon_I = C_R2I@ideal_moon
+    
+    # I frame DCM correction to account for real moon rotated from ICRS vs idealized moon rotated from R
+    theta = np.arccos((np.dot(moon_I_can, ideal_moon_I))/(np.linalg.norm(moon_I_can)*np.linalg.norm(ideal_moon_I)))
+    if theta > np.pi/2:
+        theta = -theta
+    C_IR2IH = rot(theta, 3)
+    C_IH2IR = C_IR2IH.T
+    
+    vel_adjI = C_IH2IR@state[3:6]
+    vel = inert2rotV(state[0:3], vel_adjI, 0)
+    
+    return pos, vel
+
+def getSunEarthMoon(currentTime, C_I2G, pvFlag = None):
     """Retrieves the position of the Sun, Earth, and Moon at a given time in AU in the I frame
 
         Args:
@@ -721,11 +911,11 @@ def getSunEarthMoon(currentTime, C_I2G):
                 3x3 Array for the directional cosine matrix
 
         Returns:
-            r_SunEM_r (astropy Quantity array):
+            r_SunEM (astropy Quantity array):
                 Position vector for the Sun in the I frame [AU]
-            r_EarthEM_r (astropy Quantity array):
+            r_EarthEM (astropy Quantity array):
                 Position vector for the Earth in the I frame [AU]
-            r_MoonEM_r (astropy Quantity array):
+            r_MoonEM (astropy Quantity array):
                 Position vector for the Moon in the I frame [AU]
 
         """
@@ -733,24 +923,51 @@ def getSunEarthMoon(currentTime, C_I2G):
     C_G2I = C_I2G.T
 
     # Positions of the Sun, Moon, and EM barycenter relative SS barycenter in H frame
-    r_SunO = get_body_barycentric_posvel('Sun', currentTime)[0].get_xyz().to('AU').value
-    r_EarthO = get_body_barycentric_posvel('Earth', currentTime)[0].get_xyz().to('AU').value
-    r_MoonO = get_body_barycentric_posvel('Moon', currentTime)[0].get_xyz().to('AU').value
-    r_EMO = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)[0].get_xyz().to('AU').value
+    rv_Sun = get_body_barycentric_posvel('Sun', currentTime)
+#    rv_Earth = get_body_barycentric_posvel('Earth', currentTime)
+    rv_Moon = get_body_barycentric_posvel('Moon', currentTime)
+    rv_EM = get_body_barycentric_posvel('Earth-Moon-Barycenter', currentTime)
+    
+    r_SunO = rv_Sun[0].get_xyz()
+#    r_EarthO = rv_Earth[0].get_xyz()
+    r_MoonO = rv_Moon[0].get_xyz()
+    r_EMO = rv_EM[0].get_xyz()
 
     # Convert from H frame (AU) to GMEc frame (km)
-    r_SunGMEc = icrs2gmec(r_SunO * u.AU, currentTime)
-    r_MoonGMEc = icrs2gmec(r_MoonO * u.AU, currentTime)
-    r_EMGMEc = icrs2gmec(r_EMO * u.AU, currentTime)
-
+    if pvFlag:
+        r_SunGMEc, v_SunGMEc = icrs2gmec(r_SunO, currentTime, v_SunO)
+        r_MoonGMEc, v_MoonGMEc = icrs2gmec(r_MoonO, currentTime, v_MoonO)
+        r_EMGMEc, v_EMGMEc = icrs2gmec(r_EMO, currentTime, v_EMO)
+    else:
+        r_SunGMEc = icrs2gmec(r_SunO, currentTime)
+        r_MoonGMEc = icrs2gmec(r_MoonO, currentTime)
+        r_EMGMEc = icrs2gmec(r_EMO, currentTime)
+        
     # Convert from GMEc frame to G frame (change origin to EM barycenter)
     r_SunG = r_SunGMEc - r_EMGMEc
     r_EarthG = -r_EMGMEc
     r_MoonG = r_MoonGMEc - r_EMGMEc
 
     # Convert from G frame (in km) to I frame (in AU)
-    r_SunEM_r = C_G2I @ r_SunG.to('AU')
-    r_EarthEM_r = C_G2I @ r_EarthG.to('AU')
-    r_MoonEM_r = C_G2I @ r_MoonG.to('AU')
+    r_SunEM = C_G2I @ r_SunG.to_value(u.AU)
+    r_EarthEM = C_G2I @ r_EarthG.to_value(u.AU)
+    r_MoonEM = C_G2I @ r_MoonG.to_value(u.AU)
 
-    return r_SunEM_r, r_EarthEM_r, r_MoonEM_r
+    if pvFlag:
+        v_SunO = rv_Sun[1].get_xyz()
+#        v_EarthO = rv_Earth[1].get_xyz()
+        v_MoonO = rv_Moon[1].get_xyz()
+        v_EMO = rv_EM[1].get_xyz()
+    
+        v_SunG = v_SunGMEc - v_EMGMEc
+        v_EarthG = -v_EMGMEc
+        v_MoonG = v_MoonGMEc - v_EMGMEc
+    
+        v_SunEM = C_G2I @ v_SunG.to_value(u.AU/u.d)
+        v_EarthEM = C_G2I @ v_EarthG.to_value(u.AU/u.d)
+        v_MoonEM = C_G2I @ v_MoonG.to_value(u.AU/u.d)
+
+        return r_SunEM, r_EarthEM, r_MoonEM, v_SunEM, v_EarthEM, v_MoonEM
+    else:
+        return r_SunEM, r_EarthEM, r_MoonEM
+

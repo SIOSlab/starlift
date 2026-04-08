@@ -3,4 +3,25 @@ __pycache__/
 *.pyc
 
 #Mac
+<<<<<<< HEAD
 .DS_Store
+=======
+.DS_Store
+
+#Static Files
+*.pdf
+*.png
+*.jpeg
+*.svg
+*.gif
+*.tpc
+*.bsp
+*.BSP
+*.tls
+*.mat
+*.npz
+
+#GraceFiles
+*sandbox*.py
+
+>>>>>>> graceDebug4
