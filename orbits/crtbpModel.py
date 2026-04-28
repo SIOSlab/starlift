@@ -18,7 +18,11 @@ from scipy.optimize import fsolve
 
 spice.furnsh("fullForce.txt")
 
+# ** USER INPUTS
 showPlots = False
+fileDir = '/Users/gracegenszler/Documents/Research'
+fileName = 'L1_NorthernN.npz'
+
 # Parameters
 gmEarth = spice.bodvrd( 'Earth', 'GM', 1 )[1][0]
 gmMoon = spice.bodvrd( 'Moon', 'GM', 1 )[1][0]
@@ -67,13 +71,13 @@ arrayI = np.reshape(np.eye(6), (1,36))[0]
 X = [IC[0], IC[2], IC[4], IC[6]]
 max_iter = 50
 error = 10
-eps = 1E-4
+eps = 1E-6
 step = 0.01
 Tp_lim = unitConversion.convertTime_to_canonical(30.*u.d)
 #Tp_max = 5.8
 goodSols = np.array([])
 Nsols = -1
-ax2 = plt.figure().add_subplot(projection='3d')
+ax1 = plt.figure().add_subplot(projection='3d')
 while X[-1]*2 < Tp_lim and Nsols < 10:
     ctr = 0
     error = 10
@@ -113,24 +117,16 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
     posCRTBP_R = statesCRTBP_R[:, 0:3]
     velCRTBP_R = statesCRTBP_R[:, 3:6]
     
-#    ax2 = plt.figure().add_subplot(projection='3d')
-    ax2.plot(statesCRTBP_R[:, 0], statesCRTBP_R[:, 1], statesCRTBP_R[:, 2])
-#    ax2.set_xlabel('X [DU]')
-#    ax2.set_ylabel('Y [DU]')
-#    ax2.set_zlabel('Z [DU]')
-#    plt.show()
-    
     rmag = np.linalg.norm(posCRTBP_R,axis=1)
     print('Perilune: '+str(unitConversion.convertPos_to_dim(min(rmag)).to_value(u.km)))
     if np.any(rmag < rMoon):
         print('Intersects moon. Not a solution')
         Nsols = Nsols - 1
     else:
+        ax1.plot(posCRTBP_R[:,0], posCRTBP_R[:,1], posCRTBP_R[:,2])
         if showPlots:
-            ax1 = plt.figure().add_subplot(projection='3d')
-            ax1.plot(posCRTBP_R[:,0], posCRTBP_R[:,1], posCRTBP_R[:,2])
             plt.show()
-        
+
         sol0 = np.append(statesCRTBP_R[0,:], timesCRTBP_R[-1])
         goodSols = np.append(goodSols, sol0)
     
@@ -152,17 +148,14 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
         print('Singular matrix. Stopping continuation')
         break
     print('Solution counter: '+str(Nsols)+'\n')
-    
-    eps = 1E-6
 
-ax2.set_xlabel('X [DU]')
-ax2.set_ylabel('Y [DU]')
-ax2.set_zlabel('Z [DU]')
-plt.show()
-breakpoint()
+ax1.set_xlabel('X [DU]')
+ax1.set_ylabel('Y [DU]')
+ax1.set_zlabel('Z [DU]')
+if showPlots:
+    plt.show()
 
 goodSols = np.reshape(goodSols, (Nsols+1, 7))
-#goodSols = goodSols[1:,:]
 states = goodSols[1:,0:6]
 periods = goodSols[1:,6]
 statesR, timesR = orbitEOMProp.statePropCRTBP_R(goodSols[-1,[0,2,4,6]], mu_star)
@@ -172,39 +165,7 @@ ax1.plot(statesR[:, 0], statesR[:, 1], statesR[:, 2])
 ax1.set_xlabel('X [DU]')
 ax1.set_ylabel('Y [DU]')
 ax1.set_zlabel('Z [DU]')
-breakpoint()
+
 # save initial conditions
-np.savez('/Users/gracegenszler/Documents/Research/starlift/orbits/L1_NorthernN.npz', states = states, periods = periods, mu_star = mu_star)
-#print(Nsols)
+np.savez(fileDir+'/starlift/orbits/'+fileName, states = states, periods = periods, mu_star = mu_star)
 
-# calculate jacobi constant in the rotating frame
-#initialConds = np.append(freeVar0CRTBP_R[0:6], unitConversion.convertTime_to_canonical(100*u.yr))
-#statesCRTBP_R100, timesCRTBP_R100 = orbitEOMProp.statePropCRTBP_R(initialConds, mu_star)
-#
-#C = np.zeros(len(timesCRTBP_R100))
-#for ii in np.arange(len(timesCRTBP_R100)):
-#    C[ii] = orbitEOMProp.jacobiConstCRTBPR(statesCRTBP_R100[ii,0:3], statesCRTBP_R100[ii,3:6], mu_star)
-
-#plt.figure(1)
-#plt.plot(timesCRTBP_R100, C)
-#plt.xlabel('time [nd]')
-#plt.ylabel('jacobi constant [nd]')
-
-# calculate jacobi constant in the inertial frame
-#vI0 = frameConversion.rot2inertV(freeVar0CRTBP_R[0:3], freeVar0CRTBP_R[3:6], 0)
-#
-#initialConds = np.append(np.append(freeVar0CRTBP_R[0:3], vI0), unitConversion.convertTime_to_canonical(100*u.yr))
-#statesCRTBP_I100, timesCRTBP_I100 = orbitEOMProp.statePropCRTBP(initialConds, mu_star)
-#
-#C = np.zeros(len(timesCRTBP_I100))
-#print('Calculating jacobi constant')
-#for ii in np.arange(len(timesCRTBP_I100)):
-#    C[ii] = orbitEOMProp.jacobiConstCRTBPI(statesCRTBP_I100[ii,0:3], statesCRTBP_I100[ii,3:6], mu_star, timesCRTBP_I100[ii])
-#
-#plt.figure(1)
-#plt.plot(timesCRTBP_I100, C)
-#plt.xlabel('time [nd]')
-#plt.ylabel('jacobi constant [nd]')
-
-plt.show()
-breakpoint()
