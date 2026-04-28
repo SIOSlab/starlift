@@ -24,7 +24,7 @@ def CRTBP_EOM_R(t, w, mu_star):
 
     """
 
-    [x, y, z, vx, vy, vz] = w
+    [x, y, z, vx, vy, vz] = w[:6]
 
     m1 = 1 - mu_star
     m2 = mu_star
@@ -53,25 +53,28 @@ def CRTBP_EOM_R(t, w, mu_star):
     ay = a_PO_H[1]
     az = a_PO_H[2]
     
-    dxdx = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * (x + m2) ** 2 / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / r2_mag ** 5
-    dxdy = 3 * m1 * (x + m2) * y / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * y / r2_mag ** 5
-    dxdz = 3 * m1 * (x + m2) * z / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * z / r2_mag ** 5
-    dydy = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * y ** 2 / r1_mag ** 5 + 3 * m2 * y ** 2 / r2_mag ** 5
-    dydz = 3 * m1 * y * z / r1_mag ** 5 + 3 * m2 * y * z / r2_mag ** 5
-    dzdz = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * z ** 2 / r1_mag ** 5 + 3 * m2 * z ** 2 / r2_mag ** 5
+    if len(w) > 7:
+        dxdx = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * (x + m2) ** 2 / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) ** 2 / r2_mag ** 5
+        dxdy = 3 * m1 * (x + m2) * y / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * y / r2_mag ** 5
+        dxdz = 3 * m1 * (x + m2) * z / r1_mag ** 5 + 3 * m2 * (x - 1 + m2) * z / r2_mag ** 5
+        dydy = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * y ** 2 / r1_mag ** 5 + 3 * m2 * y ** 2 / r2_mag ** 5
+        dydz = 3 * m1 * y * z / r1_mag ** 5 + 3 * m2 * y * z / r2_mag ** 5
+        dzdz = 1 - m1 / r1_mag ** 3 - m2 / r2_mag ** 3 + 3 * m1 * z ** 2 / r1_mag ** 5 + 3 * m2 * z ** 2 / r2_mag ** 5
 
-    Z = np.zeros([3, 3])
-    I = np.identity(3)
-    A = np.array([[dxdx, dxdy, dxdz],
-                  [dxdy, dydy, dydz],
-                  [dxdz, dydz, dzdz]])
-    J = np.block([[Z, I], [A, Z]])
-    
-    dPhi = J@w[6:]
-    dPhi = np.reshape(dPhi, (1,36))[0]
+        Phi = np.reshape(w[6:], (6,6))
+        Z = np.zeros([3, 3])
+        I = np.identity(3)
+        A = np.array([[dxdx, dxdy, dxdz],
+                      [dxdy, dydy, dydz],
+                      [dxdz, dydz, dzdz]])
+        J = np.block([[Z, I], [A, Z]])
 
-    dw = [vx, vy, vz, ax, ay, az, dPhi]
+        dPhi = J@Phi
+        dPhi = np.reshape(dPhi, (1,36))[0]
 
+        dw = np.append([vx, vy, vz, ax, ay, az], dPhi)
+    else:
+        dw = [vx, vy, vz, ax, ay, az]
     return dw
 
 
@@ -93,9 +96,12 @@ def statePropCRTBP_R(freeVar, mu_star):
 
     """
 
-    x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    x0 = np.append(x0, np.reshape(np.eye(6), (1,36))[0])
-    T = freeVar[-1]
+    if len(freeVar) > 7:
+        x0 = np.append([freeVar[0], 0, freeVar[1], 0, freeVar[2], 0], freeVar[4:]).tolist()
+    else:
+        x0 = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
+
+    T = freeVar[3]
 
     sol_int = solve_ivp(CRTBP_EOM_R, [0, T], x0, args=(mu_star,), rtol=1E-12, atol=1E-12, )
     states = sol_int.y.T
@@ -125,10 +131,13 @@ def calcFx_R(freeVar, mu_star):
 
     Fx = np.array([state[1], state[3], state[5]])
 
-    Phi = state[6:]
-    Phi = np.reshape(Phi, (1,36))[0]
-    
-    return Fx, Phi
+    if len(state) > 7:
+        Phi = state[6:]
+        Phi = np.reshape(Phi, (1,36))[0]
+        
+        return Fx, Phi
+    else:
+        return Fx
 
 
 def calcdFx_CRTBP(freeVar, mu_star, m1, m2, Phi):
@@ -190,76 +199,76 @@ def fsolve_eqns(w, z, solp, mu_star):
     return sys_w
 
 
-def generateFamily_CRTBP(guess, mu_star, N):
-    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state.
-    Each orbit is generated over 1 orbital period.
-
-    Args:
-        guess (float array):
-            Initial guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
-        mu_star (float):
-            Non-dimensional mass parameter
-        N (float):
-            Number of orbits in the family to be generated
-
-    Returns:
-        ICs (float n array):
-            A matrix consisting of the initial states of for all the orbits in the family
-
-    """
-
-    # Parameters
-    m1 = (1 - mu_star)
-    m2 = mu_star
-
-    # Initial guess for the free variable vector
-    X = [guess[0], guess[2], guess[4], guess[6]]
-
-    eps = 1E-6
-    solutions = np.zeros([N, 4])
-    z = np.array([0, 0, 0, 1])
-    step = 1E-2
-
-    max_iter = 1000
-    ax = plt.figure().add_subplot(projection='3d')
-    ICs = np.zeros([N, 7])
-    for ii in np.arange(N):
-        error = 10
-        ctr = 0
-        while error > eps and ctr < max_iter:
-            # Generate the free variable vector
-            Fx = calcFx_R(X, mu_star)
-            error = np.linalg.norm(Fx)
-            dFx = calcdFx_CRTBP(X, mu_star, m1, m2)
-            X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
-            ctr = ctr + 1
-
-        # Generate an orbit from the found free variable vector
-        freeVar = np.array([X[0], X[1], X[2], 2*X[3]])
-        # solutions[ii] = freeVar
-        # states, times = statePropCRTBP_R(freeVar, mu_star)
-
-        ICs[ii] = [X[0], 0, X[1], 0, X[2], 0, X[3]]
-
-        # # Plot the orbit
-        # ax.plot(states[:, 0], states[:, 1], states[:, 2])
-
-        # Generate new z and X for another orbit
-        solp = X + z * step
-        ss = fsolve(fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
-        X = ss[0]
-        Q = ss[1]['fjac']
-        Rs = ss[1]['r']
-        R = np.zeros((4, 4))
-        idx, col = np.triu_indices(4, k=0)
-        R[idx, col] = Rs
-        J = Q.T @ R
-
-        z = np.linalg.inv(J) @ z
-        z = z / np.linalg.norm(z)
-
-    # plt.show()
-    return ICs
+#def generateFamily_CRTBP(guess, mu_star, N):
+#    """Generates and plots a family of orbits in the CRTBP model given a guess for the initial state.
+#    Each orbit is generated over 1 orbital period.
+#
+#    Args:
+#        guess (float array):
+#            Initial guess for the orbit family in the form [x y z dx dy dz T/2], where T is the orbit period
+#        mu_star (float):
+#            Non-dimensional mass parameter
+#        N (float):
+#            Number of orbits in the family to be generated
+#
+#    Returns:
+#        ICs (float n array):
+#            A matrix consisting of the initial states of for all the orbits in the family
+#
+#    """
+#
+#    # Parameters
+#    m1 = (1 - mu_star)
+#    m2 = mu_star
+#
+#    # Initial guess for the free variable vector
+#    X = [guess[0], guess[2], guess[4], guess[6]]
+#
+#    eps = 1E-6
+#    solutions = np.zeros([N, 4])
+#    z = np.array([0, 0, 0, 1])
+#    step = 1E-2
+#
+#    max_iter = 1000
+#    ax = plt.figure().add_subplot(projection='3d')
+#    ICs = np.zeros([N, 7])
+#    for ii in np.arange(N):
+#        error = 10
+#        ctr = 0
+#        while error > eps and ctr < max_iter:
+#            # Generate the free variable vector
+#            Fx = calcFx_R(X, mu_star)
+#            error = np.linalg.norm(Fx)
+#            dFx = calcdFx_CRTBP(X, mu_star, m1, m2)
+#            X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
+#            ctr = ctr + 1
+#
+#        # Generate an orbit from the found free variable vector
+#        freeVar = np.array([X[0], X[1], X[2], 2*X[3]])
+#        # solutions[ii] = freeVar
+#        # states, times = statePropCRTBP_R(freeVar, mu_star)
+#
+#        ICs[ii] = [X[0], 0, X[1], 0, X[2], 0, X[3]]
+#
+#        # # Plot the orbit
+#        # ax.plot(states[:, 0], states[:, 1], states[:, 2])
+#
+#        # Generate new z and X for another orbit
+#        solp = X + z * step
+#        ss = fsolve(fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
+#        X = ss[0]
+#        Q = ss[1]['fjac']
+#        Rs = ss[1]['r']
+#        R = np.zeros((4, 4))
+#        idx, col = np.triu_indices(4, k=0)
+#        R[idx, col] = Rs
+#        J = Q.T @ R
+#
+#        z = np.linalg.inv(J) @ z
+#        z = z / np.linalg.norm(z)
+#
+#    # plt.show()
+#    return ICs
 
 
 def jacobiConstCRTBPR(pos, vel, mu_star):
