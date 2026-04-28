@@ -124,6 +124,7 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
     print('Perilune: '+str(unitConversion.convertPos_to_dim(min(rmag)).to_value(u.km)))
     if np.any(rmag < rMoon):
         print('Intersects moon. Not a solution')
+        Nsols = Nsols - 1
     else:
         if showPlots:
             ax1 = plt.figure().add_subplot(projection='3d')
@@ -150,8 +151,7 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
     except:
         print('Singular matrix. Stopping continuation')
         break
-    print('Solution counter: '+str(Nsols-1))
-    print('')
+    print('Solution counter: '+str(Nsols)+'\n')
     
     eps = 1E-6
 
