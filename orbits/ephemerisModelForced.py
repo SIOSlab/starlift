@@ -73,12 +73,12 @@ dVCRTBP = np.append(0*u.km/u.s,dVCRTBPtot)
 dVCRTBP = np.diff(dVCRTBP)
 
 # Calculate mass profile
-Isp = 1500*u.s                                          # seconds
-mi = 1000*u.kg                                          # kg
-Ftmax = (max(uT_mag)*mi)*1.01                       # mN
-g0 = const.g0.value*const.g0.unit                     # m/s^2
-mf = mi*np.exp(-dVCRTBPtot/(Isp*g0))   # kg
-m_dim = np.append(mi, mf)                               # mass history
+Isp = 1500*u.s                          # seconds
+mi = 1000*u.kg                          # kg
+Ftmax = (max(uT_mag)*mi)*1.01           # mN
+g0 = const.g0.value*const.g0.unit       # m/s^2
+mf = mi*np.exp(-dVCRTBPtot/(Isp*g0))    # kg
+m_dim = np.append(mi, mf)               # mass history
 
 # Calculate the force profile
 Ft_mag = (uT_mag*m_dim).to_value(u.mN)
@@ -114,15 +114,6 @@ posvel = np.reshape(posvel,(N,6))
 # R frame, relative to the moon (MCR frame)
 posCRTBPM =  posvel[:, 0:3]
 
-ax1 = plt.figure().add_subplot(projection='3d')
-for ii in np.arange(N):
-    ax1.scatter(posvel[ii,0], posvel[ii,1], posvel[ii,2], c='g', marker='o')
-ax1.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r', label='CRTBP')
-ax1.set_xlabel('X [km]')
-ax1.set_ylabel('Y [km]')
-ax1.set_zlabel('Z [km]')
-ax1.set_title('Patch Points in Moon Centered Rotating Frame')
-
 # Convert to MCI frame
 initialEphmerisEpoch = spice.str2et(t_start.iso)
 times_dim = (taus - t_start).to_value(u.s)
@@ -138,8 +129,6 @@ velocityTolerance = 1E-6*orbs  # km/s
 correctedInitialEpoches, correctedInitialStates, exitflag, correctedFinalStates = ms.multipleShootingIForced(initialEphmerisEpoches, initialEphemerisMCI, positionTolerance, velocityTolerance, GM, uT_dim.value, etCRTBP_mjd, omega_m)
 
 # Plot in MCI and MCR
-ax10 = plt.figure().add_subplot(projection='3d')
-ax11 = plt.figure().add_subplot(projection='3d')
 inertialStates = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
 rotatedStates = np.array([np.NaN, np.NaN, np.NaN, np.NaN, np.NaN, np.NaN])
 timesTot = np.array([])
@@ -152,18 +141,10 @@ for ii in np.arange(N-1):
     inertialStates = np.vstack((inertialStates, states))
     vFinal = np.append(vFinal, states[-1,3:6])
     
-#    ax11.plot(states[:, 0], states[:, 1], states[:, 2], 'b', label='Multi Segment')
-#    ax11.scatter(states[0,0], states[0,1], states[0,2], c='g', marker='o')
-#    ax11.scatter(states[-1,0], states[-1,1], states[-1,2], c='y', marker='*')
-    
     Crv_I2R = spice.sxform('MCI','MCR',times)
     rStates = np.zeros((len(times), 6))
     for jj in np.arange(len(times)):
         rStates[jj,:] = Crv_I2R[jj,:,:]@states[jj,:]
-        
-#    ax10.plot(rStates[:, 0], rStates[:, 1], rStates[:, 2], 'b', label='Multi Segment')
-#    ax10.scatter(rStates[0,0], rStates[0,1], rStates[0,2], c='g', marker='o')
-#    ax10.scatter(rStates[-1,0], rStates[-1,1], rStates[-1,2], c='y', marker='*')
 
     rotatedStates = np.vstack((rotatedStates, rStates[:-1,:]))
     timesTot = np.append(timesTot, times[:-1])
@@ -182,48 +163,6 @@ print('Additional dV patches: '+str(dVpatch)+' km/s')
 correctedTp = correctedInitialEpoches[-1] - correctedInitialEpoches[0]
 TpDiff = correctedTp - (etCRTBP_mjd[-1] - etCRTBP_mjd[0])
 print('Orbit period difference: '+str(TpDiff)+' s')
-
-ax10.plot(rotatedStates[:, 0], rotatedStates[:, 1], rotatedStates[:, 2], 'b', label='Multi Segment')
-ax10.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r-.', label='CRTBP')
-ax10.set_xlabel('X [km]', labelpad = 30)
-ax10.set_ylabel('Y [km]', labelpad = 30)
-ax10.set_zlabel('Z [km]', labelpad = 30)
-ax10.set_title('Moon Centered Rotating Frame')
-plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
-
-ax11.plot(inertialStates[:, 0], inertialStates[:, 1], inertialStates[:, 2], 'b', label='Multi Segment')
-ax11.plot(posCRTBP_I_dim[:,0], posCRTBP_I_dim[:,1], posCRTBP_I_dim[:,2], 'r-.', label='CRTBP')
-ax11.set_xlabel('X [km]')
-ax11.set_ylabel('Y [km]')
-ax11.set_zlabel('Z [km]')
-ax11.set_title('Moon Centered Inertial Frame')
-plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
-
-fig, (ax5, ax6, ax7) = plt.subplots(3, 1)
-ax5.plot(np.arange(len(rotatedStates[1:,2])),rotatedStates[1:,0])
-ax5.set_ylabel('x')
-ax6.plot(np.arange(len(rotatedStates[1:,2])),rotatedStates[1:,1])
-ax6.set_ylabel('y')
-ax7.plot(np.arange(len(rotatedStates[1:,2])),rotatedStates[1:,2])
-ax7.set_ylabel('z')
-
-pltTimes = (etCRTBP_mjd[:-1] - etCRTBP_mjd[0])/60/60/24
-scatterTimes = (correctedInitialEpoches[1:-1] - etCRTBP_mjd[0])/60/60/24
-plt.figure(8)
-plt.plot(pltTimes, dVCRTBP, label='Original Thrust Profile')
-plt.scatter(scatterTimes, dVtot, c='r', marker='*', zorder=3, label='Patch Point Burns')
-plt.yscale('log')
-plt.xlabel('Time [d]')
-plt.ylabel('Delta-v [km/s]')
-plt.title('Delta-v History')
-plt.legend()
-
-plt.figure(9)
-plt.plot(etCRTBP_mjd, Ft_mag)
-plt.yscale('log')
-plt.xlabel('Time since epoch [s]')
-plt.ylabel('Control Force [mN]')
-plt.title('Thrust History')
 
 filepath = '/Users/gracegenszler/Documents/Research/starlift/orbits/forcedOrbits/'+fileStr
 if os.path.isdir(filepath):
@@ -267,6 +206,294 @@ print('MS period: '+str(periodMS.to('d')))
 print('CRTBP period: '+str(periodCRTBP.to('d')))
 print('period difference: '+str(periodDiff))
 print('period percent difference: '+str(perDiffPeriod))
+
+# Calculate delta-v
+uT_mag = np.linalg.norm(uT_dim, axis=1)
+dVCRTBPtot = cumulative_trapezoid(uT_mag, x=etCRTBP_mjd, axis=0)*u.km/u.s
+dVCRTBP = np.append(0*u.km/u.s,dVCRTBPtot)
+dVCRTBP = np.diff(dVCRTBP)
+
+dStates = patchStatesFinal - patchStates[1:,:]
+Crv_I2R = spice.sxform('MCI','MCR',patchTimes)
+dStatesR = np.zeros((len(patchTimes)-2, 6))
+for kk in np.arange(1,len(patchTimes)-1):
+    dStatesR[kk-1,:] = Crv_I2R[kk,:,:]@dStates[kk-1,:]
+
+# Default
+mi = 1000*u.kg                          # kg
+g0 = const.g0.value*const.g0.unit       # m/s^2
+Isp = 1500*u.s
+Ftmax0 = (max(uT_mag)*mi).to_value(u.mN)
+
+# Convert impulsive burns into continuous thrust
+sigma = .9999
+sigma2 = 1.000
+inds = np.array([])
+dts = np.array([])
+Ups = np.array([])
+for ii in np.arange(1,len(patchTimes)-1):
+    uT_flag = False
+    timeDiff1 = np.abs(etCRTBP_mjd - patchTimes[ii])
+    
+    ind_ii = np.argwhere(timeDiff1 == min(timeDiff1))[0,0]
+    uT_ii = uT_mag[ind_ii]
+    m_ii = m_dim[ind_ii]
+#        m_ii = mi
+    
+    while not uT_flag:
+        F_ii = uT_ii*m_ii
+#                tmpFt = F_ii.to_value(u.mN)*1000
+        tmpFt = Ftmax0
+        if tmpFt >= Ftmax0:
+            Ftmax = Ftmax0*u.mN
+        else:
+            Ftmax = tmpFt*u.mN
+            
+        F_burn = Ftmax*sigma - F_ii
+        uT_burn = F_burn/m_ii
+        
+        dV_burn = (np.linalg.norm(dStatesR[ii-1,3:6])*(u.km/u.s))
+        dt_burn = dV_burn/uT_burn
+
+        if dt_burn < 0:
+            breakpoint()
+        # check the uT in the dt range, centered at patch point
+        t_initial = patchTimes[ii] - dt_burn.value/2
+        t_final = patchTimes[ii] + dt_burn.value/2
+        
+        timeDiff2 = np.abs(etCRTBP_mjd - t_initial)
+        timeDiff3 = np.abs(etCRTBP_mjd - t_final)
+        ind_i = np.argwhere(timeDiff2 == min(timeDiff2))[0,0]-1
+        ind_f = np.argwhere(timeDiff3 == min(timeDiff3))[0,0]+1
+        
+        uTcheck = np.argwhere(F_burn + uT_mag[ind_i:ind_f]*m_dim[ind_i:ind_f] > Ftmax)
+
+        if len(uTcheck) > 0:
+            # rescale time based off of max thrust force in current time interval
+            uT_ii = max(uT_mag[ind_i:ind_f])*sigma2
+
+            m_ii = mi*np.exp(-(dV_burn + dVCRTBPtot[ind_i])/(Isp*g0))    # kg
+        else:
+            # save info to create continuous burn
+            inds = np.append(inds, np.array([ind_i, ind_f]))
+            dts = np.append(dts, (dt_burn.to('s')).value)
+            Ups = np.append(Ups, (uT_burn.to('km/s**2')).value)
+            uT_flag = True
+
+    dt_print_s = dt_burn.to('s')
+    if dt_print_s.value < 60:
+        print('Burn duration for patch '+str(ii)+' is: '+str(dt_print_s))
+    elif dt_print_s.value < 60*60:
+        print('Burn duration for patch '+str(ii)+' is: '+str(dt_burn.to('min')))
+    elif dt_print_s.value < 60*60*24:
+        print('Burn duration for patch '+str(ii)+' is: '+str(dt_burn.to('hr')))
+    else:
+        print('Burn duration for patch '+str(ii)+' is: '+str(dt_burn.to('d')))
+
+# create a new uT array
+t_min = patchTimes[1] - dts[0]/2
+t_max = patchTimes[1] + dts[0]/2
+
+ind_min = np.argwhere(etCRTBP_mjd < t_min)[-1,0]
+ind_old = np.argwhere(etCRTBP_mjd > t_max)[0,0]
+uT_burn = Ups[0]*dStatesR[0,3:6]/np.linalg.norm(dStatesR[0,3:6])
+
+etCRTBP_mjd_new = etCRTBP_mjd[:ind_min].copy()
+uT_new = uT_dim[:ind_min,:].copy().value
+
+points_uT = (etCRTBP_mjd, np.array([0, 1, 2]))
+interp_fc_uT = RegularGridInterpolator(points_uT, uT_dim, method='linear')
+
+if ind_old - ind_min >= 1:
+    uT_patch = uT_burn + uT_dim[ind_min+1:ind_old,:].value
+    uT_patch_i = uT_burn + interp_fc_uT((t_min, np.array([0, 1, 2])))
+    uT_patch_f = uT_burn + interp_fc_uT((t_max, np.array([0, 1, 2])))
+    uT_patch = np.vstack((np.vstack((uT_patch_i, uT_patch)), uT_patch_f))
+
+    et_patch = np.append(np.append(t_min, etCRTBP_mjd[ind_min+1:ind_old]), t_max)
+    etCRTBP_mjd_new = np.append(etCRTBP_mjd_new, et_patch)
+else:
+    uT_patch = uT_burn + uT_dim[ind_min,:].value
+    uT_patch = np.reshape(np.repeat(uT_patch, repeats=3,axis=0),(3,3)).T
+    etCRTBP_mjd_new = np.append(etCRTBP_mjd_new, np.array([t_min, patchTimes[1], t_max]))
+
+uT_new = np.vstack((uT_new,uT_patch))
+for ii in np.arange(1,len(dts)):
+    t_min = patchTimes[ii+1] - dts[ii]/2
+    t_max = patchTimes[ii+1] + dts[ii]/2
+    
+    ind_min = np.argwhere(etCRTBP_mjd < t_min)[-1,0]
+    ind_max = np.argwhere(etCRTBP_mjd > t_max)[0,0]
+    uT_burn = Ups[ii]*dStatesR[ii,3:6]/np.linalg.norm(dStatesR[ii,3:6])
+
+    etCRTBP_mjd_new = np.append(etCRTBP_mjd_new, etCRTBP_mjd[ind_old:ind_min])
+    uT_new = np.vstack((uT_new, uT_dim[ind_old:ind_min,:].value))
+    if ind_max - ind_min > 1:
+        uT_patch = uT_burn + uT_dim[ind_min:ind_max,:].value
+        uT_patch_i = uT_burn + interp_fc_uT((t_min, np.array([0, 1, 2])))
+        uT_patch_f = uT_burn + interp_fc_uT((t_max, np.array([0, 1, 2])))
+        uT_patch = np.vstack((np.vstack((uT_patch_i, uT_patch)), uT_patch_f))
+
+        et_patch = np.append(np.append(t_min, etCRTBP_mjd[ind_min:ind_max]), t_max)
+        etCRTBP_mjd_new = np.append(etCRTBP_mjd_new, et_patch)
+    else:
+        uT_patch = uT_burn + uT_dim[ind_min,:].value
+        uT_patch = np.reshape(np.repeat(uT_patch, repeats=3,axis=0),(3,3)).T
+        
+        etCRTBP_mjd_new = np.append(etCRTBP_mjd_new, np.array([t_min, patchTimes[ii+1], t_max]))
+    uT_new = np.vstack((uT_new,uT_patch))
+
+    ind_old = np.argwhere(etCRTBP_mjd > t_max)[0,0]
+uT_new = np.vstack((uT_new, uT_dim[ind_old:,:].value))
+etCRTBP_mjd_new = np.append(etCRTBP_mjd_new, etCRTBP_mjd[ind_old:])
+
+Ts = np.array([patchTimes[0], patchTimes[-1]])
+
+times_final, states_final = ms.statePropFFIForced(Ts, patchStates[0,:], GM, uT_new, etCRTBP_mjd_new, omega_m)
+
+states_final_R = np.zeros((len(times_final), 6))
+for ii in np.arange(len(times_final)):
+    Crv_I2R = spice.sxform('MCI','MCR',times_final[ii])
+    states_final_R[ii,:] = Crv_I2R@states_final[ii,:]
+    
+ax1 = plt.figure(figsize=(16, 12)).add_subplot(projection='3d')
+ax1.plot(statesR[:, 0], statesR[:, 1], statesR[:, 2], 'b', label='Multi Segment - Ephemeris Model')
+ax1.plot(posCRTBP_R_dim[:,0], posCRTBP_R_dim[:,1], posCRTBP_R_dim[:,2], 'r-.', label='Single Segment - CRTBP')
+ax1.plot(states_final_R[:,0], states_final_R[:,1], states_final_R[:,2], 'y-.', label='Final Trajectory')
+ax1.set_xlabel('X [km]', labelpad = 30)
+ax1.set_ylabel('Y [km]', labelpad = 30)
+ax1.set_zlabel('Z [km]', labelpad = 30)
+ax1.set_title('Moon Centered Rotating Frame')
+plt.legend(bbox_to_anchor=(1.0, 1.0), loc='upper right')
+
+points_R = (times_final, np.array([0, 1, 2]))
+interp_fc_R = RegularGridInterpolator(points_R, states_final_R[:,0:3], method='linear')
+
+statesR_interp = np.zeros((len(timesFF), 3))
+for ii in np.arange(len(timesFF)):
+    statesR_interp[ii,:] = interp_fc_R((timesFF[ii], np.array([0, 1, 2])))
+
+finalR_mag = np.linalg.norm(statesR[:,0:3], axis = 1)
+interpR_mag = np.linalg.norm(statesR_interp[:,0:3], axis = 1)
+
+statesR_diff = statesR_interp[:,0:3] - statesR[:,0:3]
+diffR_mag = interpR_mag - finalR_mag
+print('Max deviation is '+str(max(diffR_mag))+' km')
+
+burnTimeTot = sum(dts)
+if burnTimeTot < 60:
+    print('Total burn time is: '+str(burnTimeTot)+' s')
+elif burnTimeTot < 60*60:
+    print('Total burn time is: '+str(burnTimeTot/60)+' min')
+elif burnTimeTot < 60*60*24:
+    print('Total burn time is: '+str(burnTimeTot/60/60)+' hr')
+else:
+    print('Total burn time is: '+str(burnTimeTot/60/60/24)+' d')
+
+filepath = '/Users/gracegenszler/Documents/Research/starlift/orbits/forcedOrbits/'+fileStr
+if os.path.isdir(filepath):
+    print('directory exists')
+else:
+    os.makedirs(filepath)
+    
+np.savez(filepath+'/plotVariables.npz', posvel = posvel, posCRTBP_R_dim = posCRTBP_R_dim, rStates = rStates, rotatedStates = rotatedStates, dVCRTBP = dVCRTBP, dVtot = dVtot, Ft_mag = Ft_mag, states_final_R = states_final_R, statesR_diff = statesR_diff, uT_mag = uT_mag, uTNew_mag = uTNew_mag, mNew_di = mNew_di, m_dim = m_dim, dVCRTBPNew = dVCRTBPNew, FtMaxPlt = FtMaxPlt, etCRTBP_mjd = etCRTBP_mjd, correctedInitialEpoches = correctedInitialEpoches, uTNew_time = uTNew_time)
+
+plot_time = (timesFF - timesFF[0])/60/60/24
+fig, (ax2, ax3, ax4, ax5) = plt.subplots(4, 1, figsize=(10, 8))
+#        ax2.plot(plot_time, abs(statesR_diff[:,0]))
+#        ax2.set_ylabel('x [km]')
+#        ax2.set_xlim(0, plot_time[-1])
+#        ax2.get_xaxis().set_visible(False)
+#        ax2.set_title('Absolute Value Differences')
+#        ax3.plot(plot_time, abs(statesR_diff[:,1]))
+#        ax3.set_ylabel('y [km]')
+#        ax3.set_xlim(0, plot_time[-1])
+#        ax3.get_xaxis().set_visible(False)
+#        ax4.plot(plot_time, abs(statesR_diff[:,2]))
+#        ax4.set_ylabel('z [km]')
+#        ax4.set_xlim(0, plot_time[-1])
+#        ax4.get_xaxis().set_visible(False)
+#        ax5.plot(plot_time, abs(diffR_mag))
+#        ax5.set_ylabel('Position Magnitude [km]')
+##        ax5.set_ylabel('Position Magnitude [km]', labelpad = 10)
+#        ax5.set_xlabel('Time [days]')
+#        ax5.set_xlim(0, plot_time[-1])
+ax2.plot(plot_time, abs(statesR_diff[:,0])*100)
+ax2.set_ylabel('x [m]')
+ax2.set_xlim(0, plot_time[-1])
+ax2.get_xaxis().set_visible(False)
+ax2.set_title('Absolute Value Differences')
+ax3.plot(plot_time, abs(statesR_diff[:,1])*100)
+ax3.set_ylabel('y [m]')
+ax3.set_xlim(0, plot_time[-1])
+ax3.get_xaxis().set_visible(False)
+ax4.plot(plot_time, abs(statesR_diff[:,2])*100)
+ax4.set_ylabel('z [m]')
+ax4.set_xlim(0, plot_time[-1])
+ax4.get_xaxis().set_visible(False)
+ax5.plot(plot_time, abs(diffR_mag)*100)
+ax5.set_ylabel('Position Magnitude [m]')
+#        ax5.set_ylabel('Position Magnitude [km]', labelpad = 10)
+ax5.set_xlabel('Time [d]')
+ax5.set_xlim(0, plot_time[-1])
+
+uTNew_mag = np.linalg.norm(uT_new, axis=1)*u.km/u.s**2
+dVCRTBPtotNew = cumulative_trapezoid(uTNew_mag, x=etCRTBP_mjd_new, axis=0)*u.km/u.s
+dVCRTBPNew = np.append(0*u.km/u.s,dVCRTBPtotNew)
+dVCRTBPNew = np.diff(dVCRTBPNew)
+mfNew = mi*np.exp(-dVCRTBPtotNew/(Isp*g0))    # kg
+mNew_dim = np.append(mi, mfNew)               # mass history
+
+print('Final mass is : '+str(mNew_dim[-1]))
+    
+ff.write(str(Ftmax.to_value(u.mN))+", "+str(Isp.value)+", "+str(burnTimeTot)+", "+str(max(diffR_mag))+", "+str(mi.value)+", "+str(mNew_dim[-1].value)+"\n")
+
+uTNew_time = ((etCRTBP_mjd_new-etCRTBP_mjd_new[0])*u.s).to_value(u.d)
+FtMaxPlt = (Ftmax).to_value(u.mN)*np.array([1, 1])
+
+#        plt.figure(6)
+#        plt.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
+#        plt.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
+#        plt.plot(np.array([timesCRTBP_d[0].value, timesCRTBP_d[-1].value]), FtMaxPlt, 'k', label='Max Thrust')
+#        plt.xlabel('Time [d]')
+#        plt.ylabel('Thrust Force [mN]')
+#        plt.yscale('log')
+#        plt.xlim(0, uTNew_time[-1])
+#        plt.legend(bbox_to_anchor=(1.28, .84),loc='lower right')
+
+fig, (ax9, ax6) = plt.subplots(2, 1)
+ax9.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
+ax9.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
+ax9.plot(np.array([timesCRTBP_d[0].value, timesCRTBP_d[-1].value]), FtMaxPlt, 'k', label='Max Thrust')
+ax9.set_ylabel('Thrust Force [mN]')
+ax9.set_xlim(0, uTNew_time[-1])
+ax9.set_ylim(49.8, 50.2)
+ax9.get_xaxis().set_visible(False)
+ax6.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
+ax6.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
+ax6.plot(np.array([timesCRTBP_d[0].value, timesCRTBP_d[-1].value]), FtMaxPlt, 'k', label='Max Thrust')
+ax6.set_xlabel('Time [d]')
+ax6.set_ylabel('Thrust Force [mN]')
+ax6.set_xlim(0, uTNew_time[-1])
+plt.legend()
+#        plt.show()
+
+plt.figure(7)
+plt.plot(uTNew_time, mNew_dim, label='Recreated Mass Profile')
+plt.plot(timesCRTBP_d.value, m_dim, label='Original Mass Profile')
+plt.legend()
+plt.xlabel('Time [d]')
+plt.ylabel('Mass [kg]')
+
+plt.figure(8)
+plt.plot(uTNew_time[:-1], dVCRTBPNew.to_value(u.m/u.s), 'b', label='Recreated Delta-v Profile')
+plt.plot(timesCRTBP_d[:-1].value, (dVCRTBP).to_value(u.m/u.s), 'r-.', label='Original Delta-v Profile')
+plt.scatter(((patchTimes[1:-1]-patchTimes[0])*u.s).to_value(u.d), dVtot, c='g', marker='*', zorder=3, label='Patch Point Burns')
+plt.legend()
+plt.xlabel('time [d]')
+plt.ylabel('delta-v [m/s]')
+plt.yscale('log')
+breakpoint()
 
 plt.show()
 breakpoint()
