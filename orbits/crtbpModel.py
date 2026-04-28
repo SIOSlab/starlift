@@ -13,7 +13,7 @@ import plot_tools
 import extractTools
 import spiceypy as spice
 import multiShooting as ms
-import singleShooting as ss
+#import singleShooting as ss
 from scipy.optimize import fsolve
 
 spice.furnsh("fullForce.txt")
@@ -63,6 +63,7 @@ IC = [0.856382122325864, 0, 0.181519309916197, 0, 0.257898218422393, 0, 1.227273
 #IC = [0.139106790847531, 0, 0, 0, 3.35999055380076, 0, 9.40977341640670]    # 2:3 resonant, fails miserably
 
 # Generate new ICs using the free variable and constraint method
+arrayI = np.reshape(np.eye(6), (1,36))[0]
 X = [IC[0], IC[2], IC[4], IC[6]]
 max_iter = 50
 error = 10
@@ -73,12 +74,14 @@ Tp_lim = unitConversion.convertTime_to_canonical(30.*u.d)
 goodSols = np.array([])
 Nsols = -1
 ax2 = plt.figure().add_subplot(projection='3d')
-while X[-1]*2 < Tp_lim and Nsols < 200:
+while X[-1]*2 < Tp_lim and Nsols < 10:
     ctr = 0
     error = 10
     z = np.array([0, 0, 0, -1])
     while error > eps and ctr < max_iter:
-        Fx, Phi = orbitEOMProp.calcFx_R(X, mu_star)
+        Xfull = np.append(X, arrayI).tolist()
+
+        Fx, Phi = orbitEOMProp.calcFx_R(Xfull, mu_star)
 
         error = np.linalg.norm(Fx)
         if error < eps:
@@ -169,7 +172,7 @@ ax1.plot(statesR[:, 0], statesR[:, 1], statesR[:, 2])
 ax1.set_xlabel('X [DU]')
 ax1.set_ylabel('Y [DU]')
 ax1.set_zlabel('Z [DU]')
-        
+breakpoint()
 # save initial conditions
 np.savez('/Users/gracegenszler/Documents/Research/starlift/orbits/L1_NorthernN.npz', states = states, periods = periods, mu_star = mu_star)
 #print(Nsols)
