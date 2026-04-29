@@ -180,7 +180,7 @@ def positionShooting(initialEpoch, initialState, targetEpoch, targetState, posTo
     while np.linalg.norm(deltaR) > posTol:
         # calculate state transition matrix
         state0 = np.append(initialState, phi0)
-        times, states = statePropFFR(np.array([initialEpoch, targetEpoch]), state0, GM, omega_m)
+        times, states = statePropFFI(np.array([initialEpoch, targetEpoch]), state0, GM, omega_m)
 
         finalState = states[-1, 0:6]
         STM = np.reshape(states[-1, 6:], (6,6))
@@ -467,6 +467,77 @@ def multipleShootingIForced(initialEpochs, initialStates, posTol, velTol, GM, uT
 
     return updatedInitialEpochs, updatedInitialStates, exitflag, updatedFinalStates
     
+    
+def positionShootingForced(initialEpoch, initialState, targetEpoch, targetState, posTol, GM, uT, timesInterp, omega_m):
+    """Inner loop to multi-segment shooting algorithm
+
+    Args:
+        initialEpoch (~numpy.ndarray(float)):
+            Epoch time of the initial patch point in seconds past J2000
+        initialState (~numpy.ndarray(float)):
+            State at initial patch point in km, s units [pos, vel]
+        targetEpoch (~numpy.ndarray(float)):
+            Epoch time of the target patch point in seconds past J2000
+        targetState (~numpy.ndarray(float)):
+            State at target patch point in km, s units [pos, vel]
+        posTol (float):
+            Max allowable difference between the propagated and the desired positions
+        GM (~numpy.ndarray(float)):
+            Gravitational constants for moon, earth, sun in units kg, km, s
+
+    Returns:
+        tuple:
+        initialState ~numpy.ndarray(float):
+            Corrected state at initial patch point in km, s units 
+        finalState (~numpy.ndarray(float)):
+            Corrected states at target patch point in km, s units 
+            [[pos, vel], [pos, vel], ...]
+        STM (~numpy.ndarray(float)):
+            State Transition Matrix from initialEpoch to targetEpoch
+        exitflag:
+            1: multi shooting algorithm is successful
+            -1: fails the inner loop
+
+    """
+    
+    maxCtrInnerLoop = 50
+    ctrInnerLoop = 1
+    
+    deltaR = 1
+    phi0 = np.identity(6)
+    phi0 = np.reshape(phi0, (36,1))
+    while np.linalg.norm(deltaR) > posTol:
+        # calculate state transition matrix
+        state0 = np.append(initialState, phi0)
+        times, states = statePropFFIForced(np.array([initialEpoch, targetEpoch]), state0, GM, uT, timesInterp, omega_m)
+
+        finalState = states[-1, 0:6]
+        STM = np.reshape(states[-1, 6:], (6,6))
+        # check if target is reached
+        Rstar = targetState[0:3]
+        deltaR = Rstar - finalState[0:3]
+
+        # test early stop
+        if np.linalg.norm(deltaR) < posTol:
+            exitflag = 1
+            break
+
+        B = STM[0:3, 3:6]
+
+        correctionAtInitialState = np.linalg.inv(B)@deltaR
+
+        # update state for next iteration
+        initialState[3:6] = initialState[3:6] + correctionAtInitialState[0:3]
+        ctrInnerLoop = ctrInnerLoop + 1
+
+        # stop after too many iterations
+        if ctrInnerLoop > maxCtrInnerLoop:
+            exitflag = -1
+            print('position shooting: max iteration reached.')
+            break
+
+    return initialState, finalState, STM, exitflag
+
     
     
 def ffInertialForced(tt, w, GM, uT=None, times=None, omega_m=None):

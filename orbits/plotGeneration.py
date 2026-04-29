@@ -49,7 +49,7 @@ m_dim = fpoData['m_dim']
 dVCRTBPNew = fpoData['dVCRTBPNew']
 FtMaxPlt = fpoData['FtMaxPlt']
 etCRTBP_mjd = fpoData['etCRTBP_mjd']
-uTNew_time = fpoData['uTNew_time']
+ffNew_time = fpoData['ffNew_time']
 
 crtbp_time = (etCRTBP_mjd[:-1] - etCRTBP_mjd[0])/60/60/24
 scatterTimes = (correctedInitialEpoches[1:-1] - etCRTBP_mjd[0])/60/60/24
@@ -138,23 +138,23 @@ ax15.set_xlim(0, ff_time[-1])
 # Thrust profile comparison pre and post propulsion system standardization
 fig, (ax16, ax17) = plt.subplots(2, 1)
 ax16.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
-ax16.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
+ax16.plot(ffNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
 ax16.plot(np.array([timesCRTBP_d[0].value, timesCRTBP_d[-1].value]), FtMaxPlt, 'k', label='Max Thrust')
 ax16.set_ylabel('Thrust Force [mN]')
-ax16.set_xlim(0, uTNew_time[-1])
+ax16.set_xlim(0, ffNew_time[-1])
 ax16.set_ylim(49.8, 50.2)
 ax16.get_xaxis().set_visible(False)
 ax17.plot(timesCRTBP_d.value, (uT_mag*m_dim).to_value(u.mN), 'b', label='Original Thrust Profile')
-ax17.plot(uTNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
+ax17.plot(ffNew_time, (uTNew_mag*mNew_dim).to_value(u.mN), 'r-.', label='Recreated Thrust Profile')
 ax17.plot(np.array([timesCRTBP_d[0].value, timesCRTBP_d[-1].value]), FtMaxPlt, 'k', label='Max Thrust')
 ax17.set_xlabel('Time [d]')
 ax17.set_ylabel('Thrust Force [mN]')
-ax17.set_xlim(0, uTNew_time[-1])
+ax17.set_xlim(0, ffNew_time[-1])
 plt.legend()
 
 # Mass profile comparison pre and post propulsion system standardization
 plt.figure(18)
-plt.plot(uTNew_time, mNew_dim, label='Recreated Mass Profile')
+plt.plot(ffNew_time, mNew_dim, label='Recreated Mass Profile')
 plt.plot(timesCRTBP_d.value, m_dim, label='Original Mass Profile')
 plt.legend()
 plt.xlabel('Time [d]')
@@ -162,7 +162,7 @@ plt.ylabel('Mass [kg]')
 
 # Delta-v profile comparison pre and post propulsion system standardization
 plt.figure(19)
-plt.plot(uTNew_time[:-1], dVCRTBPNew.to_value(u.m/u.s), 'b', label='Recreated Delta-v Profile')
+plt.plot(ffNew_time[:-1], dVCRTBPNew.to_value(u.m/u.s), 'b', label='Recreated Delta-v Profile')
 plt.plot(timesCRTBP_d[:-1].value, (dVCRTBP).to_value(u.m/u.s), 'r-.', label='Original Delta-v Profile')
 plt.scatter(((patchTimes[1:-1]-patchTimes[0])*u.s).to_value(u.d), dVtot, c='g', marker='*', zorder=3, label='Patch Point Burns')
 plt.legend()
