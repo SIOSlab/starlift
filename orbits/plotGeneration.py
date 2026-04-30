@@ -6,30 +6,16 @@ from scipy.io import loadmat
 import astropy.units as u
 
 plt.rcParams.update({'font.size': 22})
-spice.furnsh("fullForce.txt")
+#spice.furnsh("fullForce.txt")
 
 # ** USER INPUTS
 fileDir = '/Users/gracegenszler/Documents/Research'
 
-#fileDirectory = '/starlift/orbits/forcedOrbits/'
 #fileStr = 'L1_Halo'                     # L1 Halo
 #fileStr = 'L2_NRHO'                     # L2 NRHO
-#fileStr = 'TrajI_1265_MassOptimal'      # L2 Halo
-fileStr = 'TrajI_1265_EnergyOptimal'    # L2 Halo
+#fileStr = 'TrajI_1265_MassOptimal'      # L2 Halo, Mass Optimal
+fileStr = 'TrajI_1265_EnergyOptimal'    # L2 Halo, Energy Optimal
 #fileStr = 'L2_Butterfly'                # L2 Butterfly
-
-# Parameters
-gmSun = spice.bodvrd( 'Sun', 'GM', 1 )[1][0]
-gmEarth = spice.bodvrd( 'Earth', 'GM', 1 )[1][0]
-gmMoon = spice.bodvrd( 'Moon', 'GM', 1 )[1][0]
-GM = np.array([gmMoon, gmEarth, gmSun])
-
-mat_data = loadmat(fileDir+'/starlift/orbits/orbitFiles/'+fileStr+'.mat')['TrajI']
-posCRTBP_R = mat_data[:,0:3]
-velCRTBP_R = mat_data[:,3:6]
-timesCRTBP_R = mat_data[:,6]
-uT = mat_data[:,7:]
-mu_cstar = 0.01215059
 
 # load initialFF data
 initialFFData = np.load(fileDir+'/starlift/orbits/forcedOrbits/'+fileStr+'/initialFF.npz', allow_pickle=True)
