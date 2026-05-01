@@ -164,7 +164,7 @@ def calcdFx_CRTBP(freeVar, mu_star, m1, m2, Phi):
                      [Phi[5, 0], Phi[5, 2], Phi[5, 4]]])
 
     X = [freeVar[0], 0, freeVar[1], 0, freeVar[2], 0]
-    dw = CRTBP_EOM(freeVar[-1], X, mu_star)
+    dw = CRTBP_EOM_R(freeVar[-1], X, mu_star)
     ddT = np.array([dw[1], dw[3], dw[5]])
     dFx = np.zeros([3, 4])
     dFx[:, 0:3] = phis
