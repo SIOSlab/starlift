@@ -13,7 +13,6 @@ from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
-import orbitEOMProp
 import plot_tools
 import extractTools
 import spiceypy as spice
