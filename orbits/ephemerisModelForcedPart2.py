@@ -14,12 +14,10 @@ from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
-import orbitEOMProp
 import plot_tools
 import extractTools
 import spiceypy as spice
 import multiShooting as ms
-import singleShooting as ss
 import csv
 plt.rcParams.update({'font.size': 22})
 spice.furnsh("fullForce.txt")

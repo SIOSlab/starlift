@@ -10,7 +10,7 @@ from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
-import orbitEOMProp
+import ss
 import plot_tools
 import extractTools
 import pdb
@@ -41,10 +41,10 @@ error = 10
 ctr = 0
 eps = 4E-6
 while error > eps and ctr < max_iter:
-    Fx = orbitEOMProp.calcFx_R(X, mu_star)
+    Fx = ss.calcFx_R(X, mu_star)
 
     error = np.linalg.norm(Fx)
-    dFx = orbitEOMProp.calcdFx_CRTBP(X, mu_star, m1, m2)
+    dFx = ss.calcdFx_CRTBP(X, mu_star, m1, m2)
 
     X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
 
@@ -93,7 +93,7 @@ pos_H, vel_H = frameConversion.convertSC_I2H(IC[0:3], IC[3:6], t_start, C_I2G)
 state0 = np.append(np.append(pos_H.value, vel_H.value), days)
 
 # Propagate the dynamics (states in AU or AU/day, times in days starting from 0)
-states, times = orbitEOMProp.statePropFF(state0, t_start)  # State is in the H frame
+states, times = ss.statePropFF(state0, t_start)  # State is in the H frame
 pos = states[:, 0:3]
 vel = states[:, 3:6]
 

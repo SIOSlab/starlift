@@ -11,7 +11,6 @@ from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
 import frameConversion
-import orbitEOMProp
 import plot_tools
 import extractTools
 import spiceypy as spice
@@ -121,7 +120,7 @@ for kk in np.arange(0 ,len(Tp_target)):
 #            freeVar0CRTBP_R = np.array([state_kk[0], state_kk[2], state_kk[4], state_kk[6]])
             freeVar0CRTBP_R = np.array([state_kk[0], state_kk[2], state_kk[4], period_kk])
 
-            statesCRTBP_R, timesCRTBP_R = orbitEOMProp.statePropCRTBP_R(freeVar0CRTBP_R, mu_star)  # State is in the R frame
+            statesCRTBP_R, timesCRTBP_R = ss.statePropCRTBP_R(freeVar0CRTBP_R, mu_star)  # State is in the R frame
             posCRTBP_R = statesCRTBP_R[:, 0:3]
             velCRTBP_R = statesCRTBP_R[:, 3:6]
 

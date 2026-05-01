@@ -7,7 +7,6 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
-#import orbitEOMProp
 import spiceypy as spice
 import singleShooting as ss
 from scipy.optimize import fsolve
@@ -81,14 +80,14 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
     while error > eps and ctr < max_iter:
         Xfull = np.append(X, arrayI).tolist()
 
-        Fx, Phi = orbitEOMProp.calcFx_R(Xfull, mu_star)
+        Fx, Phi = ss.calcFx_R(Xfull, mu_star)
 
         error = np.linalg.norm(Fx)
         if error < eps:
             print('Error is: '+str(error))
             break
             
-        dFx = orbitEOMProp.calcdFx_CRTBP(X, mu_star, m1, m2, Phi)
+        dFx = ss.calcdFx_CRTBP(X, mu_star, m1, m2, Phi)
 
         X = X - dFx.T @ (np.linalg.inv(dFx @ dFx.T) @ Fx)
 
@@ -109,7 +108,7 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
     # Propagate the dynamics (states in AU or AU/day, times in days starting from 0)
     freeVar0CRTBP_R = X.copy()
     freeVar0CRTBP_R[-1] = 2*freeVar0CRTBP_R[-1]
-    statesCRTBP_R, timesCRTBP_R = orbitEOMProp.statePropCRTBP_R(freeVar0CRTBP_R, mu_star)  # State is in the R frame
+    statesCRTBP_R, timesCRTBP_R = ss.statePropCRTBP_R(freeVar0CRTBP_R, mu_star)  # State is in the R frame
     posCRTBP_R = statesCRTBP_R[:, 0:3]
     velCRTBP_R = statesCRTBP_R[:, 3:6]
     
@@ -128,7 +127,7 @@ while X[-1]*2 < Tp_lim and Nsols < 10:
     
     # Generate new z and X for another orbit
     solp = X + z * step
-    fss = fsolve(orbitEOMProp.fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
+    fss = fsolve(ss.fsolve_eqns, X, args=(z, solp, mu_star), full_output=True, xtol=1E-12)
     X = fss[0]
     Q = fss[1]['fjac']
     Rs = fss[1]['r']
@@ -154,7 +153,7 @@ if showPlots:
 goodSols = np.reshape(goodSols, (Nsols+1, 7))
 states = goodSols[1:,0:6]
 periods = goodSols[1:,6]
-statesR, timesR = orbitEOMProp.statePropCRTBP_R(goodSols[-1,[0,2,4,6]], mu_star)
+statesR, timesR = ss.statePropCRTBP_R(goodSols[-1,[0,2,4,6]], mu_star)
 
 ax1 = plt.figure().add_subplot(projection='3d')
 ax1.plot(statesR[:, 0], statesR[:, 1], statesR[:, 2])
