@@ -20,7 +20,7 @@ spice.furnsh("fullForce.txt")
 
 # ** USER INPUTS
 showPlots = False
-fileDir = '/Users/gracegenszler/Documents/Research'
+fileDir = '/Users/gracegenszler/Documents/Research'     # file path to starlift repo
 fileName = 'L1_NorthernN.npz'
 
 # Parameters

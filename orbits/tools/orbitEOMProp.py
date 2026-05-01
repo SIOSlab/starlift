@@ -133,7 +133,7 @@ def calcFx_R(freeVar, mu_star):
 
     if len(state) > 7:
         Phi = state[6:]
-        Phi = np.reshape(Phi, (1,36))[0]
+        Phi = np.reshape(Phi, (6,6))
         
         return Fx, Phi
     else:
