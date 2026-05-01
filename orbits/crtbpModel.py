@@ -7,9 +7,9 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 sys.path.insert(1, 'tools')
 import unitConversion
-import orbitEOMProp
+#import orbitEOMProp
 import spiceypy as spice
-#import singleShooting as ss
+import singleShooting as ss
 from scipy.optimize import fsolve
 
 spice.furnsh("fullForce.txt")

@@ -57,11 +57,14 @@ def CRTBP_EOM_R(t, w, mu_star):
 
         Phi = np.reshape(w[6:], (6,6))
         Z = np.zeros([3, 3])
+        Omega2 = np.zeros([3,3])
+        Omega2[0, 1] = 2
+        Omega2[1, 0] = -2
         I = np.identity(3)
         A = np.array([[dxdx, dxdy, dxdz],
                       [dxdy, dydy, dydz],
                       [dxdz, dydz, dzdz]])
-        J = np.block([[Z, I], [A, Z]])
+        J = np.block([[Z, I], [A, Omega2]])
 
         dPhi = J@Phi
         dPhi = np.reshape(dPhi, (1,36))[0]
