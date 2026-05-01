@@ -21,6 +21,19 @@ plt.rcParams.update({'font.size': 22})
 spice.furnsh("fullForce.txt")
 
 showPlots = True
+
+# ** USER INPUTS
+fileDir = '/Users/gracegenszler/Documents/Research/'    # Directory to starlift repo
+# data file name
+data = np.load('L2_SouthernN.npz')
+#data = np.load('/Users/gracegenszler/Documents/Research/starlift/orbits/DRO.npz')
+
+# start date
+tNum = 61119    # vernal equinox 2026, March 20
+#tNum = 61212    # summer solstice 2026, June 21
+#tNum = 61306    # autumnal equinox 2026, Sept 23
+#tNum = 61395    # winter solstice 2026, Dec 21
+
 # Parameters
 gmSun = spice.bodvrd( 'Sun', 'GM', 1 )[1][0]
 gmEarth = spice.bodvrd( 'Earth', 'GM', 1 )[1][0]
@@ -32,12 +45,7 @@ radiiEarth = spice.bodvrd( 'Earth', 'RADII', 3 )[1][0]
 radiiMoon = spice.bodvrd( 'Moon', 'RADII', 3 )[1][0]
 radii = np.array([radiiMoon, radiiEarth, radiiSun])
 
-tNum = 61119    # vernal equinox 2026, March 20
-#tNum = 61212    # summer solstice 2026, June 21
-#tNum = 61306    # autumnal equinox 2026, Sept 23
-#tNum = 61395    # winter solstice 2026, Dec 21
-
-t_start = Time(tNum, format='mjd', scale='utc')        # vernal equinox 2026, March 20
+t_start = Time(tNum, format='mjd', scale='utc')
 
 mu_star = gmMoon/(gmEarth + gmMoon)
 #mu_star = 1.215059E-2
@@ -48,8 +56,6 @@ Tp_m = spice.oscltx(rvMoon, et_start, gmEarth)[-1]
 omega_m = 2*np.pi/Tp_m
 
 # Initial condition in canonical units in rotating frame R [pos, vel]
-data = np.load('L2_SouthernN.npz')
-#data = np.load('/Users/gracegenszler/Documents/Research/starlift/orbits/DRO.npz')
 #posvelt = data['ICs']
 #states = posvelt[:,0:6]
 #periods = posvelt[:,6]
@@ -62,7 +68,6 @@ m2 = mu_star
 
 Tp0 = unitConversion.convertTime_to_dim(periods).value
 
-testInds = np.array([32, 33])
 #butterFlyInds = np.array([5, 20, 43, 59, 81, 98, 120, 138, 177])           # Done
 #droInds = np.array([58, 74, 89, 97, 105, 120, 136, 149, 151])              # Done
 #l2NorthernInds = np.array([0, 20, 41, 61, 81, 102, 122, 143, 163, 178])    # Done
@@ -90,10 +95,8 @@ for kk in np.arange(0 ,len(Tp_target)):
 #    timeDays = unitConversion.convertTime_to_dim(state_kk[6]).value
     timeDays = unitConversion.convertTime_to_dim(period_kk).value
     totTime = timeDays*np.ceil((45)/timeDays)
-#    totTime = timeDays*5
-#    totTime = 36*3 + unitConversion.convertTime_to_dim(period_kk).value
-#    totTime = 365*100 + unitConversion.convertTime_to_dim(period_kk).value
-    mainDir = '/Users/gracegenszler/Documents/Research/starlift/orbits/forcedOrbits/naturalOrbit/' + str(timeDays) + '_days/'
+    
+    mainDir = fileDir + 'starlift/orbits/forcedOrbits/naturalOrbit/' + str(timeDays) + '_days/'
 
     giveUp = False
     attempt100Ctr = 0
@@ -117,7 +120,6 @@ for kk in np.arange(0 ,len(Tp_target)):
             orbs = crtbpTotData['Norbit']
             timesCRTBP_mjdtot = crtbpTotData['Tmjd']
         else:
-#            freeVar0CRTBP_R = np.array([state_kk[0], state_kk[2], state_kk[4], state_kk[6]])
             freeVar0CRTBP_R = np.array([state_kk[0], state_kk[2], state_kk[4], period_kk])
 
             statesCRTBP_R, timesCRTBP_R = ss.statePropCRTBP_R(freeVar0CRTBP_R, mu_star)  # State is in the R frame
@@ -496,7 +498,7 @@ for kk in np.arange(0 ,len(Tp_target)):
         
         eventFilePath = orbitDir+'/attemptStartTime_'+str(t100_initial)+'*'
         
-        oldFile = True      # ** Toggle this to False for GNSS
+        oldFile = False
         advanceTime = (7*u.d).to_value(u.s)
         nFiles = len(os.listdir(orbitDir)) - 5
         fileCtr = 0
@@ -612,9 +614,7 @@ for kk in np.arange(0 ,len(Tp_target)):
         if showPlots:
             plt.close('all')
         
-        if attempt100Ctr >= 1:      # ** CHANGE BACK TO 1 for GNSS
+        if attempt100Ctr >= 1:
             giveUp = True
-            
-#        breakpoint()
 
 breakpoint()
